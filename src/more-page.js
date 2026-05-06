@@ -1071,16 +1071,6 @@ function initSettingsUI() {
     scheduleShiftReminder();
   });
 
-  document.getElementById("testShiftReminderBtn")?.addEventListener("click", async () => {
-    const perm = await requestNotifPermission();
-    if (perm !== "granted") {
-      toast("Allow notifications first — toggle the switch above.");
-      return;
-    }
-    const ok = await sendNotification("Flat-Rate", "End of shift — log your hours before you leave!", "shift-test");
-    if (ok) toast("Test notification sent!");
-    else toast("Notification failed — check your browser/phone notification settings.");
-  });
 
   // ── Payday reminder ──
   const paydayEnabled  = document.getElementById("paydayReminderEnabled");

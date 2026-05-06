@@ -403,9 +403,6 @@ async function runOnce() {
     wrapMoreClick("exportDisputeWeekBtn", exportDisputeThisWeek);
     wrapMoreClick("saveFlaggedBtn", saveFlaggedHours);
     wrapMoreClick("savePayStubBtn", savePayStubEntry);
-    wrapMoreClick("wipeBtn", wipeLocalOnly);
-
-    document.getElementById("wipeAllBtn")?.addEventListener("click", wipeAllData);
     if (hasReviewUi) {
       document.getElementById("reviewRefreshBtn")?.addEventListener("click", renderReview);
       document.getElementById("reviewRange")?.addEventListener("change", renderReview);
