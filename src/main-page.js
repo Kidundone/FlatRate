@@ -627,24 +627,26 @@ function showHistory(open = true) {
 
 function buildHistEntryRow(e) {
   const refLabel = e.refType === "STOCK" ? "STK" : "RO";
-  const refVal = e.ref || e.ro || "—";
+  const refVal   = e.ref || e.ro || "—";
   const hasPhoto = entryHasPhoto(e);
-  const photoTag = hasPhoto ? ` · Photo` : "";
-  const vin8 = e.vin8 ? ` · VIN ${escapeHtml(e.vin8)}` : "";
-  const notesHtml = e.notes
-    ? `<div class="histEntryMeta">${escapeHtml(e.notes)}</div>` : "";
+  const vinHtml  = e.vin8 ? `<div class="histEntryVin">VIN: <span class="histEntryVinVal">${escapeHtml(e.vin8)}</span></div>` : "";
+  const notesHtml = e.notes ? `<div class="histEntryNotes">${escapeHtml(e.notes)}</div>` : "";
 
   const row = document.createElement("div");
   row.className = "histEntryRow";
   row.innerHTML = `
     <div class="histEntryLeft">
-      <div class="histEntryType">
-        ${typeBadgeHtml(e.type || e.typeText || "—")}
+      <div class="histEntryTopLine">
+        <span class="histEntryRefNum">${refLabel} ${escapeHtml(refVal)}</span>
         ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
+        ${hasPhoto ? `<span class="histPhotoTag">📷</span>` : ""}
       </div>
-      <div class="histEntryRef">${refLabel}: ${escapeHtml(refVal)}${vin8}</div>
-      <div class="histEntryMeta">${escapeHtml(formatTimeAgo(e.updatedAt || e.createdAt))}${photoTag}</div>
+      <div class="histEntryTypeLine">
+        ${typeBadgeHtml(e.type || e.typeText || "—")}
+      </div>
+      ${vinHtml}
       ${notesHtml}
+      <div class="histEntryMeta">${escapeHtml(formatTimeAgo(e.updatedAt || e.createdAt))}</div>
       <div class="histEntryActions">
         <button class="iBtn" data-edit-id="${escapeHtml(String(e.id ?? ""))}" ${e.id == null ? "disabled" : ""}>Edit</button>
         <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
@@ -683,19 +685,28 @@ async function renderHistory() {
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   let slice = all;
-  if (range === "today") {
+  if (q) {
+    // searching always spans all time so you don't miss anything
+    slice = all.filter(e => matchSearch(e, q));
+  } else if (range === "today") {
     const dk = selectedHistoryDayKey();
     slice = all.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === dk);
+  } else if (range === "week") {
+    const ws = dateKey(startOfWeekLocal(navRefDate()));
+    const we = dateKey(endOfWeekLocal(navRefDate()));
+    slice = all.filter(e => { const d = e.dayKey || dayKeyFromISO(e.createdAt); return d >= ws && d <= we; });
+  } else if (range === "month") {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    slice = all.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)).startsWith(prefix));
   }
-
-  if (q) slice = slice.filter(e => matchSearch(e, q));
-  slice.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   const totals = computeTotals(slice);
   const avgJob = totals.count > 0 ? round2(totals.dollars / totals.count) : 0;
 
   const setText = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-  setText("historyMeta", `${slice.length} ${slice.length === 1 ? "entry" : "entries"}`);
+  const rangeLabel = q ? `"${q}"` : range === "today" ? "Today" : range === "week" ? "This Week" : range === "month" ? "This Month" : "All Time";
+  setText("historyMeta", `${slice.length} ${slice.length === 1 ? "entry" : "entries"} · ${rangeLabel}`);
   setText("histSumCount", String(totals.count));
   setText("histSumHours", formatHours(totals.hours));
   setText("histSumDollars", formatMoney(totals.dollars));
@@ -706,22 +717,29 @@ async function renderHistory() {
   box.innerHTML = "";
 
   if (!slice.length) {
-    box.innerHTML = `<div class="emptyState"><div class="emptyStateTitle">No entries</div><div class="emptyStateSub">Try a different range or search term</div></div>`;
+    box.innerHTML = `<div class="emptyState"><div class="emptyStateTitle">No entries found</div><div class="emptyStateSub">${q ? `No results for "${escapeHtml(q)}"` : "Nothing logged for this period"}</div></div>`;
     return;
   }
+
+  const fmt = (iso) => {
+    const d = new Date(iso + "T00:00:00");
+    const today = todayKeyLocal();
+    const yest = (() => { const x = new Date(); x.setDate(x.getDate() - 1); return dateKey(x); })();
+    if (iso === today) return "Today";
+    if (iso === yest) return "Yesterday";
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
 
   const groups = groupByDay(slice);
   for (const g of groups) {
     const t = computeTotals(g.entries);
-
     const dayHdr = document.createElement("div");
     dayHdr.className = "histDayHeader";
     dayHdr.innerHTML = `
-      <div class="histDayKey">${escapeHtml(g.dayKey)}</div>
-      <div class="histDayTotals">${formatHours(t.hours)} hrs · <span class="histDayPay">${formatMoney(t.dollars)}</span></div>
+      <div class="histDayKey">${escapeHtml(fmt(g.dayKey))}</div>
+      <div class="histDayTotals">${formatHours(t.hours)} hrs · <span class="histDayPay">${formatMoney(t.dollars)}</span> · ${t.count} job${t.count !== 1 ? "s" : ""}</div>
     `;
     box.appendChild(dayHdr);
-
     for (const e of g.entries) {
       box.appendChild(buildHistEntryRow(e));
     }

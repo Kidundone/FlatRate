@@ -1348,6 +1348,59 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   flex-wrap: wrap;
 }
 
+/* New cleaner entry layout */
+.histEntryTopLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.histEntryRefNum {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: -.2px;
+  color: #fff;
+}
+
+[data-theme="light"] .histEntryRefNum { color: var(--text); }
+
+.histPhotoTag {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.histEntryTypeLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.histEntryVin {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  margin-top: 5px;
+}
+
+.histEntryVinVal {
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+[data-theme="light"] .histEntryVinVal { color: var(--text); }
+
+.histEntryNotes {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
 .histEntryRef {
   font-size: 12px;
   color: var(--muted);
@@ -1358,7 +1411,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 .histEntryMeta {
   font-size: 11px;
   color: var(--muted2);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .histEntryRight {

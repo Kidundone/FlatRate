@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.2267b793ff.css">
+  <link rel="stylesheet" href="./app.d5ce74ecf5.css">
 </head>
 <body data-page="main">
 
@@ -343,10 +343,12 @@
       </div>
 
       <div class="historyControls">
-        <input id="historySearchInput" placeholder="Search RO, type, VIN…" class="fr26Input" />
+        <input id="historySearchInput" placeholder="Search RO #, STK, VIN, job type, notes…" class="fr26Input" autocomplete="off" />
         <div class="seg histRangeSeg" role="tablist" aria-label="History range">
           <button type="button" class="segBtn active" data-hist-range="today">Today</button>
-          <button type="button" class="segBtn" data-hist-range="all">All Time</button>
+          <button type="button" class="segBtn" data-hist-range="week">Week</button>
+          <button type="button" class="segBtn" data-hist-range="month">Month</button>
+          <button type="button" class="segBtn" data-hist-range="all">All</button>
         </div>
       </div>
 
@@ -451,6 +453,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="/FlatRate/app.535bf20970.js" defer></script>
+<script src="/FlatRate/app.32164bad79.js" defer></script>
 </body>
 </html>
