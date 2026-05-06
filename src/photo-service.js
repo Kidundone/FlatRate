@@ -487,32 +487,54 @@ function initPhotosUI(){
 
 async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) {
   const sbInstance = window.__FR?.sb;
-  const { data: { session } } = await sbInstance.auth.getSession();
-  const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(fnUrl, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "apikey": window.__SUPABASE_CONFIG__.anonKey,
-      },
-      body: JSON.stringify({ imageBase64: base64, mediaType }),
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => String(res.status));
-      throw new Error(`Scan failed (${res.status}): ${txt}`);
+
+  const getToken = async () => {
+    // Always refresh to ensure a non-expired token
+    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
+    return session?.access_token || null;
+  };
+
+  const token = await getToken();
+  if (!token) throw new Error("auth_expired");
+
+  const doFetch = async (tok) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tok}`,
+          "apikey": window.__SUPABASE_CONFIG__.anonKey,
+        },
+        body: JSON.stringify({ imageBase64: base64, mediaType }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => String(res.status));
+        throw Object.assign(new Error(`Scan failed (${res.status}): ${txt}`), { status: res.status });
+      }
+      return res.json();
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("OCR timed out — try again");
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json();
+  };
+
+  try {
+    return await doFetch(token);
   } catch (e) {
-    if (e.name === "AbortError") throw new Error("OCR timed out — try again");
+    // On 401, refresh once more and retry
+    if (e.status === 401) {
+      const fresh = await getToken();
+      if (fresh && fresh !== token) return await doFetch(fresh);
+    }
     throw e;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -564,6 +586,10 @@ async function autoScanPhotoAndPatch(file, entryId, currentRef, currentVin8) {
     if (found.length) toast(`Photo scanned — ${found.join(" · ")}`);
   } catch (e) {
     console.warn("[OCR]", e?.message || e);
-    toast(`OCR: ${e?.message || "failed"}`);
+    const msg = e?.message || "";
+    // Auth/session errors are silent — user didn't ask for OCR explicitly
+    if (msg === "auth_expired" || e?.status === 401 || /unauthorized/i.test(msg)) return;
+    if (msg.includes("timed out")) { toast("Photo scan timed out — tap again to retry"); return; }
+    // Other errors: brief console note only, not a user-facing toast
   }
 }
