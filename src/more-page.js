@@ -710,6 +710,15 @@ function initPayStubUI() {
   const amountEl = document.getElementById("payStubAmountPaid");
   if (!weekEl || !amountEl) return;
 
+  // Restore collapse state
+  const details = document.getElementById("payStubDetails");
+  if (details) {
+    if (localStorage.getItem("fr_paystub_open") !== "0") details.open = true;
+    details.addEventListener("toggle", () => {
+      localStorage.setItem("fr_paystub_open", details.open ? "1" : "0");
+    });
+  }
+
   if (!weekEl.value) weekEl.value = dateKey(endOfWeekLocal(new Date()));
 
   const startKey = weekStartKeyFromDateInput(weekEl.value);

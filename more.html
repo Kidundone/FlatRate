@@ -196,64 +196,68 @@
 
     <!-- ── Pay Stub ── -->
     <section class="card moreCard">
-      <div class="moreCardHeader">Pay Stub</div>
+      <details class="moreSectionDetails" id="payStubDetails">
+        <summary class="moreCardHeader moreSectionSummary">Pay Stub</summary>
 
-      <div class="moreRow">
-        <div class="moreRowLabel">Pay Period</div>
-        <div class="seg">
-          <button class="segBtn active" id="payPeriodWeekly" type="button">Weekly</button>
-          <button class="segBtn" id="payPeriodBiweekly" type="button">Biweekly</button>
+        <div class="moreRow">
+          <div class="moreRowLabel">Pay Period</div>
+          <div class="seg">
+            <button class="segBtn active" id="payPeriodWeekly" type="button">Weekly</button>
+            <button class="segBtn" id="payPeriodBiweekly" type="button">Biweekly</button>
+          </div>
         </div>
-      </div>
 
-      <div class="moreDivider"></div>
+        <div class="moreDivider"></div>
 
-      <div class="moreRow">
-        <div class="moreRowLabel">Week of</div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn" id="payStubPrevWeekBtn" type="button" style="padding:6px 10px;">‹</button>
-          <input id="payStubWeekEnding" type="date" class="moreInput moreInputNarrow" />
-          <button class="btn" id="payStubNextWeekBtn" type="button" style="padding:6px 10px;">›</button>
+        <div class="moreRow">
+          <div class="moreRowLabel">Week of</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="btn" id="payStubPrevWeekBtn" type="button" style="padding:6px 10px;">‹</button>
+            <input id="payStubWeekEnding" type="date" class="moreInput moreInputNarrow" />
+            <button class="btn" id="payStubNextWeekBtn" type="button" style="padding:6px 10px;">›</button>
+          </div>
         </div>
-      </div>
 
-      <div id="payStubWeek2Row" class="moreRow" style="display:none;">
-        <div class="moreRowLabel" style="color:var(--muted);font-size:12px;">+ Week 2</div>
-        <div id="payStubWeek2Label" class="muted small" style="text-align:right;"></div>
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Check Amount</div>
-          <div class="moreRowSub">Gross pay — covers both weeks if biweekly</div>
+        <div id="payStubWeek2Row" class="moreRow" style="display:none;">
+          <div class="moreRowLabel" style="color:var(--muted);font-size:12px;">+ Week 2</div>
+          <div id="payStubWeek2Label" class="muted small" style="text-align:right;"></div>
         </div>
-        <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
-      </div>
 
-      <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
-      <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
-      <div class="moreSaveRow">
-        <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
-        <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
-      </div>
-      <div class="moreSaveRow" style="padding-top:0;">
-        <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
-        <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
-      </div>
+        <div class="moreDivider"></div>
 
-      <div id="payStubSummary" class="moreResultText"></div>
-      <div id="payStubExpected" class="moreResultMono"></div>
-      <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
-      <div id="missingWorkList" style="padding:0 16px 8px;"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Check Amount</div>
+            <div class="moreRowSub">Gross pay — covers both weeks if biweekly</div>
+          </div>
+          <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
+        </div>
+
+        <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
+        <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+        <div class="moreSaveRow">
+          <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
+          <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
+        </div>
+        <div class="moreSaveRow" style="padding-top:0;">
+          <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
+          <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
+        </div>
+
+        <div id="payStubSummary" class="moreResultText"></div>
+        <div id="payStubExpected" class="moreResultMono"></div>
+        <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
+        <div id="missingWorkList" style="padding:0 16px 8px;"></div>
+      </details>
     </section>
 
     <!-- ── Pay Trend ── -->
     <section class="card moreCard">
-      <div class="moreCardHeader">Short-Pay History</div>
-      <div class="moreCardSub">Load a saved week back into Pay Stub or delete it here.</div>
-      <div id="payTrendCard"></div>
+      <details class="moreSectionDetails" open>
+        <summary class="moreCardHeader moreSectionSummary">Short-Pay History</summary>
+        <div class="moreCardSub" style="padding-top:0;">Load a saved week above or delete a stub here.</div>
+        <div id="payTrendCard"></div>
+      </details>
     </section>
 
     <!-- ── Job Types ── -->
@@ -389,6 +393,6 @@
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
     };
   </script>
-  <script src="/FlatRate/app.92d40e3c0c.js" defer></script>
+  <script src="/FlatRate/app.659b59e08d.js" defer></script>
 </body>
 </html>
