@@ -723,16 +723,21 @@ function initPayStubUI() {
   });
   amountEl.addEventListener("input", renderPayStubComparison);
 
-  const scanBtn = document.getElementById("scanCheckBtn");
-  const picker = document.getElementById("checkStubPicker");
-  if (scanBtn && picker) {
-    scanBtn.addEventListener("click", () => picker.click());
-    picker.addEventListener("change", () => {
-      const file = picker.files?.[0];
-      if (file) scanPayStub(file);
-      picker.value = "";
-    });
-  }
+  const libBtn    = document.getElementById("scanCheckLibBtn");
+  const camBtn    = document.getElementById("scanCheckCamBtn");
+  const picker    = document.getElementById("checkStubPicker");
+  const camPicker = document.getElementById("checkStubCamera");
+
+  const onPickerChange = (input) => () => {
+    const file = input.files?.[0];
+    if (file) scanPayStub(file);
+    input.value = "";
+  };
+
+  libBtn?.addEventListener("click", () => picker?.click());
+  camBtn?.addEventListener("click", () => camPicker?.click());
+  picker?.addEventListener("change", onPickerChange(picker));
+  camPicker?.addEventListener("change", onPickerChange(camPicker));
 
   // Biweekly toggle
   const weeklyBtn    = document.getElementById("payPeriodWeekly");
