@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Flat-Rate Tracker — Welcome</title>
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flat-Rate">
+  <link rel="stylesheet" href="./app.2267b793ff.css">
+  <style>
+    .cb-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100dvh - 60px);
+      padding: 32px 24px;
+      text-align: center;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .cb-icon { font-size: 52px; margin-bottom: 18px; line-height: 1; }
+    .cb-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; letter-spacing: -.3px; }
+    .cb-sub { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.5; }
+    .cb-steps {
+      width: 100%;
+      background: var(--card-bg, #1c1c1e);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 4px 0;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .cb-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .cb-step:last-child { border-bottom: none; }
+    .cb-step-num {
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 15px;
+      min-width: 20px;
+      padding-top: 1px;
+    }
+    .cb-step-text { font-size: 14px; line-height: 1.45; }
+    .cb-step-text strong { color: #fff; font-weight: 600; }
+    .cb-cta {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 14px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .cb-redirect { margin-top: 14px; font-size: 12px; color: var(--muted); }
+    .cb-spin {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--stroke2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="topRow">
+      <div class="topTitle">Flat-Rate</div>
+    </div>
+  </header>
+
+  <div class="cb-body" id="cbContent">
+    <div class="cb-spin"></div>
+    <div class="cb-title">Confirming your account…</div>
+    <div class="cb-sub">Hang on just a second.</div>
+  </div>
+
+  <script>
+    window.__SUPABASE_CONFIG__ = {
+      url: "https://lfnydhidbwfyfjafazdy.supabase.co",
+      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    (function () {
+      const cfg = window.__SUPABASE_CONFIG__;
+      const client = window.supabase.createClient(cfg.url, cfg.anonKey);
+      const el = document.getElementById("cbContent");
+      let settled = false;
+
+      function showSuccess(session) {
+        if (settled) return;
+        settled = true;
+        const email = session?.user?.email || "";
+        const name  = email ? email.split("@")[0] : "";
+        el.innerHTML = `
+          <div class="cb-icon">✅</div>
+          <div class="cb-title">You're in${name ? ", " + name : ""}!</div>
+          <div class="cb-sub">Account confirmed. Follow these steps to get started:</div>
+          <div class="cb-steps">
+            <div class="cb-step">
+              <div class="cb-step-num">1</div>
+              <div class="cb-step-text">When prompted, enter your <strong>Employee #</strong> and <strong>Hourly Rate</strong></div>
+            </div>
+            <div class="cb-step">
+              <div class="cb-step-num">2</div>
+              <div class="cb-step-text">Log your first flat-rate job — RO # and hours worked</div>
+            </div>
+            <div class="cb-step">
+              <div class="cb-step-num">3</div>
+              <div class="cb-step-text">Your data syncs automatically across all your devices</div>
+            </div>
+          </div>
+          <a class="btn primary cb-cta" href="./index.html">Get Started</a>
+          <div class="cb-redirect">Redirecting automatically in 5 seconds…</div>
+        `;
+        setTimeout(function () { window.location.replace("./index.html"); }, 5000);
+      }
+
+      function showExpired() {
+        if (settled) return;
+        settled = true;
+        el.innerHTML = `
+          <div class="cb-icon" style="font-size:44px;">⚠️</div>
+          <div class="cb-title">Link expired or already used</div>
+          <div class="cb-sub">This confirmation link may have expired. Sign in with your email and password — your account is ready.</div>
+          <a class="btn primary cb-cta" href="./more.html">Go to Sign In</a>
+        `;
+      }
+
+      // onAuthStateChange fires SIGNED_IN when the hash tokens are processed
+      client.auth.onAuthStateChange(function (event, session) {
+        if (session) showSuccess(session);
+      });
+
+      // getSession triggers hash processing in Supabase v2; also covers direct navigation
+      client.auth.getSession().then(function (r) {
+        if (r.data && r.data.session) {
+          showSuccess(r.data.session);
+        } else {
+          // Give onAuthStateChange a moment to fire before showing the error
+          setTimeout(function () { if (!settled) showExpired(); }, 3500);
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>

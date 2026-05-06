@@ -173,7 +173,8 @@ function wireAuthUI() {
     setAuthMessage("Creating account...");
     setBusy(true, "signup");
     try {
-      const { data, error } = await client.auth.signUp({ email, password });
+      const callbackUrl = new URL("./auth-callback.html", window.location.href).href;
+      const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: callbackUrl } });
       if (error) return setAuthMessage(error.message, true);
       if (data?.session) {
         await setUidFromSession(data.session);

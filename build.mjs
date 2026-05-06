@@ -11,7 +11,7 @@ const SOURCE_PARTS = [
   "src/more-page.js",
   "src/boot.js",
 ];
-const HTML_FILES = ["index.html", "more.html"];
+const HTML_FILES = ["index.html", "more.html", "auth-callback.html"];
 
 function hashOf(buf) {
   return createHash("sha1").update(buf).digest("hex").slice(0, 10);
@@ -76,6 +76,7 @@ const PRECACHE = [
   "./",
   "./index.html",
   "./more.html",
+  "./auth-callback.html",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
