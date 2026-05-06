@@ -1048,11 +1048,16 @@ function initSettingsUI() {
 
   reminderEnabled?.addEventListener("change", async () => {
     const enabled = !!reminderEnabled.checked;
-    if (enabled && "Notification" in window && Notification.permission === "default") {
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
+    if (enabled) {
+      const perm = await requestNotifPermission();
+      if (perm === "denied") {
         reminderEnabled.checked = false;
-        toast("Notifications blocked — enable them in browser settings.");
+        toast("Notifications blocked. Go to your browser/phone Settings → Notifications and allow this site.");
+        return;
+      }
+      if (perm === "unsupported") {
+        reminderEnabled.checked = false;
+        toast("Notifications not supported on this browser.");
         return;
       }
     }
@@ -1064,6 +1069,17 @@ function initSettingsUI() {
   reminderTimeEl?.addEventListener("change", () => {
     saveReminderSettings({ enabled: !!reminderEnabled?.checked, time: reminderTimeEl.value });
     scheduleShiftReminder();
+  });
+
+  document.getElementById("testShiftReminderBtn")?.addEventListener("click", async () => {
+    const perm = await requestNotifPermission();
+    if (perm !== "granted") {
+      toast("Allow notifications first — toggle the switch above.");
+      return;
+    }
+    const ok = await sendNotification("Flat-Rate", "End of shift — log your hours before you leave!", "shift-test");
+    if (ok) toast("Test notification sent!");
+    else toast("Notification failed — check your browser/phone notification settings.");
   });
 
   // ── Payday reminder ──
@@ -1079,11 +1095,16 @@ function initSettingsUI() {
 
   paydayEnabled?.addEventListener("change", async () => {
     const enabled = !!paydayEnabled.checked;
-    if (enabled && "Notification" in window && Notification.permission === "default") {
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
+    if (enabled) {
+      const perm = await requestNotifPermission();
+      if (perm === "denied") {
         paydayEnabled.checked = false;
-        toast("Notifications blocked — enable them in browser settings.");
+        toast("Notifications blocked. Go to your browser/phone Settings → Notifications and allow this site.");
+        return;
+      }
+      if (perm === "unsupported") {
+        paydayEnabled.checked = false;
+        toast("Notifications not supported on this browser.");
         return;
       }
     }
@@ -1380,23 +1401,58 @@ function savePaydaySettings(patch) {
   localStorage.setItem(LS_PAYDAY, JSON.stringify({ ...getPaydaySettings(), ...patch }));
 }
 
+/* ── Shared notification helper ──────────────────── */
+async function sendNotification(title, body, tag = "fr-note") {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission !== "granted") return false;
+  try {
+    // Use SW registration.showNotification — works backgrounded on Android/desktop
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      body,
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      tag,
+      renotify: true,
+    });
+    return true;
+  } catch {
+    try { new Notification(title, { body, icon: "./icon-192.png" }); return true; } catch {}
+  }
+  return false;
+}
+window.__FR = window.__FR || {};
+window.__FR.sendNotification = sendNotification;
+
+async function requestNotifPermission() {
+  if (!("Notification" in window)) return "unsupported";
+  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "denied") return "denied";
+  return await Notification.requestPermission().catch(() => "denied");
+}
+
 function schedulePaydayReminder() {
   clearTimeout(window.__FR_PAYDAY__);
   const s = getPaydaySettings();
   if (!s.enabled) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
+
   const [h, m] = String(s.time || "09:00").split(":").map(Number);
   const targetDay = Number(s.day ?? 5);
   const now = new Date();
   const d = new Date(now);
-  const daysUntil = ((targetDay - d.getDay()) + 7) % 7 || 7;
+
+  let daysUntil = ((targetDay - d.getDay()) + 7) % 7;
+  if (daysUntil === 0) {
+    // It's payday today — fire now if time hasn't passed, else next week
+    const todayTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
+    if (todayTarget <= now) daysUntil = 7;
+  }
   d.setDate(d.getDate() + daysUntil);
   d.setHours(h, m, 0, 0);
+
   window.__FR_PAYDAY__ = setTimeout(() => {
-    new Notification("Flat-Rate Tracker", {
-      body: "Payday! Remember to log your pay stub.",
-      icon: "/FlatRate/icon-192.png",
-    });
+    sendNotification("Flat-Rate", "Payday! Remember to log your pay stub.", "payday-reminder");
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -1419,15 +1475,16 @@ function scheduleShiftReminder() {
   const s = getReminderSettings();
   if (!s.enabled || !s.time) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
+
   const [h, m] = String(s.time).split(":").map(Number);
   const now = new Date();
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-  if (target <= now) return;
+  // If today's time already passed, schedule for tomorrow
+  if (target <= now) target.setDate(target.getDate() + 1);
+
   window.__FR_REMINDER__ = setTimeout(() => {
-    new Notification("Flat-Rate Tracker", {
-      body: "End of shift — log your hours before you leave!",
-      icon: "/FlatRate/icon-192.png",
-    });
+    sendNotification("Flat-Rate", "End of shift — log your hours before you leave!", "shift-reminder");
+    scheduleShiftReminder(); // reschedule for same time tomorrow
   }, target.getTime() - now.getTime());
 }
 
