@@ -31,13 +31,8 @@ async function bootAuth() {
     await initAuth();
     return;
   }
-  let { data, error } = await client.auth.getSession();
+  const { data, error } = await client.auth.getSession();
   if (error) console.error("getSession error:", error);
-  // If the access token is stale, force a refresh so we get a valid session
-  if (!data?.session?.user) {
-    const refreshed = await client.auth.refreshSession().catch(() => ({}));
-    if (refreshed?.data?.session) data = refreshed.data;
-  }
   await setUidFromSession(data?.session || null);
 
   await initAuth();

@@ -9,10 +9,14 @@ console.log("__FR_MARKER_20260316");
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
-  // When a new SW takes control the page is still running old JS — reload to get fresh code.
-  // The new bundle is already cached so this is instant.
+  // When a new SW takes control show a persistent banner — never auto-reload,
+  // as that can interrupt an active sign-in or form submission.
+  let _swUpdated = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    window.location.reload();
+    if (_swUpdated) return;
+    _swUpdated = true;
+    const banner = document.getElementById("swUpdateBanner");
+    if (banner) banner.style.display = "";
   });
 }
 
