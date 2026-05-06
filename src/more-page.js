@@ -317,15 +317,15 @@ function loadPayStubIntoForm(weekStartKey) {
   const key = String(weekStartKey || "").trim();
   if (!key) return;
   const stub = getPayStubForWeekKey(key);
-  if (!stub) return;
 
-  applyPayStubPeriodMode(!!stub.biweekly);
+  applyPayStubPeriodMode(!!(stub?.biweekly));
   hydratePayStubFormForWeek(key);
   renderPayStubComparison();
   renderMissingWorkReview?.();
 
   document.getElementById("payStubWeekEnding")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  toast(`Loaded ${stub.weekEnding || weekEndingForWeekStartKey(key)}`);
+  const weekLabel = stub?.weekEnding || weekEndingForWeekStartKey(key) || key;
+  toast(stub ? `Loaded ${weekLabel}` : `Week of ${weekLabel} — enter check amount above`);
 }
 
 async function deletePayStubFromTrend(weekStartKey) {
