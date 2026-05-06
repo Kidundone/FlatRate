@@ -40,6 +40,17 @@ async function bootAuth() {
   if (window.__AUTH_WIRED__) return;
   window.__AUTH_WIRED__ = true;
 
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible") return;
+    try {
+      const { data } = await client.auth.getSession();
+      await setUidFromSession(data?.session || null);
+      if (window.CURRENT_UID && window.__PAGE__ === "main") {
+        await safeLoadEntries();
+      }
+    } catch {}
+  });
+
   client.auth.onAuthStateChange(async (event, session) => {
     console.log("AUTH EVENT:", event);
     await setUidFromSession(session || null);
@@ -535,7 +546,9 @@ async function onDeleteClicked(btn, idOverride = null) {
 
     const next = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
       .filter((x) => String(x.id) !== String(id));
-    await renderEntries(next);
+    CURRENT_ENTRIES = syncStateEntries(next);
+    setCachedEntries(getEmpId(), next);
+    await renderLogs(next);
 
     showUndoBar({
       text: "Entry deleted.",
