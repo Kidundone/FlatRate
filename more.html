@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.d5ce74ecf5.css">
+  <link rel="stylesheet" href="./app.7b199d29e5.css">
 </head>
 <body data-page="more">
 
@@ -232,13 +232,15 @@
         <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
       </div>
 
-      <div class="moreSaveRow" style="gap:8px;">
+      <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
+      <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+      <div class="moreSaveRow">
         <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
         <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
-        <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
-        <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+      </div>
+      <div class="moreSaveRow" style="padding-top:0;">
         <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
-        <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute</button>
+        <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
       </div>
 
       <div id="payStubSummary" class="moreResultText"></div>

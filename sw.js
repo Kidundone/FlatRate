@@ -9,7 +9,7 @@ const PRECACHE = [
   "./icon-192.png",
   "./icon-512.png",
   "./app.1ddd9908d0.js",
-  "./app.d5ce74ecf5.css",
+  "./app.7b199d29e5.css",
 ];
 
 self.addEventListener("install", e => {

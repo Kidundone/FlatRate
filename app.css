@@ -1263,7 +1263,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 .histRangeSeg { width: 100%; }
-.histRangeSeg .segBtn { flex: 1; }
+.histRangeSeg .segBtn { flex: 1; font-size: 13px; padding: 8px 6px; }
 
 .historySummary {
   display: flex;
@@ -1554,7 +1554,10 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   justify-content: space-between;
   gap: 12px;
   padding: 13px 16px;
+  min-width: 0;
 }
+
+.moreRow > * { min-width: 0; }
 
 .moreRowLabel {
   font-size: 15px;
@@ -1702,8 +1705,13 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 /* Save row */
-.moreSaveRow { padding: 12px 16px 16px; display: flex; gap: 8px; }
-.moreSaveBtn { flex: 1; min-height: 48px; }
+.moreSaveRow {
+  padding: 12px 16px 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.moreSaveBtn { flex: 1; min-width: 120px; min-height: 48px; }
 
 /* Export grid */
 .exportGrid {
@@ -2448,4 +2456,43 @@ body.compact .list    { gap: 1px; }
 }
 #tourSpotlight.pulse {
   animation: tourPulse 1.6s ease infinite;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+/* Very small phones (< 380px) */
+@media (max-width: 380px) {
+  .moreSaveBtn { min-width: 0; font-size: 13px; padding: 10px 8px; }
+  .moreInputNarrow { min-width: 72px; }
+  .seg { font-size: 13px; }
+  .segBtn { padding: 8px 6px; }
+  .fr26HourBtn { font-size: 13px; padding: 6px 8px; }
+  .histEntryRefNum { font-size: 14px; }
+}
+
+/* Tablet / small desktop (681px – 960px) */
+@media (min-width: 681px) {
+  .wrap, main { padding-left: 24px; padding-right: 24px; }
+  .moreCard { border-radius: var(--r-xl); }
+  .card { border-radius: var(--r-xl); }
+  .historySheet { max-width: 640px; margin: 0 auto; border-radius: var(--r-xl); align-self: center; }
+  .historyOverlay { align-items: center; }
+  .moreSaveBtn { min-width: 0; }
+}
+
+/* Wide desktop (> 960px) */
+@media (min-width: 961px) {
+  header { max-width: 680px; margin: 0 auto; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .top   { max-width: 680px; margin: 0 auto; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  body   { background: var(--surface2); }
+  main, .wrap {
+    background: var(--bg);
+    border-radius: var(--r-xl);
+    margin-top: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  }
+  .tabBar { max-width: 680px; left: 50%; transform: translateX(-50%); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .historySheet { max-width: 640px; margin: 0 auto; border-radius: var(--r-xl); align-self: center; }
+  .historyOverlay { align-items: center; }
 }
