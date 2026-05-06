@@ -530,67 +530,70 @@ function renderPayTrend() {
   }
 
   const stubMap = loadPayStubMap();
-  const stubs = Object.values(stubMap)
-    .filter(s => s.weekStartKey)
-    .sort((a, b) => b.weekStartKey.localeCompare(a.weekStartKey));
-
-  if (!stubs.length) {
-    container.innerHTML = `<div class="muted small" style="padding:14px 16px;">No pay stubs recorded yet. Log what you were paid each week in the Pay Stub section above.</div>`;
-    return;
-  }
-
   const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
   const own = filterEntriesByEmp(all, empId);
 
+  // Build week set from all worked entries, plus any saved stubs
+  const weekKeys = new Set();
+  own.forEach(e => {
+    const wsk = e.weekStartKey || (e.dayKey ? dateKey(startOfWeekLocal(new Date(e.dayKey))) : null);
+    if (wsk) weekKeys.add(wsk);
+  });
+  Object.keys(stubMap).forEach(k => weekKeys.add(k));
+
+  if (!weekKeys.size) {
+    container.innerHTML = `<div class="muted small" style="padding:14px 16px;">No entries logged yet.</div>`;
+    return;
+  }
+
+  const sortedWeeks = [...weekKeys].sort((a, b) => b.localeCompare(a));
+
   let totalShort = 0;
   let weeksShort = 0;
+  let savedCount = 0;
 
-  const rows = stubs.map(stub => {
-    const ws = parseDateInputValue(stub.weekStartKey);
+  const rows = sortedWeeks.map(wsKey => {
+    const ws = parseDateInputValue(wsKey);
     if (!ws) return null;
     const we = endOfWeekLocal(ws);
-    const wsKey = dateKey(ws);
     const weKey = dateKey(we);
 
     const weekEntries = own.filter(e => e.dayKey && e.dayKey >= wsKey && e.dayKey <= weKey);
-    const loggedPay  = round2(weekEntries.reduce((s, e) => s + Number(e.earnings || 0), 0));
-    const loggedHrs  = round1(weekEntries.reduce((s, e) => s + Number(e.hours   || 0), 0));
-    const paidAmt    = round2(Number(stub.amountPaid || 0));
-    const delta      = round2(paidAmt - loggedPay);
+    if (!weekEntries.length && !stubMap[wsKey]) return null;
 
-    if (delta < -0.01) { weeksShort++; totalShort = round2(totalShort + Math.abs(delta)); }
+    const loggedPay = round2(weekEntries.reduce((s, e) => s + Number(e.earnings || 0), 0));
+    const loggedHrs = round1(weekEntries.reduce((s, e) => s + Number(e.hours   || 0), 0));
+    const stub      = stubMap[wsKey];
+    const paidAmt   = stub ? round2(Number(stub.amountPaid || 0)) : null;
+    const hasPaid   = paidAmt !== null && paidAmt > 0;
+    const delta     = hasPaid ? round2(paidAmt - loggedPay) : null;
 
-    const wsDate = ws;
-    const weDate = we;
+    if (stub) savedCount++;
+    if (delta !== null && delta < -0.01) { weeksShort++; totalShort = round2(totalShort + Math.abs(delta)); }
+
     const mo = (d) => d.toLocaleDateString("en-US", { month: "short" });
     const dy = (d) => d.getDate();
-    const weekLabel = mo(wsDate) === mo(weDate)
-      ? `${mo(wsDate)} ${dy(wsDate)}–${dy(weDate)}`
-      : `${mo(wsDate)} ${dy(wsDate)} – ${mo(weDate)} ${dy(weDate)}`;
+    const weekLabel = mo(ws) === mo(we)
+      ? `${mo(ws)} ${dy(ws)}–${dy(we)}`
+      : `${mo(ws)} ${dy(ws)} – ${mo(we)} ${dy(we)}`;
 
-    return {
-      weekStartKey: stub.weekStartKey,
-      weekEnding: stub.weekEnding || weekEndingForWeekStartKey(stub.weekStartKey),
-      biweekly: !!stub.biweekly,
-      linkedWeek: String(stub.linkedWeek || "").trim(),
-      loggedPay,
-      loggedHrs,
-      paidAmt,
-      delta,
-      weekLabel,
-      isShort: delta < -0.01,
-      isOver: delta > 0.01,
-    };
+    return { weekStartKey: wsKey, loggedPay, loggedHrs, paidAmt, hasPaid, delta, weekLabel, hasStub: !!stub, isShort: delta !== null && delta < -0.01, isOver: delta !== null && delta > 0.01 };
   }).filter(Boolean);
 
-  const allOk = weeksShort === 0;
-  const summaryText = allOk
-    ? `All ${stubs.length} recorded week${stubs.length !== 1 ? "s" : ""} paid correctly ✓`
-    : `Underpaid ${weeksShort} of ${stubs.length} week${stubs.length !== 1 ? "s" : ""} · ${formatMoney(totalShort)} short total`;
+  if (!rows.length) {
+    container.innerHTML = `<div class="muted small" style="padding:14px 16px;">No entries logged yet.</div>`;
+    return;
+  }
+
+  const summaryText = savedCount === 0
+    ? `${rows.length} week${rows.length !== 1 ? "s" : ""} worked — load a week above to enter your check amount`
+    : weeksShort === 0
+      ? `All ${savedCount} recorded week${savedCount !== 1 ? "s" : ""} paid correctly ✓`
+      : `Underpaid ${weeksShort} of ${savedCount} week${savedCount !== 1 ? "s" : ""} · ${formatMoney(totalShort)} short total`;
 
   const rowsHtml = rows.map(r => {
-    const deltaText  = r.isShort ? `−${formatMoney(Math.abs(r.delta))}` : r.isOver ? `+${formatMoney(r.delta)}` : "Even";
-    const deltaClass = r.isShort ? "ptDeltaShort" : r.isOver ? "ptDeltaOver" : "ptDeltaEven";
+    const deltaText  = r.delta === null ? "—" : r.isShort ? `−${formatMoney(Math.abs(r.delta))}` : r.isOver ? `+${formatMoney(r.delta)}` : "Even";
+    const deltaClass = r.delta === null ? "" : r.isShort ? "ptDeltaShort" : r.isOver ? "ptDeltaOver" : "ptDeltaEven";
     return `
       <div class="ptRow${r.isShort ? " ptRow--short" : ""}" data-paystub-week="${escapeHtml(r.weekStartKey)}">
         <div class="ptWeek">${r.weekLabel}</div>
@@ -602,7 +605,7 @@ function renderPayTrend() {
           </div>
           <div class="ptCol">
             <div class="ptColLabel">Check</div>
-            <div class="ptColVal">${r.paidAmt > 0 ? formatMoney(r.paidAmt) : "—"}</div>
+            <div class="ptColVal">${r.hasPaid ? formatMoney(r.paidAmt) : "—"}</div>
           </div>
           <div class="ptCol ptColRight">
             <div class="ptColLabel">Delta</div>
@@ -611,13 +614,13 @@ function renderPayTrend() {
         </div>
         <div class="ptActions">
           <button class="btn ptActionBtn" type="button" data-paystub-load="${escapeHtml(r.weekStartKey)}">Load</button>
-          <button class="btn danger-ghost ptActionBtn" type="button" data-paystub-del="${escapeHtml(r.weekStartKey)}">Delete</button>
+          ${r.hasStub ? `<button class="btn danger-ghost ptActionBtn" type="button" data-paystub-del="${escapeHtml(r.weekStartKey)}">Delete</button>` : ""}
         </div>
       </div>`;
   }).join("");
 
   container.innerHTML = `
-    <div class="ptSummary ${allOk ? "ptSummaryOk" : "ptSummaryWarn"}">${summaryText}</div>
+    <div class="ptSummary ${weeksShort > 0 ? "ptSummaryWarn" : savedCount > 0 ? "ptSummaryOk" : ""}">${summaryText}</div>
     <div class="ptList">${rowsHtml}</div>`;
 
   container.querySelectorAll("[data-paystub-load]").forEach((btn) => {
