@@ -872,7 +872,7 @@ async function loadEntries() {
 
   let query = sb()
     .from("work_logs")
-    .select("id,work_date,created_at,updated_at,ro_number,stock,dealer,brand,store,store_code,campus,category,description,flat_hours,cash_amount,location,vin,vin8,photo_path,owner_key,employee_number,is_deleted,is_comeback,ref_type,user_id")
+    .select("*")
     .eq("user_id", uid)
     .eq("employee_number", empId)
     .or("is_deleted.is.null,is_deleted.eq.false");
