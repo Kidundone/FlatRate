@@ -92,11 +92,21 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
   background: rgba(17,17,19,.92);
   border-bottom: 1px solid var(--stroke);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+}
+
+/* Standalone PWA: guarantee status-bar clearance on every iPhone model */
+@media (display-mode: standalone) {
+  header {
+    padding-top: max(52px, calc(12px + env(safe-area-inset-top, 44px)));
+  }
+  .top {
+    padding-top: max(52px, calc(12px + env(safe-area-inset-top, 44px)));
+  }
 }
 
 h1 {
@@ -1448,7 +1458,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   background: rgba(17,17,19,.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
   border-bottom: 1px solid var(--stroke);
 }
 
