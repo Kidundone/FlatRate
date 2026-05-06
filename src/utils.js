@@ -7,17 +7,21 @@ const SETTINGS_DEFAULTS = Object.freeze({
   darkMode: "auto",
 });
 
+let _settingsCache = null;
 function getSettings() {
+  if (_settingsCache) return _settingsCache;
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
-    return stored ? { ...SETTINGS_DEFAULTS, ...JSON.parse(stored) } : { ...SETTINGS_DEFAULTS };
+    _settingsCache = stored ? { ...SETTINGS_DEFAULTS, ...JSON.parse(stored) } : { ...SETTINGS_DEFAULTS };
   } catch {
-    return { ...SETTINGS_DEFAULTS };
+    _settingsCache = { ...SETTINGS_DEFAULTS };
   }
+  return _settingsCache;
 }
 
 function saveSettings(patch) {
   const updated = { ...getSettings(), ...patch };
+  _settingsCache = updated;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
   applySettings(updated);
   return updated;

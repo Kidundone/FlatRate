@@ -60,9 +60,11 @@ async function runOnce() {
     const sIn = document.getElementById("searchInput");
     const sClr = document.getElementById("clearSearchBtn");
     if (sIn) {
+      let _searchT = null;
       sIn.addEventListener("input", () => {
         if (sClr) sClr.hidden = !sIn.value.trim();
-        refreshUI(CURRENT_ENTRIES);
+        clearTimeout(_searchT);
+        _searchT = setTimeout(() => refreshUI(CURRENT_ENTRIES), 150);
       });
     }
     if (sClr) {

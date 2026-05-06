@@ -40,15 +40,19 @@ async function bootAuth() {
   if (window.__AUTH_WIRED__) return;
   window.__AUTH_WIRED__ = true;
 
-  document.addEventListener("visibilitychange", async () => {
+  let _visibilityTimer = null;
+  document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
-    try {
-      const { data } = await client.auth.getSession();
-      await setUidFromSession(data?.session || null);
-      if (window.CURRENT_UID && window.__PAGE__ === "main") {
-        await safeLoadEntries();
-      }
-    } catch {}
+    clearTimeout(_visibilityTimer);
+    _visibilityTimer = setTimeout(async () => {
+      try {
+        const { data } = await client.auth.getSession();
+        await setUidFromSession(data?.session || null);
+        if (window.CURRENT_UID && window.__PAGE__ === "main") {
+          await safeLoadEntries();
+        }
+      } catch {}
+    }, 300);
   });
 
   client.auth.onAuthStateChange(async (event, session) => {
@@ -734,25 +738,26 @@ const STORES = {
 
 const $ = (id) => document.getElementById(id);
 
+let _loadEntriesLock = false;
 async function safeLoadEntries() {
+  if (_loadEntriesLock) return Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
+  _loadEntriesLock = true;
   const emp = getEmpId();
 
-  if (!window.CURRENT_UID || !emp) {
-    // Not signed in — still show any queued offline entries so they aren't invisible
-    const pending = getPendingQueue().map(item => ({ ...item.entry, _pending: true }));
-    if (pending.length) {
-      CURRENT_ENTRIES = syncStateEntries(normalizeEntries(pending));
-      await renderLogs(CURRENT_ENTRIES);
-    }
-    return [];
-  }
-
   try {
+    if (!window.CURRENT_UID || !emp) {
+      const pending = getPendingQueue().map(item => ({ ...item.entry, _pending: true }));
+      if (pending.length) {
+        CURRENT_ENTRIES = syncStateEntries(normalizeEntries(pending));
+        await renderLogs(CURRENT_ENTRIES);
+      }
+      return [];
+    }
+
     const rows = await loadEntries();
     return rows;
   } catch (e) {
     console.error("loadEntries failed:", e);
-    // Offline fallback: merge last-known cache with any pending (unsynced) entries
     if (!navigator.onLine || String(e?.message || "").includes("fetch")) {
       const pendingMap = new Map(getPendingQueue().map(x => [String(x.id), { ...x.entry, _pending: true }]));
       const cached = getCachedEntries(emp).filter(c => !pendingMap.has(String(c.id)));
@@ -765,6 +770,8 @@ async function safeLoadEntries() {
       }
     }
     return [];
+  } finally {
+    _loadEntriesLock = false;
   }
 }
 window.__FR = window.__FR || {};
@@ -865,7 +872,7 @@ async function loadEntries() {
 
   let query = sb()
     .from("work_logs")
-    .select("*")
+    .select("id,work_date,created_at,updated_at,ro_number,stock,dealer,brand,store,store_code,campus,category,description,flat_hours,cash_amount,location,vin,vin8,photo_path,owner_key,employee_number,is_deleted,is_comeback,ref_type,user_id")
     .eq("user_id", uid)
     .eq("employee_number", empId)
     .or("is_deleted.is.null,is_deleted.eq.false");

@@ -381,9 +381,11 @@ async function deleteSelectedEntries() {
   if (!selected.length) { toast("No entries selected."); return; }
   const word = selected.length === 1 ? "entry" : "entries";
   if (!confirm(`Delete ${selected.length} selected ${word}? This cannot be undone.`)) return;
+  let failed = 0;
   for (const e of selected) {
-    try { await onDeleteClicked(null, e.id); } catch {}
+    try { await onDeleteClicked(null, e.id); } catch { failed++; }
   }
+  if (failed > 0) toast(`${failed} entr${failed === 1 ? "y" : "ies"} failed to delete — try again`);
   await safeLoadEntries();
 }
 
@@ -455,7 +457,7 @@ async function saveEntry(entry, options = {}) {
         photo_path = newPath;
         photoStatus = "ok";
         // Fire-and-forget: scan photo in background, patch RO/VIN if found
-        autoScanPhotoAndPatch?.(photoFile, saved.id, payload.ro_number, entry.vin8);
+        autoScanPhotoAndPatch?.(photoFile, saved.id, payload.ro_number, entry.vin8)?.catch(e => console.warn("[OCR]", e?.message || e));
       } catch (err) {
         photoStatus = "fail";
       }
@@ -876,46 +878,57 @@ window.__FR.updateShortPayBadge = updateShortPayBadge;
 window.__FR.maybeShowOnboarding = maybeShowOnboarding;
 window.__FR.maybeStartTour = maybeStartTour;
 
+let _syncLock = false;
 async function flushPendingSync() {
-  const q = getPendingQueue();
-  if (!q.length) return;
+  if (_syncLock) return;
+  _syncLock = true;
+  try {
+    const q = getPendingQueue();
+    if (!q.length) return;
 
-  // Can't sync without auth — wait for next online/auth event
-  if (!window.CURRENT_UID) { updatePendingBadge(); return; }
+    if (!window.CURRENT_UID) { updatePendingBadge(); return; }
 
-  // Drop stale items older than 14 days (irrecoverable)
-  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-  getPendingQueue().filter(x => x.queuedAt && x.queuedAt < cutoff).forEach(x => removePendingById(x.id));
+    // Drop stale items older than 14 days
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const stale = getPendingQueue().filter(x => x.queuedAt && x.queuedAt < cutoff);
+    stale.forEach(x => removePendingById(x.id));
+    if (stale.length) toast(`${stale.length} unsynced entr${stale.length === 1 ? "y" : "ies"} from 14+ days ago cleared`);
 
-  let synced = 0;
-  let alreadyExists = 0;
-  for (const item of [...getPendingQueue()]) {
-    try {
-      await apiCreateLog(item.payload, item.entry);
-      removePendingById(item.id);
-      synced++;
-    } catch (err) {
-      const msg = String(err?.message || "");
-      // 23505 = Postgres duplicate key — already landed; just dequeue
-      if (err?.code === "23505" || err?.status === 409 || msg.includes("duplicate")) {
+    let synced = 0;
+    let alreadyExists = 0;
+    for (const item of [...getPendingQueue()]) {
+      item.retries = (item.retries || 0);
+      if (item.retries >= 5) { removePendingById(item.id); continue; }
+      try {
+        await apiCreateLog(item.payload, item.entry);
         removePendingById(item.id);
-        alreadyExists++;
-        continue;
+        synced++;
+      } catch (err) {
+        const msg = String(err?.message || "");
+        if (err?.code === "23505" || err?.status === 409 || msg.includes("duplicate")) {
+          removePendingById(item.id);
+          alreadyExists++;
+          continue;
+        }
+        if (msg.includes("Sign in required") || msg.includes("sign in")) break;
+        if (!navigator.onLine || msg.includes("fetch")) break;
+        // Unexpected error — increment retry count and continue
+        item.retries++;
+        const queue = getPendingQueue().map(x => x.id === item.id ? item : x);
+        setPendingQueue(queue);
       }
-      // Auth gone — stop trying; entries stay queued until user re-signs-in
-      if (msg.includes("Sign in required") || msg.includes("sign in")) break;
-      // Network still down — stop; will retry on next online event
-      if (!navigator.onLine || msg.includes("fetch")) break;
     }
+    if (synced > 0) {
+      toast(`${synced} offline entr${synced === 1 ? "y" : "ies"} synced`);
+      await safeLoadEntries();
+    }
+    if (alreadyExists > 0) {
+      toast(`${alreadyExists} duplicate${alreadyExists > 1 ? "s" : ""} cleared`);
+    }
+    updatePendingBadge();
+  } finally {
+    _syncLock = false;
   }
-  if (synced > 0) {
-    toast(`${synced} offline entr${synced === 1 ? "y" : "ies"} synced`);
-    await safeLoadEntries();
-  }
-  if (alreadyExists > 0) {
-    toast(`${alreadyExists} duplicate${alreadyExists > 1 ? "s" : ""} cleared`);
-  }
-  updatePendingBadge();
 }
 
 /* -------------------- Types: autocomplete + remembered defaults -------------------- */
