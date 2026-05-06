@@ -42,7 +42,19 @@ async function bootAuth() {
 
   let _visibilityTimer = null;
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState === "hidden") {
+      // App going to background — update the draft timestamp so the 15-min
+      // window starts from when the user actually left, not when they typed.
+      try {
+        const raw = localStorage.getItem("fr_form_draft");
+        if (raw) {
+          const d = JSON.parse(raw);
+          d.savedAt = Date.now();
+          localStorage.setItem("fr_form_draft", JSON.stringify(d));
+        }
+      } catch {}
+      return;
+    }
     clearTimeout(_visibilityTimer);
     _visibilityTimer = setTimeout(async () => {
       try {

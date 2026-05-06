@@ -18,6 +18,7 @@ function saveDraft() {
     isComeback: !!(document.getElementById("isComeback")?.checked),
     refType: currentRefType,
     detailsOpen: document.getElementById("detailsPanel")?.style.display !== "none",
+    savedAt: Date.now(),
   };
   if (!draft.hours && !draft.typeText) { localStorage.removeItem(LS_DRAFT); return; }
   try { localStorage.setItem(LS_DRAFT, JSON.stringify(draft)); } catch {}
@@ -35,6 +36,15 @@ function restoreDraft() {
     if (!raw) return;
     const draft = JSON.parse(raw);
     if (!draft || (!draft.hours && !draft.typeText)) return;
+
+    // Only restore transient fields (hours, type) within a 15-min window.
+    // After that, the user has moved on — starting fresh is less surprising.
+    const ageMs = Date.now() - (draft.savedAt || 0);
+    const fresh = ageMs < 15 * 60 * 1000;
+    if (!fresh) {
+      localStorage.removeItem(LS_DRAFT);
+      return;
+    }
 
     const hoursEl = document.getElementById("hours");
     const typeEl  = document.getElementById("typeText");
