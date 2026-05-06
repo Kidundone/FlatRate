@@ -9,12 +9,39 @@ console.log("__FR_MARKER_20260316");
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
-  // When a new SW takes over, show a non-intrusive update prompt instead of force-reloading
-  // (force-reload was interrupting sign-in and other active operations)
+  // When a new SW takes control the page is still running old JS — reload to get fresh code.
+  // The new bundle is already cached so this is instant.
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    toast?.("App updated — close and reopen to get the latest", 6000);
+    window.location.reload();
   });
 }
+
+async function checkForAppUpdate() {
+  const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+  if (!reg) { toast?.("No update available"); return; }
+
+  const btn = document.getElementById("checkUpdateBtn");
+  const original = btn?.textContent;
+  if (btn) { btn.textContent = "Checking…"; btn.disabled = true; }
+
+  await reg.update().catch(() => {});
+
+  const activate = (sw) => sw.postMessage({ type: "SKIP_WAITING" });
+
+  if (reg.waiting) {
+    activate(reg.waiting);
+    // controllerchange will fire and reload
+  } else if (reg.installing) {
+    reg.installing.addEventListener("statechange", function () {
+      if (this.state === "installed" && reg.waiting) activate(reg.waiting);
+    });
+  } else {
+    toast?.("Already on the latest version");
+    if (btn) { btn.textContent = original; btn.disabled = false; }
+  }
+}
+window.__FR = window.__FR || {};
+window.__FR.checkForAppUpdate = checkForAppUpdate;
 
 window.__FR = window.__FR || {};
 window.__FR.buildTag = BUILD_TAG;
