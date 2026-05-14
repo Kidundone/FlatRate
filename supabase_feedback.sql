@@ -24,7 +24,7 @@ CREATE POLICY "users_insert_feedback" ON public.user_feedback
 CREATE POLICY "admin_read_feedback" ON public.user_feedback
   FOR SELECT TO authenticated
   USING (
-    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@icloud.com'
+    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@yahoo.com'
     OR auth.uid() = user_id
   );
 
@@ -32,8 +32,8 @@ CREATE POLICY "admin_read_feedback" ON public.user_feedback
 CREATE POLICY "admin_update_feedback" ON public.user_feedback
   FOR UPDATE TO authenticated
   USING (
-    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@icloud.com'
+    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@yahoo.com'
   )
   WITH CHECK (
-    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@icloud.com'
+    (SELECT email FROM auth.users WHERE id = auth.uid()) = 'eamnelsonmalloy@yahoo.com'
   );
