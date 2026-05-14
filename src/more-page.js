@@ -1571,6 +1571,11 @@ const MORE_TOUR_STEPS = [
     body: "Scroll down to the Pay Stub section. Each Friday, enter your check amount and tap Save. The app compares it against your logged hours so you can immediately see if you were short-paid and by how much.",
   },
   {
+    el: "#feedbackCard",
+    title: "Send Feedback — Talk to Us",
+    body: "Got a bug? An idea? Something confusing? Tap 'Send Feedback' here, pick a category, and type your message. It goes straight to the developer. This is the fastest way to get something fixed or added.",
+  },
+  {
     el: null,
     title: "You Are All Set ✓",
     body: "Sign in, log your first job, and check back after your first pay day. If anything feels unclear, come back to this tour anytime from More → Help → Take Tour. Good luck out there.",
