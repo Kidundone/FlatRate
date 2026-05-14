@@ -1073,7 +1073,7 @@ function initSettingsUI() {
     document.getElementById(id)?.addEventListener("click", () => {
       activeDarkMode = id === "dmAuto" ? "auto" : id === "dmLight" ? "light" : "dark";
       syncDmBtns();
-      applySettings({ ...getSettings(), darkMode: activeDarkMode });
+      saveSettings({ darkMode: activeDarkMode }); // persist + apply immediately
     });
   });
 
@@ -1538,4 +1538,120 @@ function scheduleShiftReminder() {
 
 window.scheduleShiftReminder = scheduleShiftReminder;
 
+/* ── More-page continuation tour ─────────────────── */
+const MORE_TOUR_STEPS = [
+  {
+    el: null,
+    title: "You Made It to Settings",
+    body: "This is the More tab — your hub for account setup, pay stub tracking, earnings history, and preferences. Let's walk through the most important parts.",
+  },
+  {
+    el: "#authForm",
+    title: "Sign In — Back Up Your Data",
+    body: "Enter your email and password to create an account or sign in. Once signed in, every entry you log is encrypted and stored in the cloud. You can switch devices or reinstall the app and nothing is lost.",
+  },
+  {
+    el: "#insightsCard",
+    title: "This Week at a Glance",
+    body: "After signing in, this card shows your effective hourly rate, average pay per day, comeback count, and projected weekly pay based on today's pace. Great for knowing if you are on track before Friday.",
+  },
+  {
+    el: "#earningsChart",
+    title: "Earnings History Chart",
+    body: "A bar chart of your weekly earnings going back as far as you have data. Quickly spot your best and worst weeks. Tap any bar to filter down to that week in your log.",
+  },
+  {
+    el: "#settingsDefaultRate",
+    title: "Set Your Default Hourly Rate",
+    body: "Enter your flat-rate wage here. The app uses this to calculate earnings for every job you log. You can always override it on a single job using the rate field in Add Details.",
+  },
+  {
+    el: null,
+    title: "Pay Stub — Catch Short Pay",
+    body: "Scroll down to the Pay Stub section. Each Friday, enter your check amount and tap Save. The app compares it against your logged hours so you can immediately see if you were short-paid and by how much.",
+  },
+  {
+    el: null,
+    title: "You Are All Set ✓",
+    body: "Sign in, log your first job, and check back after your first pay day. If anything feels unclear, come back to this tour anytime from More → Help → Take Tour. Good luck out there.",
+    last: true,
+  },
+];
+
+function startMoreTour() {
+  if (!localStorage.getItem("fr_tour_more")) return;
+  localStorage.removeItem("fr_tour_more");
+
+  const overlay  = document.getElementById("tourOverlay");
+  const nextBtn  = document.getElementById("tourNextBtn");
+  const skipBtn  = document.getElementById("tourSkipBtn");
+  if (!overlay || !nextBtn || !skipBtn) return;
+
+  let step = 0;
+
+  function buildDots() {
+    const c = document.getElementById("tourDots");
+    if (!c) return;
+    c.innerHTML = "";
+    MORE_TOUR_STEPS.forEach((_, i) => {
+      const d = document.createElement("div");
+      d.className = "tourDot" + (i === step ? " tourDot--active" : "");
+      c.appendChild(d);
+    });
+  }
+
+  function positionSpotlight(sel) {
+    const spotlight = document.getElementById("tourSpotlight");
+    if (!spotlight) return;
+    if (!sel) {
+      spotlight.style.display = "none";
+      spotlight.classList.remove("pulse");
+      overlay.style.background = "rgba(0,0,0,0.72)";
+      overlay.classList.remove("tour-has-target");
+      return;
+    }
+    const target = document.querySelector(sel);
+    if (!target) { spotlight.style.display = "none"; return; }
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    overlay.style.background = "transparent";
+    overlay.classList.add("tour-has-target");
+    setTimeout(() => {
+      const r = target.getBoundingClientRect();
+      const pad = 8;
+      spotlight.style.cssText = `display:block;top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;`;
+      spotlight.classList.add("pulse");
+    }, 300);
+  }
+
+  function show(idx) {
+    const s = MORE_TOUR_STEPS[idx];
+    const stepLabel = document.getElementById("tourStep");
+    const titleEl   = document.getElementById("tourTitle");
+    const bodyEl    = document.getElementById("tourBody");
+    if (stepLabel) stepLabel.textContent = `${idx + 1} of ${MORE_TOUR_STEPS.length}`;
+    if (titleEl)   titleEl.textContent = s.title;
+    if (bodyEl)    bodyEl.textContent  = s.body;
+    nextBtn.textContent = s.last ? "Finish" : "Next";
+    overlay.style.display = "block";
+    buildDots();
+    positionSpotlight(s.el);
+  }
+
+  function endTour() {
+    overlay.style.display = "none";
+    overlay.style.background = "";
+    overlay.classList.remove("tour-has-target");
+    const spotlight = document.getElementById("tourSpotlight");
+    if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
+    localStorage.setItem("fr_tour_done", "1");
+  }
+
+  nextBtn.onclick = () => { step++; if (step >= MORE_TOUR_STEPS.length) endTour(); else show(step); };
+  skipBtn.onclick = endTour;
+
+  // Small delay so the page has finished rendering
+  setTimeout(() => show(0), 500);
+}
+
 window.__FR = window.__FR || {};
+window.__FR.startMoreTour = startMoreTour;

@@ -2056,62 +2056,53 @@ const TOUR_STEPS = [
   {
     el: null,
     title: "Welcome to Flat-Rate Log",
-    body: "This app tracks every flat-rate job you complete — hours worked, earnings, RO numbers, and proof photos. This tour takes about a minute and walks through everything. Tap Next to begin.",
+    body: "Built for flat-rate mechanics. Log every job, track your hours and earnings, catch short pay, and keep proof photos — all in one place. This tour walks through everything. Tap Next to start.",
   },
   {
     el: "#empId",
-    title: "Your Employee Number",
-    body: "Enter your employee number here first. This ties all your entries to you. It saves automatically so you only need to do it once.",
+    title: "Employee Number — Do This First",
+    body: "Type your employee number here. Every entry is tied to this number so your data stays separate from anyone else who uses the same device. It saves automatically — you only enter it once.",
   },
   {
     el: ".fr26QuickHours",
-    title: "Step 1 of 3 — Log Hours",
-    body: "Every job starts with how many flat-rate hours it paid. Tap a quick button (0.5, 1.0, 1.5...) for common values, or type any number in the Hours field above it.",
+    title: "Log Hours — Quick Buttons",
+    body: "Flat-rate pays by the job, not the clock. Tap a quick button (0.5, 1.0, 1.5…) for the hours the job paid, or type any value directly in the Hours field. You can use decimals like 2.3.",
   },
   {
     el: "#typeText",
-    title: "Step 2 of 3 — Describe the Work",
-    body: "Type what you worked on — 'Oil change', 'Front brakes', 'PDI'. The app remembers your past descriptions as shortcuts so entry gets faster over time.",
-  },
-  {
-    el: "#saveBtn",
-    title: "Step 3 of 3 — Save the Entry",
-    body: "Tap Save Entry to record the job. It saves instantly even when you are offline. Any offline entries sync automatically the next time you reconnect.",
-  },
-  {
-    el: "#entryList",
-    title: "Your Entry History",
-    body: "Every job you log appears here, newest on top. Tap any entry to open and edit it. Use the search bar to find jobs by RO number, work type, or VIN.",
+    title: "Describe the Work",
+    body: "Type what you did — 'Front brakes', 'Oil change', 'PDI', 'Engine mount'. The app learns your common job types and suggests them as you type, so this gets faster every day you use it.",
   },
   {
     el: ".fr26QuickTools",
-    title: "Quick Tools",
-    body: "Add Details opens extra fields: RO number, VIN, a custom hourly rate, notes, and a proof photo. Repeat Last copies your previous job in one tap — great for similar jobs back to back.",
+    title: "Add Details — RO, VIN, Photo",
+    body: "Tap 'Add Details' to open extra fields: RO or stock number, last 8 of VIN, a custom hourly rate for this job, notes, and a proof photo. These are optional but critical for disputes.",
+  },
+  {
+    el: "#saveBtn",
+    title: "Save the Entry",
+    body: "Tap Save to record the job instantly. It works offline — entries queue up and sync automatically when you reconnect. You will never lose a job even with no signal on the shop floor.",
   },
   {
     el: "#statsStrip",
-    title: "Earnings Strip",
-    body: "This bar at the top shows your running totals — hours worked today, number of jobs, today's pay, and this week's total. It updates the moment you save an entry.",
+    title: "Today's Running Totals",
+    body: "This strip shows your live totals: hours today, number of jobs, today's pay, and this week's total pay. It updates the instant you save a job — no refreshing needed.",
   },
   {
     el: "#statsPanel",
-    title: "Stats Panel",
-    body: "Tap here to expand your stats. Switch between Day, Week, Month, or All-Time. The week view breaks earnings down by day — tap any day to filter the entry list to just that day.",
+    title: "Stats — Day, Week, Month, All Time",
+    body: "Tap the Stats card to expand it. Switch between Day, Week, Month, and All Time. In Week view you get a daily breakdown — tap any day bar to filter the entry list to just that day.",
+  },
+  {
+    el: "#historyBtn",
+    title: "History — Search Any Past Job",
+    body: "Tap History to search all your entries across any time period. Filter by Today, This Week, This Month, or All Time. Search by RO number, stock number, VIN, or job type to find any entry fast.",
   },
   {
     el: ".tabItem:last-child",
-    title: "The More Tab",
-    body: "Tap More to reach: pay stub comparison (catch missing pay), earnings history chart, needs-review queue, job type presets, and CSV or PDF exports.",
-  },
-  {
-    el: null,
-    title: "Sign In for Cloud Backup",
-    body: "On the More tab, sign in with your email to back up all your data. Your entries then sync across every device you sign in on so you never lose your records.",
-  },
-  {
-    el: null,
-    title: "You Are All Set",
-    body: "Log your first job: enter hours, describe the work, tap Save. Then open the More tab to compare your logged pay against your pay stub. You can replay this tour anytime from More — Help.",
+    title: "Next: Sign In on the More Tab →",
+    body: "Almost done. The last step is signing in so your data is backed up to the cloud and syncs across all your devices. Tap 'Next' and we'll head to the More tab together.",
+    action: "goto-more",
   },
 ];
 
@@ -2194,7 +2185,19 @@ function startTour() {
     localStorage.setItem("fr_tour_done", "1");
   }
 
-  nextBtn.onclick = () => { step++; if (step >= TOUR_STEPS.length) endTour(); else show(step); };
+  nextBtn.onclick = () => {
+    const current = TOUR_STEPS[step];
+    if (current?.action === "goto-more") {
+      // Mark tour as mid-flight so the More page continues it
+      localStorage.setItem("fr_tour_more", "1");
+      endTour();
+      window.location.href = "./more.html";
+      return;
+    }
+    step++;
+    if (step >= TOUR_STEPS.length) endTour();
+    else show(step);
+  };
   skipBtn.onclick = endTour;
 
   show(0);
