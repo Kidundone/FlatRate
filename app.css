@@ -2374,42 +2374,62 @@ body.compact .list    { gap: 1px; }
   z-index: 10000;
   pointer-events: all;
   background: rgba(0,0,0,0.72);
+  transition: background 300ms ease;
 }
 
-/* When a spotlight target is active the box-shadow creates the backdrop */
 #tourOverlay.tour-has-target { background: transparent; }
 
-/* Welcome step (no target): center the tooltip on screen */
 #tourOverlay:not(.tour-has-target) .tourTooltip {
   top: 50%;
   bottom: auto;
   transform: translateY(-50%);
 }
 
+/* Spring-based spotlight — feels physical when it jumps between elements */
 #tourSpotlight {
   position: fixed;
   border-radius: var(--r-lg);
   box-shadow: 0 0 0 9999px rgba(0,0,0,.72);
-  border: 2px solid var(--primary);
-  transition: top 280ms var(--ease), left 280ms var(--ease),
-              width 280ms var(--ease), height 280ms var(--ease);
+  border: 2.5px solid var(--primary);
+  transition:
+    top    420ms cubic-bezier(0.34, 1.3, 0.64, 1),
+    left   420ms cubic-bezier(0.34, 1.3, 0.64, 1),
+    width  420ms cubic-bezier(0.34, 1.3, 0.64, 1),
+    height 420ms cubic-bezier(0.34, 1.3, 0.64, 1);
   pointer-events: none;
   display: none;
 }
 
+/* Tooltip slides up on first appear */
 .tourTooltip {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: calc(76px + env(safe-area-inset-bottom));
   background: var(--surface);
-  border: 1px solid var(--stroke2);
+  border: 1px solid rgba(0,149,246,.25);
   border-radius: var(--r-xl);
   padding: 20px 18px 16px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(0,149,246,.1);
   z-index: 10001;
   max-width: 520px;
   margin: 0 auto;
+  animation: tourTooltipIn 480ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes tourTooltipIn {
+  from { opacity: 0; transform: translateY(36px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* Each step's content fades+slides in */
+.tourTooltip.step-enter .tourStepLabel { animation: tourContentIn 280ms cubic-bezier(0.4,0,.2,1) both; }
+.tourTooltip.step-enter .tourTitle     { animation: tourContentIn 300ms cubic-bezier(0.4,0,.2,1) 40ms  both; }
+.tourTooltip.step-enter .tourBody      { animation: tourContentIn 300ms cubic-bezier(0.4,0,.2,1) 90ms  both; }
+
+@keyframes tourContentIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
 .tourHeader {
@@ -2435,29 +2455,34 @@ body.compact .list    { gap: 1px; }
   color: var(--muted);
   cursor: pointer;
   line-height: 1;
+  transition: color 150ms;
 }
+.tourSkip:hover  { color: var(--text); }
 .tourSkip:active { color: var(--text2); }
 
 .tourTitle {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   margin-bottom: 8px;
+  letter-spacing: -.2px;
   color: var(--text);
 }
 
 .tourBody {
   font-size: 14px;
   color: var(--text2);
-  line-height: 1.6;
-  margin-bottom: 16px;
+  line-height: 1.65;
+  margin-bottom: 18px;
 }
 
 .tourFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
+/* Pill-shaped progress dots — active dot expands into a capsule */
 .tourDots {
   display: flex;
   gap: 5px;
@@ -2465,24 +2490,46 @@ body.compact .list    { gap: 1px; }
 }
 
 .tourDot {
-  width: 6px;
   height: 6px;
-  border-radius: 50%;
+  width: 6px;
+  border-radius: 3px;
   background: var(--stroke2);
-  transition: background 200ms var(--ease), transform 200ms var(--ease);
+  transition: width 300ms cubic-bezier(0.34,1.4,.64,1), background 200ms ease;
 }
 
 .tourDot--active {
+  width: 20px;
   background: var(--primary);
-  transform: scale(1.3);
 }
 
-@keyframes tourPulse {
-  0%, 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 rgba(0,149,246,.5); }
-  50%       { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 6px rgba(0,149,246,.0); }
+/* Next button press feedback */
+#tourNextBtn {
+  transition: transform 100ms ease, opacity 100ms ease;
+  min-width: 80px;
 }
+#tourNextBtn:active { transform: scale(0.94); opacity: .85; }
+
+/* Double-ring expanding pulse on spotlight */
+@keyframes tourPulse {
+  0%   {
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.72),
+                0 0 0 0   rgba(0,149,246,.7),
+                0 0 0 0   rgba(0,149,246,.3);
+  }
+  60%  {
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.72),
+                0 0 0 10px rgba(0,149,246,.0),
+                0 0 0 20px rgba(0,149,246,.0);
+  }
+  100% {
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.72),
+                0 0 0 0   rgba(0,149,246,.7),
+                0 0 0 0   rgba(0,149,246,.3);
+  }
+}
+
 #tourSpotlight.pulse {
-  animation: tourPulse 1.6s ease infinite;
+  animation: tourPulse 1.8s cubic-bezier(0.4,0,0.6,1) infinite;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */

@@ -2167,13 +2167,20 @@ function startTour() {
     const stepLabel = document.getElementById("tourStep");
     const titleEl   = document.getElementById("tourTitle");
     const bodyEl    = document.getElementById("tourBody");
+    const tooltip   = document.getElementById("tourTooltip");
     if (stepLabel) stepLabel.textContent = `${idx + 1} of ${TOUR_STEPS.length}`;
     if (titleEl)   titleEl.textContent = s.title;
-    if (bodyEl)    bodyEl.textContent = s.body;
-    nextBtn.textContent = idx === TOUR_STEPS.length - 1 ? "Done" : "Next";
+    if (bodyEl)    bodyEl.textContent  = s.body;
+    nextBtn.textContent = idx === TOUR_STEPS.length - 1 ? "Done" : "Next →";
     overlay.style.display = "block";
     buildDots();
     positionSpotlight(s.el);
+    // Restart content animation on every step
+    if (tooltip) {
+      tooltip.classList.remove("step-enter");
+      void tooltip.offsetWidth; // force reflow
+      tooltip.classList.add("step-enter");
+    }
   }
 
   function endTour() {

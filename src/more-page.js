@@ -1628,13 +1628,19 @@ function startMoreTour() {
     const stepLabel = document.getElementById("tourStep");
     const titleEl   = document.getElementById("tourTitle");
     const bodyEl    = document.getElementById("tourBody");
+    const tooltip   = document.getElementById("tourTooltip");
     if (stepLabel) stepLabel.textContent = `${idx + 1} of ${MORE_TOUR_STEPS.length}`;
     if (titleEl)   titleEl.textContent = s.title;
     if (bodyEl)    bodyEl.textContent  = s.body;
-    nextBtn.textContent = s.last ? "Finish" : "Next";
+    nextBtn.textContent = s.last ? "Finish ✓" : "Next →";
     overlay.style.display = "block";
     buildDots();
     positionSpotlight(s.el);
+    if (tooltip) {
+      tooltip.classList.remove("step-enter");
+      void tooltip.offsetWidth;
+      tooltip.classList.add("step-enter");
+    }
   }
 
   function endTour() {
