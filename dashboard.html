@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flat-Rate — Feedback Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1c1c1e; --surface2: #242427; --surface3: #2c2c2f;
+      --stroke: rgba(255,255,255,.09); --stroke2: rgba(255,255,255,.16);
+      --text: #fff; --muted: #a8a8a8; --muted2: #6b6b6b;
+      --primary: #0095f6; --accent: #29d9a5; --danger: #ed4956;
+      --r: 12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
+    a { color: var(--primary); text-decoration: none; }
+
+    /* ── Layout ── */
+    .shell { display: flex; min-height: 100dvh; }
+    .sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--stroke); padding: 24px 0; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
+    .sidebar-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted2); padding: 0 16px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 0; cursor: pointer; color: var(--muted); font-weight: 500; border: none; background: none; width: 100%; text-align: left; font-size: 13px; transition: background 120ms, color 120ms; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(0,149,246,.15); color: var(--primary); }
+    .nav-badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
+    .nav-badge.zero { background: var(--surface3); color: var(--muted2); }
+    .main { flex: 1; min-width: 0; padding: 28px 32px; }
+
+    /* ── Header ── */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── Stats strip ── */
+    .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat { background: var(--surface); border: 1px solid var(--stroke); border-radius: var(--r); padding: 14px 18px; flex: 1; min-width: 120px; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted2); margin-bottom: 4px; }
+    .stat-value { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.primary { color: var(--primary); }
+    .stat-value.danger  { color: var(--danger); }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .search-input { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 13px; padding: 8px 12px; outline: none; width: 240px; }
+    .search-input:focus { border-color: var(--primary); }
+    .search-input::placeholder { color: var(--muted2); }
+    select.filter-sel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer; }
+    .btn { padding: 8px 16px; border-radius: var(--r); border: 1px solid var(--stroke2); background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 120ms; white-space: nowrap; }
+    .btn:hover { background: var(--surface3); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { opacity: .88; }
+    .result-count { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--stroke); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { position: sticky; top: 0; z-index: 2; }
+    th { background: var(--surface); border-bottom: 1px solid var(--stroke2); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted2); white-space: nowrap; cursor: pointer; user-select: none; }
+    th:hover { color: var(--text); }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--stroke); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: var(--surface2); }
+    .cell-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .cell-email { font-size: 12px; color: var(--muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cell-message { max-width: 360px; }
+    .cell-message-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+    .cell-message-text.expanded { -webkit-line-clamp: unset; }
+    .expand-btn { font-size: 11px; color: var(--primary); cursor: pointer; background: none; border: none; padding: 2px 0; margin-top: 2px; }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+    .badge-bug         { background: rgba(237,73,86,.15);  color: #ed4956; }
+    .badge-feature     { background: rgba(0,149,246,.15);  color: #0095f6; }
+    .badge-usability   { background: rgba(175,82,222,.15); color: #af52de; }
+    .badge-performance { background: rgba(255,159,10,.15); color: #ff9f0a; }
+    .badge-general     { background: rgba(168,168,168,.15);color: #a8a8a8; }
+    .badge-new      { background: rgba(0,149,246,.15);  color: #0095f6; }
+    .badge-reviewed { background: rgba(255,159,10,.15); color: #ff9f0a; }
+    .badge-resolved { background: rgba(41,217,165,.15); color: #29d9a5; }
+    .badge-wont-fix { background: rgba(168,168,168,.15);color: #a8a8a8; }
+
+    /* ── Status select ── */
+    .status-sel { background: transparent; border: 1px solid var(--stroke2); border-radius: 20px; color: var(--text); font-size: 11px; font-weight: 700; padding: 2px 8px; cursor: pointer; outline: none; }
+
+    /* ── Note cell ── */
+    .note-input { background: var(--surface2); border: 1px solid var(--stroke); border-radius: 8px; color: var(--text); font-size: 12px; padding: 4px 8px; width: 100%; min-width: 120px; font-family: inherit; resize: none; outline: none; }
+    .note-input:focus { border-color: var(--primary); }
+
+    /* ── Empty / loading ── */
+    .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--stroke2); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin: 48px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Auth gate ── */
+    .auth-gate { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+    .auth-card { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 18px; padding: 36px; width: 340px; display: flex; flex-direction: column; gap: 14px; }
+    .auth-title { font-size: 20px; font-weight: 700; text-align: center; }
+    .auth-sub { font-size: 13px; color: var(--muted); text-align: center; }
+    .auth-input { background: var(--surface2); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 14px; padding: 11px 14px; outline: none; width: 100%; }
+    .auth-input:focus { border-color: var(--primary); }
+    .auth-btn { background: var(--primary); border: none; border-radius: var(--r); color: #fff; font-size: 15px; font-weight: 700; padding: 13px; cursor: pointer; width: 100%; }
+    .auth-err { font-size: 12px; color: var(--danger); text-align: center; display: none; }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .main { padding: 16px; }
+      .stats { gap: 8px; }
+      .stat { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Auth gate shown until signed in as admin -->
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <div class="auth-title">Feedback Dashboard</div>
+    <div class="auth-sub">Sign in with your admin account</div>
+    <input id="gateEmail" type="email" class="auth-input" placeholder="Email" />
+    <input id="gatePass"  type="password" class="auth-input" placeholder="Password" />
+    <button class="auth-btn" id="gateSignIn">Sign In</button>
+    <div id="gateErr" class="auth-err"></div>
+  </div>
+</div>
+
+<!-- Main dashboard (hidden until authenticated as admin) -->
+<div id="dashShell" class="shell" style="display:none;">
+
+  <nav class="sidebar">
+    <div class="sidebar-title" style="padding-top:8px;">Flat-Rate</div>
+    <button class="nav-item active" data-filter="all">📋 All Feedback <span class="nav-badge" id="badgeAll">0</span></button>
+    <button class="nav-item" data-filter="new">🔵 New <span class="nav-badge" id="badgeNew">0</span></button>
+    <div style="height:12px;"></div>
+    <div class="sidebar-title">By Category</div>
+    <button class="nav-item" data-filter="cat:bug">🐛 Bug Reports <span class="nav-badge" id="badgeBug">0</span></button>
+    <button class="nav-item" data-filter="cat:feature">💡 Feature Requests <span class="nav-badge" id="badgeFeature">0</span></button>
+    <button class="nav-item" data-filter="cat:usability">🎨 Usability <span class="nav-badge" id="badgeUsability">0</span></button>
+    <button class="nav-item" data-filter="cat:performance">⚡ Performance <span class="nav-badge" id="badgePerf">0</span></button>
+    <button class="nav-item" data-filter="cat:general">💬 General <span class="nav-badge" id="badgeGeneral">0</span></button>
+    <div style="height:12px;"></div>
+    <div class="sidebar-title">Status</div>
+    <button class="nav-item" data-filter="status:reviewed">🟡 Reviewed <span class="nav-badge" id="badgeReviewed">0</span></button>
+    <button class="nav-item" data-filter="status:resolved">✅ Resolved <span class="nav-badge" id="badgeResolved">0</span></button>
+    <button class="nav-item" data-filter="status:wont-fix">🚫 Won't Fix <span class="nav-badge" id="badgeWontFix">0</span></button>
+    <div style="margin-top:auto; padding:16px;">
+      <button class="btn" id="signOutBtn" style="width:100%;">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="pageTitle">All Feedback</div>
+        <div class="page-sub" id="pageSub">Loading…</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn" id="refreshBtn">↺ Refresh</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total</div><div class="stat-value" id="statTotal">—</div></div>
+      <div class="stat"><div class="stat-label">New</div><div class="stat-value primary" id="statNew">—</div></div>
+      <div class="stat"><div class="stat-label">Bugs</div><div class="stat-value danger" id="statBugs">—</div></div>
+      <div class="stat"><div class="stat-label">Features</div><div class="stat-value accent" id="statFeatures">—</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search-input" id="searchInput" placeholder="Search messages, emails…" autocomplete="off" />
+      <select class="filter-sel" id="sortSel">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+      <span class="result-count" id="resultCount"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="feedbackTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Message</th>
+            <th>User</th>
+            <th>Status</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="feedbackBody">
+          <tr><td colspan="6"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+  window.__SUPABASE_CONFIG__ = {
+    url: "https://lfnydhidbwfyfjafazdy.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function () {
+  const ADMIN_EMAIL = "eamnelsonmalloy@icloud.com";
+  const cfg = window.__SUPABASE_CONFIG__;
+  const db  = window.supabase.createClient(cfg.url, cfg.anonKey);
+
+  let allRows = [];
+  let activeFilter = "all";
+  let searchQ = "";
+  let sortOrder = "newest";
+
+  const CATEGORY_ORDER = ["bug","feature","usability","performance","general"];
+  const CAT_LABEL = { bug:"🐛 Bug", feature:"💡 Feature", usability:"🎨 Usability", performance:"⚡ Performance", general:"💬 General" };
+  const CAT_BADGE = { bug:"badge-bug", feature:"badge-feature", usability:"badge-usability", performance:"badge-performance", general:"badge-general" };
+  const STATUS_BADGE = { new:"badge-new", reviewed:"badge-reviewed", resolved:"badge-resolved", "wont-fix":"badge-wont-fix" };
+
+  /* ── Auth gate ── */
+  document.getElementById("gateSignIn").addEventListener("click", async () => {
+    const email = document.getElementById("gateEmail").value.trim();
+    const pass  = document.getElementById("gatePass").value;
+    const errEl = document.getElementById("gateErr");
+    errEl.style.display = "none";
+    const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+    if (error || data?.user?.email !== ADMIN_EMAIL) {
+      errEl.textContent = error?.message || "Access denied.";
+      errEl.style.display = "";
+      if (data?.session) await db.auth.signOut();
+      return;
+    }
+    showDashboard();
+  });
+
+  document.getElementById("gatePass").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("gateSignIn").click();
+  });
+
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    await db.auth.signOut();
+    location.reload();
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", loadFeedback);
+
+  /* ── Check existing session ── */
+  db.auth.getSession().then(({ data }) => {
+    if (data?.session?.user?.email === ADMIN_EMAIL) showDashboard();
+  });
+
+  function showDashboard() {
+    document.getElementById("authGate").style.display = "none";
+    document.getElementById("dashShell").style.display = "flex";
+    loadFeedback();
+  }
+
+  /* ── Load data ── */
+  async function loadFeedback() {
+    document.getElementById("feedbackBody").innerHTML = '<tr><td colspan="6"><div class="spinner"></div></td></tr>';
+    const { data, error } = await db
+      .from("user_feedback")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      document.getElementById("feedbackBody").innerHTML = `<tr><td colspan="6" style="color:var(--danger);padding:24px;">${error.message}</td></tr>`;
+      return;
+    }
+    allRows = data || [];
+    updateBadges();
+    render();
+  }
+
+  /* ── Filtering & rendering ── */
+  function filteredRows() {
+    let rows = [...allRows];
+    if (activeFilter === "new")           rows = rows.filter(r => r.status === "new");
+    else if (activeFilter.startsWith("cat:"))    rows = rows.filter(r => r.category === activeFilter.slice(4));
+    else if (activeFilter.startsWith("status:")) rows = rows.filter(r => r.status === activeFilter.slice(7));
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      rows = rows.filter(r =>
+        (r.message || "").toLowerCase().includes(q) ||
+        (r.user_email || "").toLowerCase().includes(q) ||
+        (r.admin_note || "").toLowerCase().includes(q)
+      );
+    }
+    if (sortOrder === "oldest") rows.reverse();
+    return rows;
+  }
+
+  function render() {
+    const rows = filteredRows();
+    document.getElementById("resultCount").textContent = `${rows.length} result${rows.length !== 1 ? "s" : ""}`;
+    const title = {
+      all: "All Feedback", new: "New Feedback",
+      "cat:bug": "Bug Reports", "cat:feature": "Feature Requests",
+      "cat:usability": "Usability", "cat:performance": "Performance", "cat:general": "General",
+      "status:reviewed": "Reviewed", "status:resolved": "Resolved", "status:wont-fix": "Won't Fix",
+    }[activeFilter] || "Feedback";
+    document.getElementById("pageTitle").textContent = title;
+    document.getElementById("pageSub").textContent = `${allRows.length} total · last refreshed ${new Date().toLocaleTimeString()}`;
+
+    if (!rows.length) {
+      document.getElementById("feedbackBody").innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>No feedback matches this filter.</div></td></tr>`;
+      return;
+    }
+
+    const tbody = document.createElement("tbody");
+    tbody.id = "feedbackBody";
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      const date = new Date(row.created_at);
+      const dateStr = date.toLocaleDateString("en-US", { month:"short", day:"numeric" }) + " " + date.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" });
+      tr.innerHTML = `
+        <td class="cell-date">${dateStr}</td>
+        <td><span class="badge ${CAT_BADGE[row.category] || ''}">${CAT_LABEL[row.category] || row.category}</span></td>
+        <td class="cell-message">
+          <div class="cell-message-text" id="msg-${row.id}">${escHtml(row.message)}</div>
+          ${row.message.length > 120 ? `<button class="expand-btn" onclick="toggleMsg('${row.id}')">Show more</button>` : ""}
+        </td>
+        <td class="cell-email" title="${escHtml(row.user_email || '')}">${escHtml(row.user_email || "—")}<br><span style="color:var(--muted2)">${row.employee_number ? "Emp #" + row.employee_number : ""}</span></td>
+        <td>
+          <select class="status-sel" data-id="${row.id}" onchange="updateStatus(this)">
+            ${["new","reviewed","resolved","wont-fix"].map(s => `<option value="${s}"${row.status===s?" selected":""}>${s}</option>`).join("")}
+          </select>
+        </td>
+        <td>
+          <textarea class="note-input" rows="2" data-id="${row.id}" onblur="saveNote(this)" placeholder="Add note…">${escHtml(row.admin_note || "")}</textarea>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    document.getElementById("feedbackBody").replaceWith(tbody);
+  }
+
+  function updateBadges() {
+    const count = (fn) => allRows.filter(fn).length;
+    const set = (id, n) => { const el = document.getElementById(id); if (el) { el.textContent = n; el.className = "nav-badge" + (n === 0 ? " zero" : ""); } };
+    set("badgeAll", allRows.length);
+    set("badgeNew", count(r => r.status === "new"));
+    set("badgeBug", count(r => r.category === "bug"));
+    set("badgeFeature", count(r => r.category === "feature"));
+    set("badgeUsability", count(r => r.category === "usability"));
+    set("badgePerf", count(r => r.category === "performance"));
+    set("badgeGeneral", count(r => r.category === "general"));
+    set("badgeReviewed", count(r => r.status === "reviewed"));
+    set("badgeResolved", count(r => r.status === "resolved"));
+    set("badgeWontFix", count(r => r.status === "wont-fix"));
+
+    document.getElementById("statTotal").textContent    = allRows.length;
+    document.getElementById("statNew").textContent      = count(r => r.status === "new");
+    document.getElementById("statBugs").textContent     = count(r => r.category === "bug");
+    document.getElementById("statFeatures").textContent = count(r => r.category === "feature");
+  }
+
+  /* ── Nav clicks ── */
+  document.querySelectorAll(".nav-item[data-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeFilter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  /* ── Search & sort ── */
+  let _searchTimer;
+  document.getElementById("searchInput").addEventListener("input", e => {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => { searchQ = e.target.value.trim(); render(); }, 200);
+  });
+  document.getElementById("sortSel").addEventListener("change", e => { sortOrder = e.target.value; render(); });
+
+  /* ── Inline updates ── */
+  async function updateStatus(sel) {
+    const id = sel.dataset.id;
+    const status = sel.value;
+    const { error } = await db.from("user_feedback").update({ status }).eq("id", id);
+    if (error) { alert("Update failed: " + error.message); return; }
+    const row = allRows.find(r => r.id === id);
+    if (row) row.status = status;
+    updateBadges();
+  }
+
+  let _noteTimer;
+  async function saveNote(textarea) {
+    const id = textarea.dataset.id;
+    const note = textarea.value;
+    clearTimeout(_noteTimer);
+    _noteTimer = setTimeout(async () => {
+      const { error } = await db.from("user_feedback").update({ admin_note: note }).eq("id", id);
+      if (!error) { const row = allRows.find(r => r.id === id); if (row) row.admin_note = note; }
+    }, 600);
+  }
+
+  function toggleMsg(id) {
+    const el = document.getElementById("msg-" + id);
+    const btn = el?.nextElementSibling;
+    if (!el) return;
+    const expanded = el.classList.toggle("expanded");
+    if (btn) btn.textContent = expanded ? "Show less" : "Show more";
+  }
+
+  function escHtml(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // expose for inline handlers
+  window.updateStatus = updateStatus;
+  window.saveNote = saveNote;
+  window.toggleMsg = toggleMsg;
+})();
+</script>
+</body>
+</html>

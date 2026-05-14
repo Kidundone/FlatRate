@@ -994,6 +994,55 @@ async function exportAllCsvAdmin() {
   downloadText(`flat_rate_log_ALL_${todayKeyLocal()}.csv`, toCSV(entries), "text/csv");
 }
 
+async function initFeedbackUI() {
+  const btn    = document.getElementById("submitFeedbackBtn");
+  const msgEl  = document.getElementById("feedbackMessage");
+  const catEl  = document.getElementById("feedbackCategory");
+  const status = document.getElementById("feedbackStatus");
+  if (!btn || !msgEl || !catEl) return;
+
+  btn.addEventListener("click", async () => {
+    const message = (msgEl.value || "").trim();
+    if (!message) { msgEl.focus(); return; }
+
+    const client = window.__FR?.sb;
+    if (!client) { toast("App not ready — try again."); return; }
+
+    const uid = window.CURRENT_UID;
+    if (!uid) {
+      toast("Sign in to send feedback.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    if (status) { status.textContent = ""; status.style.display = "none"; }
+
+    try {
+      const { error } = await client.from("user_feedback").insert({
+        user_id: uid,
+        user_email: window.CURRENT_USER_EMAIL || null,
+        employee_number: getEmpId() || null,
+        category: catEl.value,
+        message,
+        app_version: window.BUILD || null,
+      });
+      if (error) throw error;
+      msgEl.value = "";
+      if (status) { status.textContent = "Thanks! Feedback sent."; status.style.display = ""; }
+      toast("Feedback sent — thank you!");
+    } catch (e) {
+      toast("Failed to send feedback — try again.");
+      console.error("[feedback]", e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Submit";
+    }
+  });
+}
+window.__FR = window.__FR || {};
+window.__FR.initFeedbackUI = initFeedbackUI;
+
 function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
   const compactToggle = document.getElementById("settingsCompactList");

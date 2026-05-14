@@ -455,6 +455,7 @@ async function runOnce() {
     }
 
     initSettingsUI?.();
+    initFeedbackUI?.();
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();
     initPayStubUI();
