@@ -487,6 +487,28 @@ async function saveEntry(entry, options = {}) {
     }
   }
 
+  // Build optimistic entry with server-assigned ID so the list can update immediately
+  // without waiting for the background safeLoadEntries round-trip.
+  let _savedEntry = null;
+  if (!EDITING_ID && saved?.id) {
+    _savedEntry = mapServerLogToEntry({
+      id: saved.id,
+      work_date: payload.work_date,
+      category: payload.category || "work",
+      ro_number: payload.ro_number || null,
+      description: payload.description || null,
+      flat_hours: Number(payload.flat_hours || 0),
+      cash_amount: Number(payload.cash_amount || 0),
+      location: payload.location || null,
+      vin8: payload.vin8 || null,
+      photo_path: photo_path || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_deleted: false,
+      is_comeback: !!(document.getElementById("isComeback")?.checked),
+      refType: entry.refType || "RO",
+    });
+  }
   setEditingEntry(null);
   const earningsStr = formatMoney(entry.earnings || 0);
   const isEdit = options.__isEdit;
@@ -494,6 +516,7 @@ async function saveEntry(entry, options = {}) {
   else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr} + Photo`);
   else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}`);
   handleClear(null, { preserveType, typeValue: preservedType });
+  return _savedEntry;
 }
 
 async function handleSave(ev) {
@@ -587,18 +610,22 @@ async function handleSave(ev) {
       location: baseEntry.location ?? null
     };
 
-    const refreshEntries = async () => {
-      await safeLoadEntries();
-    };
     await upsertTypeDefaults?.(typeName, hoursVal, rateVal);
     if (keepLastWork) rememberLastWorkType(typeName);
-    await saveEntry(entry, {
+    const savedEntry = await saveEntry(entry, {
       preserveType: keepLastWork,
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
     navigator.vibrate?.(30);
-    await refreshEntries();
+    // Optimistic update: show the new entry immediately using the server-returned ID,
+    // then resync in the background to pick up any server-side fields we don't have locally.
+    if (!isEditing && savedEntry) {
+      CURRENT_ENTRIES = syncStateEntries([savedEntry, ...(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])]);
+      setCachedEntries(empId, CURRENT_ENTRIES);
+    }
+    refreshUI(CURRENT_ENTRIES);
+    safeLoadEntries().catch(console.error);
     document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSelectedPhotoFile(null);
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
@@ -1045,6 +1072,15 @@ async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
   return added;
 }
 
+let _typeRenderTimer = null;
+function scheduleTypeRender() {
+  clearTimeout(_typeRenderTimer);
+  _typeRenderTimer = setTimeout(() => {
+    renderTypeDatalist().catch(() => {});
+    renderTypesListInMore().catch(() => {});
+  }, 80);
+}
+
 async function renderTypeDatalist(){
   const list = $("typeList");
   const strip = $("typeSuggestStrip");
@@ -1122,8 +1158,7 @@ async function upsertTypeDefaults(nameRaw, hours, rate){
     updatedAt: nowISO()
   };
   await put(STORES.types, payload);
-  await renderTypeDatalist();
-  await renderTypesListInMore();
+  scheduleTypeRender();
 }
 
 async function maybeSaveTypeNameOnly(nameRaw){
@@ -1142,8 +1177,7 @@ async function maybeSaveTypeNameOnly(nameRaw){
     lastRate: 15,
     updatedAt: nowISO()
   });
-  await renderTypeDatalist();
-  await renderTypesListInMore();
+  scheduleTypeRender();
 }
 
 async function saveTypeFromMoreForm(){

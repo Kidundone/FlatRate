@@ -757,14 +757,21 @@ async function safeLoadEntries() {
   const emp = getEmpId();
 
   try {
-    if (!window.CURRENT_UID || !emp) {
+    if (!window.CURRENT_UID) {
+      // Auth hasn't resolved yet — show whatever we have locally so the screen
+      // isn't blank while the session check is in flight.
+      const emp2 = emp || (localStorage.getItem("fr_emp_id") || "").trim();
       const pending = getPendingQueue().map(item => ({ ...item.entry, _pending: true }));
-      if (pending.length) {
-        CURRENT_ENTRIES = syncStateEntries(normalizeEntries(pending));
+      const cached = emp2 ? getCachedEntries(emp2) : [];
+      const pendingIds = new Set(pending.map(p => String(p.id)));
+      const merged = [...pending, ...cached.filter(c => !pendingIds.has(String(c.id)))];
+      if (merged.length) {
+        CURRENT_ENTRIES = syncStateEntries(normalizeEntries(merged));
         await renderLogs(CURRENT_ENTRIES);
       }
       return [];
     }
+    if (!emp) return [];
 
     const rows = await loadEntries();
     return rows;
