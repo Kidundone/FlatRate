@@ -57,6 +57,9 @@ async function bootAuth() {
     }
     clearTimeout(_visibilityTimer);
     _visibilityTimer = setTimeout(async () => {
+      // Skip the reload if data is still fresh (< 5 min old) — no point hammering
+      // the server every time the user switches apps briefly.
+      if (Date.now() - _lastLoadedAt < 5 * 60 * 1000) return;
       try {
         const { data } = await client.auth.getSession();
         await setUidFromSession(data?.session || null);
@@ -78,10 +81,16 @@ async function bootAuth() {
       try {
         const rows = await safeLoadEntries();
         console.log("✅ safeLoadEntries returned:", rows?.length);
+        _lastLoadedAt = Date.now();
 
         if (window.__PAGE__ === "main") {
           await refreshUI(rows);
           console.log("✅ refreshUI complete");
+          // Flush any entries queued while offline — boot is the right moment
+          // since the online event only fires on transitions, not on fresh loads.
+          if (getPendingQueue().length > 0) {
+            flushPendingSync?.().catch(() => {});
+          }
         }
       } catch (e) {
         console.error("💥 LOAD FAILED:", e);
@@ -752,6 +761,7 @@ const $ = (id) => document.getElementById(id);
 
 let _loadEntriesLock = false;
 let _fullHistoryLoaded = false;
+let _lastLoadedAt = 0;
 
 async function safeLoadEntries({ fullHistory = false } = {}) {
   if (_loadEntriesLock) return Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
@@ -776,6 +786,7 @@ async function safeLoadEntries({ fullHistory = false } = {}) {
     if (!emp) return [];
 
     const rows = await loadEntries({ fullHistory: fullHistory || _fullHistoryLoaded });
+    _lastLoadedAt = Date.now();
     return rows;
   } catch (e) {
     console.error("loadEntries failed:", e);
@@ -871,9 +882,11 @@ function setCachedEntries(empId, entries) {
 async function renderEntries(rows) {
   const mapped = (rows || []).map(mapServerLogToEntry);
   CURRENT_ENTRIES = syncStateEntries(mapped);
-  await syncTypesFromEntries?.(mapped, getEmpId());
   setCachedEntries(getEmpId(), mapped);
   await renderLogs(mapped);
+  // Type sync runs after the list is already painted — autocomplete updates
+  // asynchronously so it never delays the entry list from appearing.
+  syncTypesFromEntries?.(mapped, getEmpId()).catch(() => {});
   await refreshMorePagePanels?.();
   return mapped;
 }
