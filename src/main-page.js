@@ -783,8 +783,10 @@ async function renderHistory() {
   }
 }
 
-// Cache signed URLs so we don't re-request on every render
+// Cache signed URLs. Supabase URLs expire at 30 min so we treat anything
+// older than 25 min as stale and re-fetch before the browser sees a 403.
 const _thumbCache = new Map();
+const _THUMB_TTL_MS = 25 * 60 * 1000;
 let _thumbObs = null;
 
 function loadPhotoThumbs() {
@@ -794,12 +796,15 @@ function loadPhotoThumbs() {
 
   const load = async (img) => {
     const path = img.getAttribute("data-photo-path");
-    if (!path || img.src) return;
+    if (!path) return;
+    const cached = _thumbCache.get(path);
+    const fresh = cached && (Date.now() - cached.fetchedAt < _THUMB_TTL_MS);
+    if (fresh && img.src) return; // still valid and already shown
     try {
-      let url = _thumbCache.get(path);
+      let url = fresh ? cached.url : null;
       if (!url) {
         url = await getPhotoUrl(path);
-        if (url) _thumbCache.set(path, url);
+        if (url) _thumbCache.set(path, { url, fetchedAt: Date.now() });
       }
       if (url) {
         img.src = url;

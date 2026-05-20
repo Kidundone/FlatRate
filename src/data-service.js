@@ -751,7 +751,9 @@ const STORES = {
 const $ = (id) => document.getElementById(id);
 
 let _loadEntriesLock = false;
-async function safeLoadEntries() {
+let _fullHistoryLoaded = false;
+
+async function safeLoadEntries({ fullHistory = false } = {}) {
   if (_loadEntriesLock) return Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
   _loadEntriesLock = true;
   const emp = getEmpId();
@@ -773,7 +775,7 @@ async function safeLoadEntries() {
     }
     if (!emp) return [];
 
-    const rows = await loadEntries();
+    const rows = await loadEntries({ fullHistory: fullHistory || _fullHistoryLoaded });
     return rows;
   } catch (e) {
     console.error("loadEntries failed:", e);
@@ -876,7 +878,7 @@ async function renderEntries(rows) {
   return mapped;
 }
 
-async function loadEntries() {
+async function loadEntries({ fullHistory = false } = {}) {
   const empId = getEmpId();
   if (!empId) {
     console.warn("No employee number set. Returning empty.");
@@ -895,6 +897,14 @@ async function loadEntries() {
     .eq("user_id", uid)
     .eq("employee_number", empId)
     .or("is_deleted.is.null,is_deleted.eq.false");
+
+  if (fullHistory) {
+    _fullHistoryLoaded = true;
+  } else {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    query = query.gte("work_date", cutoff.toISOString().slice(0, 10));
+  }
 
   const res = await query
     .order("work_date", { ascending: false })

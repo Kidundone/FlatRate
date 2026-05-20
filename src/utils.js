@@ -63,10 +63,25 @@ let rangeMode = "day";
 let currentRefType = "RO";
 let summaryRange = (window.__WEEK_WHICH__ === "last" || window.__WEEK_WHICH__ === "lastWeek") ? "lastWeek" : "thisWeek"; // "thisWeek" | "lastWeek"
 
+// Coalesce rapid UI-driven refreshUI calls into a single animation frame.
+// Data-load paths (renderLogs, safeLoadEntries) call refreshUI directly.
+let _rafFrame = null;
+let _rafArg = null;
+function scheduleRefreshUI(entries) {
+  _rafArg = entries !== undefined ? entries : CURRENT_ENTRIES;
+  if (_rafFrame) return;
+  _rafFrame = requestAnimationFrame(() => {
+    _rafFrame = null;
+    const arg = _rafArg;
+    _rafArg = null;
+    refreshUI(arg).catch(console.error);
+  });
+}
+
 function setSummaryRange(next) {
   summaryRange = (next === "lastWeek") ? "lastWeek" : "thisWeek";
   window.__WEEK_WHICH__ = summaryRange;
-  if (PAGE === "main") refreshUI(CURRENT_ENTRIES);
+  if (PAGE === "main") scheduleRefreshUI(CURRENT_ENTRIES);
 }
 
 function setRefType(t) {
@@ -161,7 +176,14 @@ function setRangeMode(m, opts = {}) {
   const row = document.getElementById("weekWhichRow");
   if (row) row.style.display = (m === "week") ? "inline-flex" : "none";
 
-  if (PAGE === "main" && !opts.skipRefresh) refreshUI(CURRENT_ENTRIES);
+  if (PAGE === "main" && !opts.skipRefresh) {
+    if (m === "all" && !_fullHistoryLoaded) {
+      refreshUI(CURRENT_ENTRIES); // show what we have now
+      safeLoadEntries({ fullHistory: true }).catch(console.error); // fill in older entries
+    } else {
+      scheduleRefreshUI(CURRENT_ENTRIES);
+    }
+  }
 }
 
 function getRate(){
@@ -448,7 +470,7 @@ function renderWeekBreakdown(days){
     el.addEventListener("click", () => {
       const dk = el.getAttribute("data-daykey") || "";
       window.__WEEK_DAY_PICK__ = (window.__WEEK_DAY_PICK__ === dk) ? "" : dk;
-      refreshUI(CURRENT_ENTRIES);
+      scheduleRefreshUI(CURRENT_ENTRIES);
     });
   });
 }
@@ -530,7 +552,7 @@ function getPaidRecordForWeekStart(startDate) {
 
 function setPaidHoursForThisWeek(value) {
   setPaidHoursForWeekKey(weekKey(new Date()), value);
-  if (typeof refreshUI === "function") refreshUI(CURRENT_ENTRIES);
+  if (typeof scheduleRefreshUI === "function") scheduleRefreshUI(CURRENT_ENTRIES);
 }
 
 function getPaidHoursForWeekStart(startDate) {

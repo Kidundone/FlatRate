@@ -460,7 +460,7 @@ async function runOnce() {
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();
     initPayStubUI();
-    await safeLoadEntries();
+    await safeLoadEntries({ fullHistory: true });
     await refreshMorePagePanels?.();
     if (hasGalleryUi) {
       initPhotosUI();
