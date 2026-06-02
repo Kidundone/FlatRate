@@ -509,7 +509,7 @@ label {
   text-transform: uppercase;
 }
 
-input, select, textarea, button { font-family: inherit; font-size: 15px; }
+input, select, textarea, button { font-family: inherit; font-size: 16px; } /* 16px prevents iOS auto-zoom */
 
 input, select, textarea {
   width: 100%;
@@ -1601,7 +1601,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   border: 1px solid var(--stroke2);
   background: var(--surface2);
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px; /* 16px prevents iOS auto-zoom on focus */
   font-family: inherit;
   outline: none;
   -webkit-appearance: none;
