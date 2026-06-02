@@ -1,79 +1,94 @@
 # Deploy Checklist
 
-## What was done automatically
+## ✅ Done Automatically
 
-- **Script paths fixed** — `index.html` and `more.html` updated from `/FlatRate/app.<hash>.js` to `./app.<hash>.js` (relative). CSS links were already relative; confirmed unchanged.
-- **Build verified** — `node build.mjs` ran clean; `node --check app.src.js` passed with no syntax errors. Hash is `app.41ecd69feb.js`, CSS is `app.e2d96fbdd6.css`.
-- **`netlify.toml` created** — sets publish dir to `.`, adds SPA fallback redirect (`/* → /index.html 200`), and configures cache headers: `app.*.js` and `app.*.css` get 1-year immutable caching; all other routes get `no-cache`.
-- **`_redirects` created** — legacy `/FlatRate/*` links redirect 301 to `/:splat`; SPA fallback `/* → /index.html 200` as a second entry for compatibility.
-- **`landing.html` created** — self-contained marketing page targeting automotive flat-rate technicians. Dark theme (`#0b1220` / `#0095f6` / `#29d9a5`) matching the app. Includes hero, feature cards, how-it-works steps, Free vs Pro pricing, and CTA to `./index.html`.
+- Script paths fixed to relative `./app.*.js` in all HTML files
+- `netlify.toml` — build command `node build.mjs`, publish dir `.`, SPA redirect, long-term asset caching
+- `_redirects` — `/FlatRate/*` legacy redirect + SPA fallback
+- `landing.html` — marketing page for new users
+- Build verified clean
 
 ---
 
-## What you must do manually
+## 🔧 Manual Steps (in order)
 
-### 1. Connect the repo to Netlify
+### 1. Deploy to Netlify
 
-1. Go to [https://app.netlify.com/start](https://app.netlify.com/start)
-2. Click **Add new site → Import an existing project**
-3. Connect your GitHub/GitLab/Bitbucket account and select the `flat-rate-log` repo
-4. Build settings:
-   - **Build command:** `node build.mjs`
-   - **Publish directory:** `.` (dot — the repo root)
+1. Go to **https://app.netlify.com/start**
+2. Click **"Import from Git"** → connect GitHub → pick **`Kidundone/FlatRate`**
+3. Build command: `node build.mjs` (already in netlify.toml — auto-filled)
+4. Publish directory: `.` (already set)
 5. Click **Deploy site**
+6. Note your site URL — e.g. `https://flat-rate-log.netlify.app`
 
-Netlify will pick up `netlify.toml` automatically.
+---
 
-### 2. Set environment variables in Netlify
+### 2. Fix Sign-In — Supabase Redirect URLs (REQUIRED)
 
-In **Site settings → Environment variables**, add:
+Without this step, email confirmation links will fail after sign-up.
 
-| Variable | Where to find it |
-|---|---|
-| `VITE_SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → `anon` / `public` key |
+1. Go to **https://supabase.com/dashboard/project/lfnydhidbwfyfjafazdy/auth/url-configuration**
+2. Set **Site URL** to your Netlify URL:
+   ```
+   https://flat-rate-log.netlify.app
+   ```
+3. Under **Redirect URLs**, add:
+   ```
+   https://flat-rate-log.netlify.app/auth-callback.html
+   ```
+4. Save changes
 
-> If the app reads these as plain `window` globals or inline config rather than `import.meta.env`, check `src/data-service.js` for how the Supabase client is initialized and match the variable names exactly.
+> If you add a custom domain later, add it here too.
 
-### 3. Configure Supabase Auth redirect URLs
+---
 
-1. Open [https://supabase.com/dashboard](https://supabase.com/dashboard) → your project → **Authentication → URL Configuration**
-2. Add your Netlify domain to **Redirect URLs**, e.g.:
-   - `https://your-site.netlify.app/auth-callback.html`
-   - `https://yourdomain.com/auth-callback.html` (once custom domain is live)
-3. Set **Site URL** to your production domain
+### 3. Set Up Stripe (for Pro subscriptions)
 
-### 4. Set up Stripe (Pro plan billing)
+1. Go to **https://dashboard.stripe.com/products** → Create product "Flat-Rate Pro"
+2. Add two prices:
+   - **Monthly**: $4.99/month → copy the Price ID (starts with `price_`)
+   - **Yearly**: $49.99/year → copy the Price ID
+3. Go to **https://supabase.com/dashboard/project/lfnydhidbwfyfjafazdy/functions** → Settings → Secrets
+4. Add these secrets:
+   ```
+   STRIPE_SECRET_KEY       = sk_live_...
+   STRIPE_PRICE_MONTHLY    = price_...
+   STRIPE_PRICE_YEARLY     = price_...
+   STRIPE_WEBHOOK_SECRET   = whsec_... (get this in step 5)
+   ```
+5. Go to **https://dashboard.stripe.com/webhooks** → Add endpoint:
+   - URL: `https://lfnydhidbwfyfjafazdy.supabase.co/functions/v1/stripe-webhook`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+   - Copy the **Signing secret** → paste as `STRIPE_WEBHOOK_SECRET` above
 
-1. Create or log in at [https://dashboard.stripe.com](https://dashboard.stripe.com)
-2. Create a **Product** called "Flat-Rate Tracker Pro" with a recurring price of $4.99/month
-3. Copy the **Price ID** (starts with `price_...`)
-4. Add the following to your Netlify environment variables:
+---
 
-| Variable | Value |
-|---|---|
-| `STRIPE_PUBLISHABLE_KEY` | From Stripe Dashboard → Developers → API keys |
-| `STRIPE_SECRET_KEY` | From Stripe Dashboard → Developers → API keys (keep secret, server-side only) |
-| `STRIPE_PRICE_ID_PRO` | The `price_...` ID from step 3 |
-| `STRIPE_WEBHOOK_SECRET` | Generated when you create a webhook endpoint (see below) |
+### 4. Deploy Supabase Edge Functions
 
-5. In Stripe → **Developers → Webhooks**, add an endpoint:
-   - URL: `https://your-site.netlify.app/.netlify/functions/stripe-webhook` (or your serverless handler path)
-   - Events to listen for: `checkout.session.completed`, `customer.subscription.deleted`, `invoice.payment_failed`
+Run these in your terminal from the project folder:
 
-### 5. Set up a custom domain (optional)
+```bash
+supabase functions deploy create-checkout-session
+supabase functions deploy stripe-webhook
+```
 
-1. In Netlify → **Domain management → Add custom domain**, enter your domain
-2. Update DNS at your registrar: add a CNAME pointing to your Netlify subdomain, or use Netlify DNS
-3. Netlify provisions an SSL certificate automatically (Let's Encrypt)
-4. Update Supabase Auth redirect URLs to include the new domain (see step 3)
+---
 
-### 6. Smoke-test after deploy
+### 5. Run the Feedback Table SQL
 
-- [ ] Open `https://your-site.netlify.app/` — main app loads, no console errors
-- [ ] Open `https://your-site.netlify.app/landing.html` — marketing page renders correctly
-- [ ] Navigate directly to `https://your-site.netlify.app/more` — SPA redirect returns the app, not a 404
-- [ ] Try `https://your-site.netlify.app/FlatRate/anything` — should 301 redirect to `/anything`
-- [ ] Log in via Supabase auth — auth callback returns to app correctly
-- [ ] Add a job entry and verify it persists in Supabase `work_logs` table
-- [ ] Attach a photo and confirm upload to `proofs` storage bucket
+1. Go to **https://supabase.com/dashboard/project/lfnydhidbwfyfjafazdy/sql/new**
+2. Paste the contents of `supabase_feedback.sql` and click **Run**
+
+---
+
+### 6. Run the Subscriptions Migration
+
+1. Same SQL editor as above
+2. Paste the contents of `supabase/migrations/20260520_subscriptions.sql` and click **Run**
+
+---
+
+### 7. Optional: Custom Domain
+
+In Netlify → Site Settings → Domain Management → Add custom domain.
+Then update the Supabase Site URL and Redirect URLs (step 2) to match.

@@ -1,4 +1,5 @@
 [build]
+  command = "node build.mjs"
   publish = "."
 
 [[redirects]]
