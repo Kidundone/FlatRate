@@ -424,27 +424,25 @@
     </a>
   </nav>
 
+  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Upgrade to Pro">
+    <div class="modalContent" style="max-width:400px;margin:60px auto;padding:28px 20px;border-radius:16px;">
+      <h2 style="margin:0 0 8px;font-size:20px;">Flat-Rate Log Pro</h2>
+      <p style="margin:0 0 20px;color:var(--muted);font-size:14px;">Export your data as CSV or JSON to use in spreadsheets, email disputes, or keep your own records.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+        <button id="upgradeMonthlyBtn" class="btn primary" type="button" style="font-size:16px;padding:14px;">
+          $6.99 / month
+        </button>
+        <button id="upgradeYearlyBtn" class="btn primary" type="button" style="font-size:16px;padding:14px;background:var(--accent);">
+          $59 / year &nbsp;<span style="font-size:12px;opacity:.8;">— save 30%</span>
+        </button>
+      </div>
+      <button id="upgradeCloseBtn" class="btn" type="button" style="width:100%;">Maybe later</button>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
-    <!-- Upgrade modal -->
-    <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Upgrade to Pro">
-      <div class="modalContent" style="max-width:400px;margin:60px auto;padding:28px 20px;border-radius:16px;">
-        <h2 style="margin:0 0 8px;font-size:20px;">Flat-Rate Log Pro</h2>
-        <p style="margin:0 0 20px;color:var(--muted);font-size:14px;">Export your data as CSV or JSON to use in spreadsheets, email disputes, or keep your own records.</p>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-          <button id="upgradeMonthlyBtn" class="btn primary" type="button" style="font-size:16px;padding:14px;">
-            $6.99 / month
-          </button>
-          <button id="upgradeYearlyBtn" class="btn primary" type="button" style="font-size:16px;padding:14px;background:var(--accent);">
-            $59 / year &nbsp;<span style="font-size:12px;opacity:.8;">— save 30%</span>
-          </button>
-        </div>
-        <button id="upgradeCloseBtn" class="btn" type="button" style="width:100%;">Maybe later</button>
-      </div>
-    </div>
-
-    <script>
     window.__SUPABASE_CONFIG__ = {
       url: "https://lfnydhidbwfyfjafazdy.supabase.co",
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
