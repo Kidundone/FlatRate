@@ -459,6 +459,20 @@ async function runOnce() {
     startMoreTour?.();
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();
+
+    // Upgrade modal
+    document.getElementById("upgradeMonthlyBtn")?.addEventListener("click", () => startCheckout?.("monthly"));
+    document.getElementById("upgradeYearlyBtn")?.addEventListener("click",  () => startCheckout?.("yearly"));
+    document.getElementById("upgradeCloseBtn")?.addEventListener("click",   () => hideUpgradeModal?.());
+    document.getElementById("upgradeModal")?.addEventListener("click", (e) => {
+      if (e.target?.id === "upgradeModal") hideUpgradeModal?.();
+    });
+    // Show upgrade banner if user lands with ?upgraded=1 from Stripe success
+    if (new URLSearchParams(location.search).get("upgraded") === "1") {
+      await loadSubscription?.();
+      toast?.("You're now on Pro — exports unlocked!");
+      history.replaceState({}, "", location.pathname);
+    }
     initPayStubUI();
     await safeLoadEntries({ fullHistory: true });
     await refreshMorePagePanels?.();

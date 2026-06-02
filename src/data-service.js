@@ -82,6 +82,7 @@ async function bootAuth() {
         const rows = await safeLoadEntries();
         console.log("✅ safeLoadEntries returned:", rows?.length);
         _lastLoadedAt = Date.now();
+        loadSubscription().catch(() => {});
 
         if (window.__PAGE__ === "main") {
           await refreshUI(rows);
@@ -808,6 +809,22 @@ async function safeLoadEntries({ fullHistory = false } = {}) {
 }
 window.__FR = window.__FR || {};
 window.__FR.safeLoadEntries = safeLoadEntries;
+
+/* ── Subscription status ─────────────────────────────────────────── */
+window.CURRENT_PLAN = "free"; // "free" | "pro"
+
+async function loadSubscription() {
+  try {
+    const { data, error } = await sb()
+      .from("subscriptions")
+      .select("status")
+      .maybeSingle();
+    if (error || !data) return;
+    const active = data.status === "active" || data.status === "trialing";
+    window.CURRENT_PLAN = active ? "pro" : "free";
+  } catch {}
+}
+window.__FR.loadSubscription = loadSubscription;
 function initEmpIdBoot() {
   const el = document.getElementById("empId");
   if (!el) return;

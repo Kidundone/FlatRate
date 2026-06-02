@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flat-Rate Tracker — Built for Automotive Technicians</title>
+  <meta name="description" content="Log flat-rate jobs in seconds, catch missing pay, and prove every hour you worked. Free to start, installs to your home screen." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b1220;
+      --bg2:       #111c2f;
+      --bg3:       #162038;
+      --border:    #1e2f4a;
+      --blue:      #0095f6;
+      --blue-dark: #007acc;
+      --green:     #29d9a5;
+      --text:      #e8edf5;
+      --muted:     #7a8baa;
+      --radius:    12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11, 18, 32, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 58px;
+    }
+    .nav-logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-logo span.dot { color: var(--blue); }
+    .nav-cta {
+      background: var(--blue);
+      color: #fff;
+      text-decoration: none;
+      padding: 0.45rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .nav-cta:hover { background: var(--blue-dark); }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 5rem 1.5rem 4rem;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(41, 217, 165, 0.12);
+      color: var(--green);
+      border: 1px solid rgba(41, 217, 165, 0.3);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border-radius: 100px;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.25rem;
+    }
+    h1 .accent { color: var(--blue); }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 2.5rem;
+    }
+    .cta-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+      text-decoration: none;
+      padding: 0.85rem 2rem;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 700;
+      transition: background 0.15s, transform 0.1s;
+      display: inline-block;
+    }
+    .btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      text-decoration: none;
+      padding: 0.85rem 2rem;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s;
+      display: inline-block;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    .hero-note {
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ── SOCIAL PROOF BAR ── */
+    .proof-bar {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .proof-stat { text-align: center; }
+    .proof-stat strong { display: block; font-size: 1.5rem; font-weight: 800; color: var(--text); }
+    .proof-stat span { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── SECTIONS ── */
+    section { padding: 5rem 1.5rem; }
+    .container { max-width: 1040px; margin: 0 auto; }
+    .section-label {
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--blue);
+      margin-bottom: 0.75rem;
+    }
+    h2 {
+      text-align: center;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 3.5rem;
+    }
+
+    /* ── FEATURE CARDS ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .feature-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(0, 149, 246, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── HOW IT WORKS ── */
+    .how-bg { background: var(--bg2); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      counter-reset: steps;
+    }
+    .step {
+      position: relative;
+      padding: 1.5rem;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .step::before {
+      counter-increment: steps;
+      content: counter(steps);
+      position: absolute;
+      top: -14px;
+      left: 1.5rem;
+      background: var(--blue);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .step p { font-size: 0.88rem; color: var(--muted); }
+
+    /* ── PRICING ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .pricing-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      position: relative;
+    }
+    .pricing-card.featured {
+      border-color: var(--blue);
+      background: linear-gradient(160deg, rgba(0,149,246,0.08) 0%, var(--bg2) 60%);
+    }
+    .featured-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--blue);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.75rem;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+    .plan-name { font-size: 0.9rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+    .plan-price { font-size: 2.6rem; font-weight: 800; line-height: 1; margin-bottom: 0.3rem; }
+    .plan-price sup { font-size: 1.2rem; font-weight: 600; vertical-align: top; margin-top: 0.5rem; display: inline-block; }
+    .plan-period { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .plan-features { list-style: none; margin-bottom: 1.75rem; }
+    .plan-features li {
+      font-size: 0.9rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--text);
+    }
+    .plan-features li:last-child { border-bottom: none; }
+    .plan-features li .check { color: var(--green); font-size: 1rem; flex-shrink: 0; }
+    .plan-features li .muted { color: var(--muted); }
+    .btn-plan {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      padding: 0.85rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-plan-free { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-plan-free:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-plan-pro { background: var(--blue); color: #fff; }
+    .btn-plan-pro:hover { background: var(--blue-dark); transform: translateY(-1px); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .proof-bar { gap: 1.5rem; }
+      .cta-group { flex-direction: column; align-items: center; }
+      .btn-primary, .btn-ghost { width: 100%; max-width: 320px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#">
+      ⚙️ Flat-Rate<span class="dot">.</span>app
+    </a>
+    <a class="nav-cta" href="./index.html">Get Started Free</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">Built for flat-rate technicians</div>
+    <h1>Stop leaving <span class="accent">hours on the table</span></h1>
+    <p>Log every flat-rate job in seconds, attach photo proof, and compare your pay stub against what you actually worked. If something's missing, you'll know.</p>
+    <div class="cta-group">
+      <a class="btn-primary" href="./index.html">Start Logging Free →</a>
+      <a class="btn-ghost" href="#features">See How It Works</a>
+    </div>
+    <p class="hero-note">Free forever on the base plan. No credit card required.</p>
+  </section>
+
+  <!-- SOCIAL PROOF -->
+  <div class="proof-bar">
+    <div class="proof-stat"><strong>Seconds</strong><span>to log a job</span></div>
+    <div class="proof-stat"><strong>100%</strong><span>offline capable</span></div>
+    <div class="proof-stat"><strong>OCR</strong><span>auto-fills RO &amp; VIN</span></div>
+    <div class="proof-stat"><strong>No card</strong><span>required to start</span></div>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="container">
+      <p class="section-label">Features</p>
+      <h2>Everything a flat-rate tech needs</h2>
+      <p class="section-sub">Designed around the way you actually work — fast entry on the shop floor, detailed review when you have a minute.</p>
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Log jobs in seconds</h3>
+          <p>Enter hours and work done with two taps. RO, stock, VIN, and notes slide away into an optional panel so entry never feels like paperwork.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📷</div>
+          <h3>Photo proof + OCR auto-fill</h3>
+          <p>Snap your repair order and the app reads the stock number and VIN automatically. You review the suggestion before it ever touches your record.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">💰</div>
+          <h3>Pay stub comparison</h3>
+          <p>Enter your actual pay stub totals and the app flags any shortfall against your logged entries — with a list of the jobs most likely to be missing.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📵</div>
+          <h3>Works offline, installs to home screen</h3>
+          <p>A full Progressive Web App. Add it to your home screen and it works without a signal. Data syncs when you're back online.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔎</div>
+          <h3>Needs-review queue</h3>
+          <p>A dedicated screen surfaces entries with OCR waiting, failed reads, or unapplied suggestions — so nothing slips through unverified.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>CSV &amp; PDF exports</h3>
+          <p>Pro plan unlocks one-tap exports and audit reports. Bring clean records to a dispute or hand them straight to payroll.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-bg">
+    <div class="container">
+      <p class="section-label">How It Works</p>
+      <h2>Up and running in under a minute</h2>
+      <p class="section-sub">No training required. If you can text, you can use Flat-Rate Tracker.</p>
+      <div class="steps">
+        <div class="step">
+          <h3>Install to home screen</h3>
+          <p>Open the app in your phone browser and tap "Add to Home Screen." Done — no App Store, no account until you're ready.</p>
+        </div>
+        <div class="step">
+          <h3>Log your first job</h3>
+          <p>Enter hours worked and what you did. Attach a photo of the RO if you have one. Tap Save. That's the whole flow.</p>
+        </div>
+        <div class="step">
+          <h3>Review OCR suggestions</h3>
+          <p>The app reads stock numbers and VINs from your photo. Tap Apply to pull a suggestion into the record — it never writes without you.</p>
+        </div>
+        <div class="step">
+          <h3>Compare your pay stub</h3>
+          <p>When you get paid, enter your stub total on the More page. See immediately if the numbers match what you logged.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing">
+    <div class="container">
+      <p class="section-label">Pricing</p>
+      <h2>Free to start. Upgrade when you need more.</h2>
+      <p class="section-sub">No surprise charges. Cancel anytime.</p>
+
+      <div class="pricing-grid">
+
+        <div class="pricing-card">
+          <p class="plan-name">Free</p>
+          <p class="plan-price">$0</p>
+          <p class="plan-period">forever</p>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Unlimited job logging</li>
+            <li><span class="check">✓</span> Photo proof with OCR</li>
+            <li><span class="check">✓</span> Pay stub comparison</li>
+            <li><span class="check">✓</span> Needs-review queue</li>
+            <li><span class="check">✓</span> Offline &amp; home screen install</li>
+            <li><span class="muted check">–</span> <span class="muted">CSV / PDF exports</span></li>
+            <li><span class="muted check">–</span> <span class="muted">Audit reports</span></li>
+          </ul>
+          <a class="btn-plan btn-plan-free" href="./index.html">Get Started Free</a>
+        </div>
+
+        <div class="pricing-card featured">
+          <div class="featured-badge">Most Popular</div>
+          <p class="plan-name">Pro</p>
+          <p class="plan-price"><sup>$</sup>4<sup style="font-size:1rem;margin-top:.8rem">.99</sup></p>
+          <p class="plan-period">per month, billed monthly</p>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Everything in Free</li>
+            <li><span class="check">✓</span> CSV exports (week / month / custom)</li>
+            <li><span class="check">✓</span> PDF audit reports</li>
+            <li><span class="check">✓</span> Priority OCR processing</li>
+            <li><span class="check">✓</span> Email support</li>
+          </ul>
+          <a class="btn-plan btn-plan-pro" href="./index.html">Start Free Trial →</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER CTA -->
+  <section style="padding: 4rem 1.5rem; text-align: center; background: var(--bg2); border-top: 1px solid var(--border);">
+    <h2 style="margin-bottom: 1rem;">Ready to know exactly what you're owed?</h2>
+    <p style="color: var(--muted); max-width: 420px; margin: 0 auto 2rem;">Join technicians who log proof for every job and never leave money on the table again.</p>
+    <a class="btn-primary" href="./index.html">Start Logging Free →</a>
+    <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--muted);">No credit card required. Installs in under 60 seconds.</p>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 Flat-Rate Tracker &nbsp;·&nbsp; <a href="./index.html">Open App</a> &nbsp;·&nbsp; Built for technicians, by someone who's been on the floor.</p>
+  </footer>
+
+</body>
+</html>

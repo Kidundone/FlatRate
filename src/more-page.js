@@ -154,7 +154,64 @@ window.exportEntriesToPDF = exportEntriesToPDF;
 window.exportSelected = exportSelected;
 window.exportWeek = exportWeek;
 
+/* ── Paywall ─────────────────────────────────────────────────────── */
+
+function isPro() {
+  return window.CURRENT_PLAN === "pro";
+}
+
+function showUpgradeModal() {
+  const modal = document.getElementById("upgradeModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function hideUpgradeModal() {
+  const modal = document.getElementById("upgradeModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function startCheckout(plan) {
+  const btn = plan === "yearly"
+    ? document.getElementById("upgradeYearlyBtn")
+    : document.getElementById("upgradeMonthlyBtn");
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+
+  try {
+    const session = await sb().auth.getSession();
+    const token = session?.data?.session?.access_token;
+    if (!token) { toast?.("Sign in first"); return; }
+
+    const res = await fetch(
+      `${window.__SUPABASE_CONFIG__.url}/functions/v1/create-checkout-session`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan, returnUrl: window.location.href }),
+      }
+    );
+    const { url, error } = await res.json();
+    if (error) throw new Error(error);
+    window.location.href = url;
+  } catch (e) {
+    toast?.("Checkout failed — " + (e?.message || "try again"));
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+function requirePro(action) {
+  if (isPro()) return true;
+  showUpgradeModal();
+  return false;
+}
+
+/* ── Exports (pro-gated) ─────────────────────────────────────────── */
+
 async function exportCSV(){
+  if (!requirePro()) return;
   const all = await getAll(STORES.entries);
   const entries = filterEntriesByEmp(all, getEmpId(), true);
   entries.sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -162,6 +219,7 @@ async function exportCSV(){
 }
 
 async function exportJSON(){
+  if (!requirePro()) return;
   const all = await getAll(STORES.entries);
   const entries = filterEntriesByEmp(all, getEmpId(), true);
   entries.sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -421,6 +479,7 @@ function drawAuditLines(doc, rows, left, startY) {
 }
 
 async function exportAuditReport() {
+  if (!requirePro()) return;
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) {
     alert("PDF export is not ready yet. Refresh and try again.");
@@ -1172,6 +1231,7 @@ function initSettingsUI() {
 // weekKey: optional "YYYY-MM-DD" week start. When provided, report covers that week only.
 // When omitted, covers all weeks with logged entries.
 async function exportDisputeReport(weekKey) {
+  if (!requirePro()) return;
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) { alert("PDF export is not ready. Refresh and try again."); return; }
 
