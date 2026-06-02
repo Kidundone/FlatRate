@@ -977,6 +977,19 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   font-size: 13px;
 }
 
+.fr26ScanStatus {
+  padding: 0 16px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #29d9a5);
+  min-height: 20px;
+  transition: opacity 0.3s;
+}
+.fr26ScanStatus.scanning {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .fr26QuickTools {
   display: flex;
   flex-wrap: nowrap;

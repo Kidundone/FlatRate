@@ -161,9 +161,10 @@ function wirePhotoPickers() {
   const handlePhotoChange = (input, label) => async () => {
     const file = input.files?.[0] || null;
     if (!file) { setSelectedPhoto(null); return; }
-    setPhotoSummaryState("Processing…");
+    setPhotoSummaryState("Scanning…");
     await new Promise(r => setTimeout(r, 0)); // yield so UI updates
     setSelectedPhoto(file, label);
+    scanPhotoAndPrefillForm(file).catch(e => console.warn("[OCR prefill]", e?.message || e));
   };
   inCamera.addEventListener("change", handlePhotoChange(inCamera, "camera"));
   inPicker.addEventListener("change", handlePhotoChange(inPicker, "library"));
@@ -535,6 +536,85 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) 
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;
+  }
+}
+
+// Snap-to-fill: scan photo immediately when selected, prefill form fields before save.
+async function scanPhotoAndPrefillForm(file) {
+  if (!file) return;
+
+  const scanStatus = document.getElementById("photoScanStatus");
+  const refEl      = document.getElementById("ref");
+  const vinEl      = document.getElementById("vin8");
+  const typeEl     = document.getElementById("typeText");
+  const detailsPanel = document.getElementById("detailsPanel");
+  const detailsBtn   = document.getElementById("toggleDetailsBtn");
+
+  const showStatus = (msg, isScanning = false) => {
+    if (!scanStatus) return;
+    scanStatus.textContent = msg;
+    scanStatus.style.display = msg ? "" : "none";
+    scanStatus.className = "fr26ScanStatus" + (isScanning ? " scanning" : "");
+  };
+
+  showStatus("Reading photo…", true);
+
+  try {
+    const dataUrl  = await compressImageFileToDataUrl(file, 1200, 0.75);
+    const base64   = dataUrl.split(",")[1];
+    const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+    const result   = await _callScanRo(base64, mediaType);
+
+    const { ro, vin, stk } = result || {};
+    const filled = [];
+
+    // Fill stock / RO only if field is empty (don't clobber manual entry)
+    if (refEl && !refEl.value.trim()) {
+      const val = stk || ro || "";
+      if (val) {
+        refEl.value = val;
+        // flip the ref-type toggle to match what was found
+        if (stk) {
+          document.getElementById("refTypeSTK")?.click();
+        } else {
+          document.getElementById("refTypeRO")?.click();
+        }
+        filled.push(stk ? `STK ${val}` : `RO ${val}`);
+      }
+    }
+
+    // Fill VIN (last 8) only if field is empty
+    if (vinEl && !vinEl.value.trim() && vin) {
+      const vin8 = vin.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase();
+      if (vin8.length >= 6) {
+        vinEl.value = vin8;
+        filled.push(`VIN …${vin8}`);
+      }
+    }
+
+    if (filled.length) {
+      // Open the details panel so user can see what was filled
+      if (detailsPanel && detailsPanel.style.display === "none") {
+        detailsPanel.style.display = "block";
+        if (detailsBtn) detailsBtn.textContent = "Less";
+      }
+      showStatus("✓ " + filled.join("  ·  "));
+      // Focus "Work Done" so the only thing left to do is type it
+      setTimeout(() => typeEl?.focus(), 80);
+    } else {
+      showStatus("No RO, STK or VIN found — fill in manually");
+      setTimeout(() => showStatus(""), 3500);
+    }
+
+    setPhotoSummaryState("Selected");
+
+  } catch (e) {
+    showStatus("");
+    setPhotoSummaryState("Selected");
+    const msg = e?.message || "";
+    if (msg === "auth_expired" || e?.status === 401) return; // silent — not signed in yet
+    if (msg.includes("timed out")) { toast?.("Photo scan timed out — fill in manually"); return; }
+    // Other scan errors are non-fatal; user can still save normally
   }
 }
 

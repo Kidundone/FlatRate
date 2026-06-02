@@ -42,24 +42,29 @@ serve(async (req) => {
               },
               {
                 type: "text",
-                text: `You are reading an automotive dealership document. It may be HANDWRITTEN. Read it carefully.
+                text: `You are reading an automotive dealership document from Flow Motors Winston Salem. It may be handwritten or printed. Read carefully.
 
 STEP 1 — Identify the document type:
-- "Repair Order" (RO): titled "Repair Order", "Service RO", "Work Order". Has a labeled RO# or R.O. number.
-- "Get Ready" / "Detail Sheet" / "Pre-Delivery": titled "Get Ready", "Detail", "Pre-Delivery Inspection", "PDI". These do NOT have an RO number — they have a Stock number and VIN instead.
 
-STEP 2 — Extract only what the LABEL says:
+A) REPAIR ORDER — printed form with "WORKORDER" or "Work Order" or "R.O." at the top, usually has a customer address, VIN bar, line items with labor codes. The RO number is the large number printed at the top (e.g. "490060").
 
-1. RO number — ONLY if the document is a Repair Order AND the number is EXPLICITLY labeled "RO#", "R.O.", "Repair Order #", or "Work Order #". Do NOT guess. If it is a Get Ready or Detail form, set ro to null.
+B) GET READY / PRE-OWNED GET READY — titled "Get Ready", "Pre-Owned Get Ready", "New-Preowned Get Ready", or "Detail Sheet". These have a Stock # and VIN field but NO repair order number.
 
-2. Stock number — look for a label that says "Stock", "Stock#", "STK", "STK#", or "Stock No". The value is usually alphanumeric like "SLV13231A" or "P12345". Employee numbers, phone numbers, and unlabeled numbers are NOT stock numbers.
+STEP 2 — Extract these three values:
 
-3. VIN — a full 17-character VIN, or a "VIN Verification" field that shows the last 6–8 digits (e.g. "360036"). Do not confuse this with other numbers.
+1. ro — the Repair Order / Work Order number.
+   - For REPAIR ORDER docs: this is the large number labeled "WORKORDER" or printed prominently at top (e.g. 490060). Return it as a string.
+   - For GET READY docs: set to null. Get Ready slips do not have RO numbers.
+   - IGNORE any large handwritten numbers written in marker on the page — those are internal reach/tech numbers, NOT the RO.
+
+2. stk — the Stock number, labeled "STOCK #", "STK#", "Stock", or "Stock No". Usually alphanumeric like "SXS14394A" or "VXS13593" or "S6934". Return it as a string or null.
+
+3. vin — a full 17-character VIN, OR whatever appears next to a label that says "VIN", "VIN (LAST 6)", "VIN Verification", or "VIN#". May be partial (last 6-8 chars). Return it as a string or null.
 
 Return ONLY this JSON, nothing else:
-{"ro": null, "vin": "360036", "stk": "SLV13231A"}
+{"ro": null, "vin": "TCS19634", "stk": "VXS13593"}
 
-Use null for any value not present or not clearly labeled. Do not guess unlabeled numbers.`,
+Use null for any value not clearly labeled. Never guess unlabeled numbers.`,
               },
             ],
           },
