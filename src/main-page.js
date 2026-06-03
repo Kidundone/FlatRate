@@ -932,11 +932,119 @@ function syncOfflineDot() {
   updatePendingBadge?.();
 }
 
+// ── Referral share ──────────────────────────────────────────────
+async function shareReferral() {
+  const url = "https://nellylabs.dev";
+  const text = `I use Flat-Rate Tracker at work to log jobs and catch missing pay. Free to start — ${url}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: "Flat-Rate Tracker", text, url }); return; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Referral link copied to clipboard!");
+  } catch {
+    toast("Share: " + url);
+  }
+}
+
+// ── Week-over-week earnings chart (inline SVG) ───────────────────
+function renderWeekChart(thisWeekDollars, lastWeekDollars) {
+  const el = document.getElementById("weekChart");
+  if (!el) return;
+  const max = Math.max(thisWeekDollars, lastWeekDollars, 1);
+  const BAR_H = 72;
+  const thisH = Math.max(4, Math.round((thisWeekDollars / max) * BAR_H));
+  const lastH = Math.max(4, Math.round((lastWeekDollars / max) * BAR_H));
+  const diff = round2(thisWeekDollars - lastWeekDollars);
+  const sign = diff > 0 ? "+" : "";
+  const diffColor = diff >= 0 ? "#29d9a5" : "#ff6b6b";
+  el.innerHTML = `
+    <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
+      <rect x="18" y="${90 - lastH}" width="44" height="${lastH}" rx="5" fill="#1e2f4a"/>
+      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#0095f6"/>
+      <text x="40" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">Last Week</text>
+      <text x="120" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">This Week</text>
+      <text x="40" y="${86 - lastH}" text-anchor="middle" font-size="8" fill="#7a8baa">${formatMoney(lastWeekDollars)}</text>
+      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#0095f6">${formatMoney(thisWeekDollars)}</text>
+      <text x="80" y="112" text-anchor="middle" font-size="9" fill="${diffColor}">${sign}${formatMoney(diff)} vs last week</text>
+    </svg>`;
+}
+
+// ── Email / share week PDF ───────────────────────────────────────
+async function shareWeekPDF() {
+  const empId = getEmpId();
+  if (!empId) { toast("Employee # required"); return; }
+
+  const weekKey = dateKey(startOfWeekLocal(new Date()));
+  const entries = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+    .filter(e => String(e.weekStartKey || "") === weekKey || String(e.dayKey || "").startsWith(weekKey));
+
+  if (!entries.length) { toast("No entries this week to export"); return; }
+
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) { toast("PDF not ready — refresh and try again"); return; }
+
+  const doc = new jsPDF();
+  const left = 20;
+  const pageBottom = doc.internal.pageSize.getHeight() - 16;
+  let y = 20;
+  const nl = (step = 6) => { y += step; if (y > pageBottom) { doc.addPage(); y = 20; } };
+
+  doc.setFontSize(16);
+  doc.text("Flat Rate — Weekly Report", left, y);
+  nl(8);
+  doc.setFontSize(10);
+  doc.text(`Employee: ${empId}   Week: ${weekKey}`, left, y);
+  nl(8);
+  doc.setFontSize(11);
+  doc.text(`${"RO / STK".padEnd(16)} ${"Type".padEnd(20)} ${"Hrs".padEnd(6)} Pay`, left, y);
+  nl(2);
+  doc.line(left, y, 190, y);
+  nl(5);
+
+  let totalHours = 0, totalPay = 0;
+  for (const e of entries) {
+    const ro = String(e.ref || e.ro || e.ro_number || "—").slice(0, 14);
+    const type = String(e.type || e.typeText || "—").slice(0, 18);
+    const hrs = round1(Number(e.hours || e.flat_hours || 0));
+    const pay = round2(Number(e.earnings || e.cash_amount || 0));
+    doc.setFontSize(10);
+    doc.text(`${ro.padEnd(16)} ${type.padEnd(20)} ${String(hrs).padEnd(6)} $${pay.toFixed(2)}`, left, y);
+    nl(6);
+    totalHours += hrs;
+    totalPay += pay;
+  }
+
+  nl(4);
+  doc.line(left, y, 190, y);
+  nl(6);
+  doc.setFontSize(11);
+  doc.text(`Total: ${round1(totalHours)} hrs   ${formatMoney(round2(totalPay))}`, left, y);
+
+  const filename = `flat-rate-week-${weekKey}.pdf`;
+
+  // Try Web Share API with file first (works on iOS/Android)
+  try {
+    const blob = doc.output("blob");
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      return;
+    }
+  } catch {}
+
+  // Fallback: download
+  doc.save(filename);
+  toast("PDF saved!");
+}
+
 window.__FR = window.__FR || {};
 window.__FR.shareDaySummary = shareDaySummary;
 window.__FR.updateShortPayBadge = updateShortPayBadge;
 window.__FR.maybeShowOnboarding = maybeShowOnboarding;
 window.__FR.maybeStartTour = maybeStartTour;
+window.__FR.shareReferral = shareReferral;
+window.__FR.shareWeekPDF = shareWeekPDF;
 
 let _syncLock = false;
 async function flushPendingSync() {
@@ -1944,10 +2052,19 @@ async function refreshUI(entriesOverride){
     // render week breakdown (always uses full week, not the picked day)
     const days = computeWeekBreakdown(entries.filter(e => inWeek(e.dayKey, ws)), ws);
     renderWeekBreakdown(days);
+
+    // render week-over-week earnings chart
+    if (wc) {
+      renderWeekChart(wc.totals.thisTotals.dollars, wc.totals.lastTotals.dollars);
+      const chartCard = document.getElementById("weekChartCard");
+      if (chartCard) chartCard.style.display = "";
+    }
   } else {
-    // hide week breakdown when not in week mode
+    // hide week breakdown and chart when not in week mode
     const card = document.getElementById("weekBreakdownCard");
     if (card) card.style.display = "none";
+    const chartCard = document.getElementById("weekChartCard");
+    if (chartCard) chartCard.style.display = "none";
     window.__WEEK_DAY_PICK__ = ""; // reset when leaving week mode
   }
 

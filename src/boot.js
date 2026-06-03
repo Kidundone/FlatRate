@@ -343,6 +343,8 @@ async function runOnce() {
     });
 
     document.getElementById("shareTodayBtn")?.addEventListener("click", () => shareDaySummary?.());
+    document.getElementById("shareWeekPDFBtn")?.addEventListener("click", () => shareWeekPDF?.());
+    document.getElementById("shareReferralBtn")?.addEventListener("click", () => shareReferral?.());
 
     document.getElementById("historyBtn")?.addEventListener("click", () => {
       const panel = document.getElementById("historyPanel");
