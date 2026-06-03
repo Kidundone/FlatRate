@@ -1955,8 +1955,14 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 /* Primary entry actions: always visible */
 .entryActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+.entryActions .btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 /* Selection actions: hidden until items selected */
