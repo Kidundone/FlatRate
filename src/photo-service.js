@@ -609,12 +609,21 @@ async function scanPhotoAndPrefillForm(file) {
     setPhotoSummaryState("Selected");
 
   } catch (e) {
-    showStatus("");
     setPhotoSummaryState("Selected");
     const msg = e?.message || "";
-    if (msg === "auth_expired" || e?.status === 401) return; // silent — not signed in yet
-    if (msg.includes("timed out")) { toast?.("Photo scan timed out — fill in manually"); return; }
-    // Other scan errors are non-fatal; user can still save normally
+    console.warn("[OCR prefill error]", msg, e);
+    if (msg === "auth_expired" || e?.status === 401) {
+      showStatus("Sign in on More page to enable OCR");
+      setTimeout(() => showStatus(""), 4000);
+      return;
+    }
+    if (msg.includes("timed out")) {
+      showStatus("Scan timed out — fill in manually");
+      setTimeout(() => showStatus(""), 3500);
+      return;
+    }
+    showStatus(`Scan failed: ${msg.slice(0, 50) || "unknown error"}`);
+    setTimeout(() => showStatus(""), 5000);
   }
 }
 
