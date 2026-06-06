@@ -73,8 +73,12 @@ Use null for any value not clearly labeled. Never guess unlabeled numbers.`,
     });
 
     if (!claudeRes.ok) {
-      const errText = await claudeRes.text();
-      throw new Error(`Claude API error: ${claudeRes.status} ${errText}`);
+      const errText = await claudeRes.text().catch(() => "");
+      console.error("Claude error", claudeRes.status, errText);
+      return new Response(
+        JSON.stringify({ error: `Claude ${claudeRes.status}: ${errText}` }),
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
     }
 
     const claudeData = await claudeRes.json();
