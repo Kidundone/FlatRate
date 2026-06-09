@@ -227,6 +227,7 @@ async function runOnce() {
     updatePendingBadge?.();
     maybeShowOnboarding?.();
     maybeStartTour?.();
+    initPullToRefresh?.();
 
     ["empId", "ref", "typeText", "hours"].forEach((id) => {
       const el = document.getElementById(id);

@@ -374,10 +374,10 @@ function updateHeaderTodayTotal(dollars) {
   }
 }
 
-function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, daysWorked, weekDollars) {
-  // Big pay number
+function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, daysWorked, weekDollars, allEntries) {
+  // Big pay number — animated count-up
   const payEl = document.getElementById("heroPayAmt");
-  if (payEl) payEl.textContent = formatMoney(todayDollars);
+  if (payEl) animateHeroNumber(payEl, todayDollars);
 
   // Goal ring
   const arcEl = document.getElementById("heroGoalArc");
@@ -407,6 +407,14 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
       paceEl.textContent = "";
     }
   }
+
+  // Goal celebration + milestone check
+  if (flaggedHours > 0) {
+    const pct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
+    checkGoalCelebration(pct);
+  }
+  checkPayMilestone(todayDollars);
+  updateStreakBadge(computeStreak(allEntries || []));
 }
 
 function renderHeroChart(entries, weekStart) {
@@ -442,9 +450,200 @@ function renderHeroChart(entries, weekStart) {
   });
   svg.innerHTML = svgContent;
 
+  // Animated bars
+  svg.innerHTML = "";
+  buckets.forEach((b, i) => {
+    const x = gap + i * (barW + gap);
+    const barH = Math.max(3, (b.dollars / max) * (H - 6));
+    const y = H - barH;
+    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? "rgba(34,197,94,.28)" : "rgba(255,255,255,.06)";
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", x.toFixed(1));
+    rect.setAttribute("y", y.toFixed(1));
+    rect.setAttribute("width", String(barW));
+    rect.setAttribute("height", barH.toFixed(1));
+    rect.setAttribute("rx", "4");
+    rect.setAttribute("fill", color);
+    // Stagger-in animation
+    rect.style.transformOrigin = `${(x + barW/2).toFixed(1)}px ${H}px`;
+    rect.style.transform = "scaleY(0)";
+    rect.style.transition = `transform 420ms cubic-bezier(.34,1.56,.64,1) ${i * 55}ms`;
+    svg.appendChild(rect);
+  });
+  // Trigger animation next frame
+  requestAnimationFrame(() => {
+    svg.querySelectorAll("rect").forEach(r => { r.style.transform = "scaleY(1)"; });
+  });
+
   labelsRow.innerHTML = buckets.map(b =>
     `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">${b.label}</span>`
   ).join("");
+}
+
+/* ─── Animation & effects helpers ───────────────────── */
+
+let __lastGoalPct = 0;
+let __lastTodayDollars = 0;
+const PAY_MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
+
+function flashSaveBtn() {
+  const btn = document.getElementById("saveBtn");
+  if (!btn) return;
+  btn.classList.remove("btn-success");
+  void btn.offsetWidth;
+  btn.classList.add("btn-success");
+  setTimeout(() => btn.classList.remove("btn-success"), 440);
+}
+
+function animateHeroNumber(el, to) {
+  if (!el) return;
+  const from = parseFloat(el.dataset.rawVal || "0") || 0;
+  el.dataset.rawVal = String(to);
+  if (from === to) return;
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.classList.add("pop");
+  const start = performance.now();
+  const dur = Math.min(700, Math.abs(to - from) * 1.5 + 250);
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / dur);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatMoney(from + (to - from) * ease);
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = formatMoney(to);
+  };
+  requestAnimationFrame(step);
+}
+
+function triggerConfetti(count = 36) {
+  const colors = ["#22c55e","#4ade80","#86efac","#ffffff","#fbbf24","#f472b6","#60a5fa"];
+  const ox = window.innerWidth / 2;
+  const oy = window.innerHeight * 0.22;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("div");
+    p.className = "cfp";
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 80 + Math.random() * 200;
+    const ex = Math.cos(angle) * dist, ey = Math.sin(angle) * dist + 80;
+    const rot = (Math.random() * 720 - 360) + "deg";
+    const dur = (480 + Math.random() * 520) + "ms";
+    p.style.cssText = `left:${ox + (Math.random()-0.5)*80}px;top:${oy}px;background:${colors[i%colors.length]};--cf-end:translate(${ex}px,${ey}px);--cf-rot:${rot};--cf-dur:${dur};`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1100);
+  }
+}
+
+function checkGoalCelebration(pct) {
+  if (pct >= 100 && __lastGoalPct < 100) {
+    triggerConfetti(42);
+    showMilestoneToast("🎯 Weekly goal smashed!");
+  }
+  __lastGoalPct = pct;
+}
+
+function showMilestoneToast(msg) {
+  let el = document.getElementById("__mToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "__mToast";
+    el.className = "mToast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el.__t);
+  el.__t = setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+function checkPayMilestone(todayDollars) {
+  const prev = __lastTodayDollars;
+  for (const m of PAY_MILESTONES) {
+    if (prev < m && todayDollars >= m) {
+      showMilestoneToast(`💰 $${m} today — keep going!`);
+      break;
+    }
+  }
+  __lastTodayDollars = todayDollars;
+}
+
+function computeStreak(entries) {
+  const days = new Set(entries.map(e => e.dayKey || dayKeyFromISO(e.createdAt)).filter(Boolean));
+  let streak = 0;
+  const d = new Date();
+  if (!days.has(todayKeyLocal())) d.setDate(d.getDate() - 1);
+  for (let i = 0; i < 366; i++) {
+    if (!days.has(dateKey(d))) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function updateStreakBadge(streak) {
+  const subLine = document.querySelector(".heroSubLine");
+  if (!subLine) return;
+  let badge = document.getElementById("__heroStreak");
+  if (streak >= 2) {
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.id = "__heroStreak";
+      badge.className = "heroStreak";
+      subLine.insertAdjacentElement("afterend", badge);
+    }
+    badge.textContent = `🔥 ${streak}-day streak`;
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
+function animateFirstEntry() {
+  requestAnimationFrame(() => {
+    const first = document.querySelector("#entryList .item");
+    if (first) {
+      first.classList.remove("item-enter");
+      void first.offsetWidth;
+      first.classList.add("item-enter");
+    }
+  });
+}
+
+function checkShortPay(entry, allEntries) {
+  if (!entry || !allEntries?.length) return false;
+  const h = Number(entry.hours), d = Number(entry.dollars);
+  if (h <= 0 || d <= 0) return false;
+  const recent = allEntries.slice(0, 30).filter(e => Number(e.hours) > 0 && Number(e.dollars) > 0);
+  if (recent.length < 4) return false;
+  const avg = recent.reduce((s, e) => s + Number(e.dollars) / Number(e.hours), 0) / recent.length;
+  return (d / h) < avg * 0.62;
+}
+
+function initPullToRefresh() {
+  if (window.__ptrWired) return;
+  window.__ptrWired = true;
+  let bar = document.getElementById("ptrBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "ptrBar";
+    bar.innerHTML = '<div id="ptrDot"></div><span>Refreshing…</span>';
+    const hero = document.querySelector(".heroSection");
+    if (hero) hero.insertAdjacentElement("beforebegin", bar);
+    else document.body.prepend(bar);
+  }
+  let startY = 0, active = false;
+  document.addEventListener("touchstart", e => { if (window.scrollY === 0) { startY = e.touches[0].clientY; active = false; } }, { passive:true });
+  document.addEventListener("touchmove", e => {
+    if (window.scrollY > 0) return;
+    if (e.touches[0].clientY - startY > 60 && !active) { active = true; bar.classList.add("active"); }
+  }, { passive:true });
+  document.addEventListener("touchend", async () => {
+    if (!active) return;
+    active = false;
+    const dot = document.getElementById("ptrDot");
+    if (dot) dot.classList.add("spin");
+    try { await safeLoadEntries(); } catch {}
+    if (dot) dot.classList.remove("spin");
+    bar.classList.remove("active");
+  });
 }
 
 async function repeatLastEntry() {
@@ -690,7 +889,8 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    navigator.vibrate?.(30);
+    navigator.vibrate?.([40, 30, 40]);
+    flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.
     if (!isEditing && savedEntry) {
@@ -698,6 +898,7 @@ async function handleSave(ev) {
       setCachedEntries(empId, CURRENT_ENTRIES);
     }
     refreshUI(CURRENT_ENTRIES);
+    if (!isEditing) animateFirstEntry();
     safeLoadEntries().catch(console.error);
     document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSelectedPhotoFile(null);
@@ -1829,14 +2030,8 @@ function renderList(entries, mode){
 
   if (capped.length === 0) {
     list.innerHTML = q
-      ? `<div class="emptyState">
-           <div class="emptyStateTitle">No results for "${escapeHtml(q)}"</div>
-           <div class="emptyStateSub">Try a different RO, VIN, or work type</div>
-         </div>`
-      : `<div class="emptyState">
-           <div class="emptyStateTitle">No entries yet</div>
-           <div class="emptyStateSub">Select hours above and tap Save to start logging</div>
-         </div>`;
+      ? `<div class="emptyWrap"><div class="emptyIcon">🔍</div><div class="emptyTitle">No results for "${escapeHtml(q)}"</div><div class="emptySub">Try a different RO, VIN, or work type</div></div>`
+      : `<div class="emptyWrap"><div class="emptyIcon">🛠️</div><div class="emptyTitle">No entries yet</div><div class="emptySub">Pick your hours above and tap Save — your first job will show up here instantly</div></div>`;
     return;
   }
 
@@ -1855,6 +2050,7 @@ function renderList(entries, mode){
     const tc = (e.type || e.typeText || "").toLowerCase().replace(/\s+/g, "");
     const tcMap = { sold: "sold", warranty: "warranty", fpf: "fpf", preowned: "preowned", "pre-owned": "preowned" };
     row.dataset.tc = tcMap[tc] || "default";
+    if (checkShortPay(e, entries)) row.dataset.short = "1";
     const refLabel = e.refType === "STOCK" ? "STK" : "RO";
     const refVal = hl(e.ref || e.ro || "—");
     const entryId = escapeHtml(String(e.id ?? ""));
@@ -1871,6 +2067,7 @@ function renderList(entries, mode){
               <input type="checkbox" data-select-id="${entryId}" ${e.selected ? "checked" : ""} class="itemCheck" />
               ${typeBadgeHtml(escapeHtml(e.type || e.typeText || "—"))}
               ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
+              ${checkShortPay(e, entries) ? `<span class="shortPayFlag">⚠ LOW</span>` : ""}
               <span class="itemRef mono">${refLabel}: ${refVal}</span>
             </div>
             ${buildEntryMetaHtml(e)}
@@ -2230,7 +2427,7 @@ async function refreshUI(entriesOverride){
   // Hero section update (needs flaggedHours + week data)
   {
     const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
-    updateHeroSection(today.dollars, week.hours, flagged, today.count, daysWorked, week.dollars);
+    updateHeroSection(today.dollars, week.hours, flagged, today.count, daysWorked, week.dollars, entries);
   }
 
   // Pace projection + daily avg/job
