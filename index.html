@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.783e72ecac.css">
+  <link rel="stylesheet" href="./app.039936f947.css">
 </head>
 <body data-page="main">
 
@@ -25,6 +25,35 @@
     <span id="pendingSyncBadge" style="display:none;font-size:11px;font-weight:700;color:var(--primary);background:var(--card-bg,#1a1a1a);border:1.5px solid var(--primary);border-radius:10px;padding:1px 6px;letter-spacing:.2px;" title="Entries waiting to sync"></span>
   </div>
 </header>
+
+<!-- ── Hero section ── -->
+<div class="heroSection">
+  <div class="heroGoalRingWrap">
+    <svg id="heroGoalRingEl" viewBox="0 0 76 76" width="76" height="76">
+      <circle cx="38" cy="38" r="30" fill="none" stroke="var(--surface2)" stroke-width="5.5"/>
+      <circle id="heroGoalArc" cx="38" cy="38" r="30" fill="none" stroke="#22c55e" stroke-width="5.5"
+        stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"
+        transform="rotate(-90 38 38)"
+        style="transition:stroke-dashoffset 600ms ease;"/>
+    </svg>
+    <div class="heroGoalRingCenter">
+      <span class="heroGoalPctText" id="heroGoalPct">—</span>
+      <span class="heroGoalSubText">GOAL</span>
+    </div>
+  </div>
+  <div class="heroRight">
+    <div class="heroEyebrow">Today's Pay</div>
+    <div class="heroAmt" id="heroPayAmt">$0</div>
+    <div class="heroSubLine">Flow Motors WS</div>
+    <div class="heroPaceLine" id="heroPaceLine"></div>
+  </div>
+</div>
+<div class="heroChartWrap">
+  <div class="heroChartInner">
+    <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
+    <div class="heroChartLabelsRow" id="heroChartLabels"></div>
+  </div>
+</div>
 
 <div id="statusMsg" class="statusMsg muted small"></div>
 <div id="dataWarning" class="warningBanner" style="display:none;max-width:680px;margin:8px auto 0;"></div>
@@ -462,6 +491,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.f7bb998f25.js" defer></script>
+<script src="./app.2f8d0d2504.js" defer></script>
 </body>
 </html>

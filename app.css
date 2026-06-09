@@ -1,20 +1,20 @@
 :root {
-  --bg: #111113;
-  --surface: #1c1c1e;
-  --surface2: #242427;
-  --surface3: #2c2c2f;
-  --stroke: rgba(255,255,255,.09);
-  --stroke2: rgba(255,255,255,.16);
+  --bg: #07070f;
+  --surface: #0e0e1a;
+  --surface2: #141426;
+  --surface3: #1c1c30;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
 
   --text: #fff;
   --text2: rgba(255,255,255,.72);
-  --muted: #a8a8a8;
-  --muted2: #6b6b6b;
+  --muted: #7a7a9a;
+  --muted2: #3a3a5a;
 
-  --primary: #0095f6;
-  --primary-dark: #0074cc;
-  --accent: #29d9a5;
-  --danger: #ed4956;
+  --primary: #22c55e;
+  --primary-dark: #16a34a;
+  --accent: #22c55e;
+  --danger: #ef4444;
 
   --r-sm: 8px;
   --r-md: 12px;
@@ -92,8 +92,8 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-  background: rgba(17,17,19,.92);
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+  background: rgba(7,7,15,.94);
   border-bottom: 1px solid var(--stroke);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -110,10 +110,12 @@ header {
 }
 
 h1 {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   margin: 0;
-  letter-spacing: -.3px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted2);
 }
 
 main {
@@ -181,12 +183,12 @@ main {
 #statsStrip {
   display: flex;
   align-items: stretch;
-  justify-content: space-around;
-  background: var(--surface);
-  border-bottom: 1px solid var(--stroke);
+  gap: 6px;
   max-width: 680px;
   margin: 0 auto;
-  padding: 0;
+  padding: 0 16px 12px;
+  background: var(--bg);
+  border-bottom: none;
 }
 
 .stripCell {
@@ -195,26 +197,26 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 14px 6px;
+  padding: 10px 6px;
   min-width: 0;
-  border-right: 1px solid var(--stroke);
+  background: var(--surface);
+  border-radius: 12px;
+  border: none;
 }
 
-.stripCell:last-child { border-right: 0; }
-
 .stripLabel {
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 8px;
+  font-weight: 500;
   color: var(--muted2);
   text-transform: uppercase;
-  letter-spacing: .7px;
+  letter-spacing: .6px;
   white-space: nowrap;
 }
 
 .stripValue {
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -.7px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -.5px;
   margin-top: 3px;
   white-space: nowrap;
 }
@@ -528,7 +530,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0,149,246,.2);
+  box-shadow: 0 0 0 3px rgba(34,197,94,.18);
 }
 
 /* ── Buttons ─────────────────────────────────────── */
@@ -791,32 +793,31 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 .fr26QuickHours {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  padding-bottom: 2px;
+  padding: 4px 0 2px;
 }
 
 .fr26HourBtn {
-  flex-shrink: 0;
-  height: 44px;
-  padding: 0 20px;
+  height: 48px;
+  padding: 0;
   border: 1px solid var(--stroke2);
-  border-radius: var(--r-pill);
+  border-radius: 10px;
   background: var(--surface2);
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 700;
+  color: var(--muted2);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 100ms var(--ease), border-color 100ms var(--ease);
+  transition: background 100ms var(--ease), border-color 100ms var(--ease), color 100ms var(--ease);
 }
 
 .fr26HourBtn:active { transform: scale(.94); transition-duration: 60ms; }
 
 .fr26HourBtn.selected {
-  background: var(--primary);
-  border-color: transparent;
-  color: #fff;
+  background: rgba(34, 197, 94, .12);
+  border-color: rgba(34, 197, 94, .4);
+  color: var(--primary);
 }
 
 .fr26Check {
@@ -910,14 +911,15 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   min-height: 52px;
   border: none;
   background: var(--primary);
-  color: #fff;
+  color: #000;
   letter-spacing: .1px;
   font-size: 16px;
+  font-weight: 700;
   border-radius: var(--r-lg);
 }
 
 .fr26BtnPrimary:active { opacity: .85; transform: scale(.99); }
-.fr26BtnPrimary:disabled { opacity: .4; }
+.fr26BtnPrimary:disabled { background: var(--surface2); color: var(--muted2); opacity: 1; }
 
 .fr26BtnGhost {
   border: 1px solid var(--stroke2);
@@ -2589,3 +2591,108 @@ body.compact .list    { gap: 1px; }
   .historySheet { max-width: 640px; margin: 0 auto; border-radius: var(--r-xl); align-self: center; }
   .historyOverlay { align-items: center; }
 }
+
+/* ── Entry type-color left border ─────────────────── */
+.item {
+  border-left: 3px solid var(--surface3);
+  border-radius: var(--r-lg);
+}
+.item[data-tc="sold"]     { border-left-color: #22c55e; }
+.item[data-tc="warranty"] { border-left-color: #f59e0b; }
+.item[data-tc="fpf"]      { border-left-color: #60a5fa; }
+.item[data-tc="preowned"] { border-left-color: #a78bfa; }
+.item[data-tc="default"]  { border-left-color: var(--surface3); }
+
+/* ── Hero section ─────────────────────────────────── */
+.heroSection {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 16px 10px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.heroGoalRingWrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+.heroGoalRingWrap svg { display: block; }
+.heroGoalRingCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.heroGoalPctText {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--primary);
+  line-height: 1;
+}
+.heroGoalSubText {
+  font-size: 7px;
+  color: var(--muted2);
+  letter-spacing: 0.07em;
+  margin-top: 2px;
+}
+
+.heroRight { flex: 1; min-width: 0; }
+.heroEyebrow {
+  font-size: 9px;
+  color: var(--muted2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+.heroAmt {
+  font-size: 42px;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+.heroSubLine {
+  font-size: 10px;
+  color: var(--muted2);
+  margin-top: 4px;
+}
+.heroPaceLine {
+  font-size: 10px;
+  color: var(--primary);
+  margin-top: 2px;
+  min-height: 14px;
+}
+
+/* ── Hero chart ───────────────────────────────────── */
+.heroChartWrap {
+  padding: 0 16px 12px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+.heroChartInner {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px 10px 5px;
+  overflow: hidden;
+}
+.heroChartSvg {
+  width: 100%;
+  height: 52px;
+  display: block;
+}
+.heroChartLabelsRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 2px 0;
+}
+.heroChartLabel {
+  font-size: 8px;
+  color: var(--muted2);
+}
+.heroChartLabel--now { color: var(--primary); }

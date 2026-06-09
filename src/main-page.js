@@ -374,6 +374,79 @@ function updateHeaderTodayTotal(dollars) {
   }
 }
 
+function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, daysWorked, weekDollars) {
+  // Big pay number
+  const payEl = document.getElementById("heroPayAmt");
+  if (payEl) payEl.textContent = formatMoney(todayDollars);
+
+  // Goal ring
+  const arcEl = document.getElementById("heroGoalArc");
+  const pctEl = document.getElementById("heroGoalPct");
+  const circ = 188.5;
+  if (arcEl && pctEl) {
+    if (flaggedHours > 0) {
+      const pct = Math.min(1, weekHours / flaggedHours);
+      arcEl.style.strokeDashoffset = String(circ - pct * circ);
+      pctEl.textContent = Math.round(pct * 100) + "%";
+    } else {
+      arcEl.style.strokeDashoffset = String(circ);
+      pctEl.textContent = "—";
+    }
+  }
+
+  // Pace line
+  const paceEl = document.getElementById("heroPaceLine");
+  if (paceEl) {
+    if (daysWorked > 0 && weekDollars > 0) {
+      const proj = round2((weekDollars / daysWorked) * 5);
+      const avgJob = todayCount > 0 ? ` · ${formatMoney(round2(todayDollars / todayCount))}/job` : "";
+      paceEl.textContent = `On pace for ${formatMoney(proj)}${avgJob}`;
+    } else if (todayCount > 0) {
+      paceEl.textContent = `${formatMoney(round2(todayDollars / todayCount))}/job avg`;
+    } else {
+      paceEl.textContent = "";
+    }
+  }
+}
+
+function renderHeroChart(entries, weekStart) {
+  const svg = document.getElementById("heroChartSvg");
+  const labelsRow = document.getElementById("heroChartLabels");
+  if (!svg || !labelsRow) return;
+
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const today = new Date();
+  const todayKey = todayKeyLocal();
+
+  // Build 7-day buckets starting from weekStart
+  const buckets = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const k = dateKey(d);
+    const dayEntries = entries.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === k);
+    const dollars = dayEntries.reduce((s, e) => s + (Number(e.dollars) || 0), 0);
+    buckets.push({ label: days[d.getDay()], key: k, dollars, isToday: k === todayKey });
+  }
+
+  const max = Math.max(...buckets.map(b => b.dollars), 1);
+  const W = 300, H = 52, barW = 30, gap = (W - 7 * barW) / 8;
+
+  let svgContent = "";
+  buckets.forEach((b, i) => {
+    const x = gap + i * (barW + gap);
+    const barH = Math.max(3, (b.dollars / max) * (H - 6));
+    const y = H - barH;
+    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? "rgba(34,197,94,.28)" : "rgba(255,255,255,.06)";
+    svgContent += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${barH.toFixed(1)}" rx="4" fill="${color}"/>`;
+  });
+  svg.innerHTML = svgContent;
+
+  labelsRow.innerHTML = buckets.map(b =>
+    `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">${b.label}</span>`
+  ).join("");
+}
+
 async function repeatLastEntry() {
   const entries = Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
   const last = entries[0];
@@ -1779,6 +1852,9 @@ function renderList(entries, mode){
   const buildEntry = (e) => {
     const row = document.createElement("div");
     row.className = hlQ ? "item" : "item collapsed";
+    const tc = (e.type || e.typeText || "").toLowerCase().replace(/\s+/g, "");
+    const tcMap = { sold: "sold", warranty: "warranty", fpf: "fpf", preowned: "preowned", "pre-owned": "preowned" };
+    row.dataset.tc = tcMap[tc] || "default";
     const refLabel = e.refType === "STOCK" ? "STK" : "RO";
     const refVal = hl(e.ref || e.ro || "—");
     const entryId = escapeHtml(String(e.id ?? ""));
@@ -2112,6 +2188,8 @@ async function refreshUI(entriesOverride){
 
   // Week
   const week = computeWeek(entries, ws);
+  // Hero chart (needs week data, render early)
+  renderHeroChart(entries, ws);
 
   setText("weekHours", round1(week.hours));
   setText("weekDollars", formatMoney(week.dollars));
@@ -2147,6 +2225,12 @@ async function refreshUI(entriesOverride){
         ? `Goal reached! ${formatMoney(week.dollars)} earned this week`
         : `${rem} hrs to go • ${formatMoney(week.dollars)} earned so far`;
     }
+  }
+
+  // Hero section update (needs flaggedHours + week data)
+  {
+    const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
+    updateHeroSection(today.dollars, week.hours, flagged, today.count, daysWorked, week.dollars);
   }
 
   // Pace projection + daily avg/job
