@@ -19,70 +19,87 @@ serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
-    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 256,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: { type: "base64", media_type: mediaType, data: imageBase64 },
-              },
-              {
-                type: "text",
-                text: `You are reading an automotive dealership document from Flow Motors Winston Salem. It may be handwritten or printed. Read carefully.
+    const prompt = `You are reading a Flow Motors Winston Salem automotive document. Extract data precisely.
 
-STEP 1 — Identify the document type:
+THERE ARE 3 DOCUMENT TYPES:
 
-A) REPAIR ORDER — printed form with "WORKORDER" or "Work Order" or "R.O." at the top, usually has a customer address, VIN bar, line items with labor codes. The RO number is the large number printed at the top (e.g. "490060").
+TYPE A — HANDWRITTEN GET READY (yellow paper):
+- Header says "Flow Motors Winston Salem / New- Preowned Get Ready"
+- Handwritten fields: "Stock" (e.g. "VXS13593"), "VIN Verification" (e.g. "TCS19634")
+- NO repair order number on this form
 
-B) GET READY / PRE-OWNED GET READY — titled "Get Ready", "Pre-Owned Get Ready", "New-Preowned Get Ready", or "Detail Sheet". These have a Stock # and VIN field but NO repair order number.
+TYPE B — PRINTED GET READY (white paper with checkboxes):
+- Header says "FLOW MOTORS WINSTON SALEM / NEW - PRE-OWNED GET READY" or "NEW/PRE-OWNED GET READY"
+- Printed fields: "STOCK #" (e.g. "SXS14394A", "DT253"), "VIN (LAST 6)" (e.g. "D53269", "169625")
+- NO repair order number on this form
 
-STEP 2 — Extract these three values:
+TYPE C — REPAIR ORDER (printed, multi-copy):
+- Header: "FLOW MOTORS OF WINSTON-SALEM" with large number next to "WORKORDER" (e.g. "490060")
+- Full 17-char VIN in vehicle bar (e.g. "4S4WMAJD6K3441392")
+- Stock may appear in options line as "SOLD-STK:S6934"
 
-1. ro — the Repair Order / Work Order number.
-   - For REPAIR ORDER docs: this is the large number labeled "WORKORDER" or printed prominently at top (e.g. 490060). Return it as a string.
-   - For GET READY docs: set to null. Get Ready slips do not have RO numbers.
-   - IGNORE any large handwritten numbers written in marker on the page — those are internal reach/tech numbers, NOT the RO.
+CRITICAL — IGNORE THE TECH NUMBER:
+- Every form has a large 5-digit handwritten number in blue/green marker (e.g. "10537", "10534")
+- This is the technician reach number — NOT the RO, stock, or VIN — IGNORE IT
 
-2. stk — the Stock number, labeled "STOCK #", "STK#", "Stock", or "Stock No". Usually alphanumeric like "SXS14394A" or "VXS13593" or "S6934". Return it as a string or null.
-
-3. vin — a full 17-character VIN, OR whatever appears next to a label that says "VIN", "VIN (LAST 6)", "VIN Verification", or "VIN#". May be partial (last 6-8 chars). Return it as a string or null.
+EXTRACT:
+1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
+2. stk — From "Stock", "STOCK #", or "SOLD-STK:" field. Examples: "VXS13593", "SXS14394A", "S6934", "DT253"
+3. vin — From "VIN Verification", "VIN (LAST 6)", or VIN bar. 6–17 chars. Examples: "TCS19634", "D53269", "4S4WMAJD6K3441392"
 
 Return ONLY this JSON, nothing else:
-{"ro": null, "vin": "TCS19634", "stk": "VXS13593"}
+{"ro": null, "vin": "TCS19634", "stk": "VXS13593"}`;
 
-Use null for any value not clearly labeled. Never guess unlabeled numbers.`,
-              },
-            ],
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: mediaType,
+                    data: imageBase64,
+                  },
+                },
+                { text: prompt },
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0,
+            thinkingConfig: { thinkingBudget: 0 },
           },
-        ],
-      }),
-    });
+        }),
+      }
+    );
 
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text().catch(() => "");
-      console.error("Claude error", claudeRes.status, errText);
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text().catch(() => "");
+      let errMsg = errText;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson?.error?.message || errText;
+      } catch { /* use raw text */ }
+      console.error("Gemini error", geminiRes.status, errText);
       return new Response(
-        JSON.stringify({ error: `Claude ${claudeRes.status}: ${errText}` }),
+        JSON.stringify({ error: `Gemini ${geminiRes.status}: ${errMsg}` }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    const claudeData = await claudeRes.json();
-    const raw = claudeData.content?.[0]?.text?.trim() || "{}";
+    const geminiData = await geminiRes.json();
+    // 2.5-flash has thinking mode — find the non-thought text part
+    const parts = geminiData.candidates?.[0]?.content?.parts || [];
+    const textPart = parts.find((p: any) => p.text && !p.thought) || parts[0];
+    const raw = textPart?.text?.trim() || "{}";
 
     let parsed: { ro?: string | null; vin?: string | null; stk?: string | null } = {};
     try {
