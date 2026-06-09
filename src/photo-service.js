@@ -568,18 +568,20 @@ async function scanPhotoAndPrefillForm(file) {
     const { ro, vin, stk } = result || {};
     const filled = [];
 
-    // Fill stock / RO only if field is empty (don't clobber manual entry)
+    // Fill RO/Stock — prefer RO when both exist (Repair Order form)
     if (refEl && !refEl.value.trim()) {
-      const val = stk || ro || "";
-      if (val) {
-        refEl.value = val;
-        // flip the ref-type toggle to match what was found
-        if (stk) {
-          document.getElementById("refTypeSTK")?.click();
-        } else {
-          document.getElementById("refTypeRO")?.click();
-        }
-        filled.push(stk ? `STK ${val}` : `RO ${val}`);
+      if (ro) {
+        // RO form: fill RO number, set toggle to RO
+        refEl.value = ro;
+        document.getElementById("refTypeRO")?.click();
+        filled.push(`RO ${ro}`);
+        // Also show STK in status if present
+        if (stk) filled.push(`STK ${stk}`);
+      } else if (stk) {
+        // Get Ready form: fill stock, set toggle to Stock
+        refEl.value = stk;
+        document.getElementById("refTypeSTK")?.click();
+        filled.push(`STK ${stk}`);
       }
     }
 

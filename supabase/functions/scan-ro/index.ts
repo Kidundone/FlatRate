@@ -100,6 +100,7 @@ Return ONLY this JSON, nothing else:
     const parts = geminiData.candidates?.[0]?.content?.parts || [];
     const textPart = parts.find((p: any) => p.text && !p.thought) || parts[0];
     const raw = textPart?.text?.trim() || "{}";
+    console.log("GEMINI_RAW:", raw);
 
     let parsed: { ro?: string | null; vin?: string | null; stk?: string | null } = {};
     try {
@@ -114,6 +115,7 @@ Return ONLY this JSON, nothing else:
         ro: parsed.ro || null,
         vin: parsed.vin || null,
         stk: parsed.stk || null,
+        _raw: raw,
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );
