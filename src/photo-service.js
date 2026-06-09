@@ -571,12 +571,10 @@ async function scanPhotoAndPrefillForm(file) {
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
     if (refEl && !refEl.value.trim()) {
       if (ro) {
-        // RO form: fill RO number, set toggle to RO
-        refEl.value = ro;
+        // RO form: combine RO/STK if both present (e.g. "474073/A7001")
+        refEl.value = stk ? `${ro}/${stk}` : ro;
         document.getElementById("refTypeRO")?.click();
-        filled.push(`RO ${ro}`);
-        // Also show STK in status if present
-        if (stk) filled.push(`STK ${stk}`);
+        filled.push(stk ? `RO ${ro}/STK ${stk}` : `RO ${ro}`);
       } else if (stk) {
         // Get Ready form: fill stock, set toggle to Stock
         refEl.value = stk;
