@@ -270,7 +270,6 @@ async function backfillDealersFromPhotos(logs) {
       });
 
       updated += 1;
-      console.log("Updated:", log.id, dealer);
     } catch (e) {
       console.error("Failed:", log.id, e);
     }

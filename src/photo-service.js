@@ -565,7 +565,7 @@ async function scanPhotoAndPrefillForm(file) {
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
 
-    const { ro, vin, stk } = result || {};
+    const { ro, vin, stk, job } = result || {};
     const filled = [];
 
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
@@ -592,6 +592,12 @@ async function scanPhotoAndPrefillForm(file) {
       }
     }
 
+    // Auto-fill Work Done if empty and job was detected
+    if (typeEl && !typeEl.value.trim() && job) {
+      typeEl.value = job;
+      filled.push(`Job: ${job}`);
+    }
+
     if (filled.length) {
       // Open the details panel so user can see what was filled
       if (detailsPanel && detailsPanel.style.display === "none") {
@@ -599,8 +605,14 @@ async function scanPhotoAndPrefillForm(file) {
         if (detailsBtn) detailsBtn.textContent = "Less";
       }
       showStatus("✓ " + filled.join("  ·  "));
-      // Focus "Work Done" so the only thing left to do is type it
-      setTimeout(() => typeEl?.focus(), 80);
+      // If work done was auto-filled, focus hours; otherwise focus work done
+      setTimeout(() => {
+        if (job && typeEl?.value) {
+          document.getElementById("hours")?.focus();
+        } else {
+          typeEl?.focus();
+        }
+      }, 80);
     } else {
       showStatus("No RO, STK or VIN found — fill in manually");
       setTimeout(() => showStatus(""), 3500);

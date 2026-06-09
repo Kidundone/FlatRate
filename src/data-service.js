@@ -12,7 +12,7 @@ function sb() {
 async function setUidFromSession(session) {
   window.CURRENT_UID = session?.user?.id || null;
   window.CURRENT_USER_EMAIL = session?.user?.email || null;
-  console.log("UID:", window.CURRENT_UID);
+
 }
 
 function setAuthMessage(text = "", isError = false) {
@@ -24,7 +24,6 @@ function setAuthMessage(text = "", isError = false) {
 }
 
 async function bootAuth() {
-  console.log("bootAuth called");
   let client;
   try { client = sb(); } catch (e) {
     console.error("Supabase not ready during bootAuth:", e);
@@ -71,22 +70,18 @@ async function bootAuth() {
   });
 
   client.auth.onAuthStateChange(async (event, session) => {
-    console.log("AUTH EVENT:", event);
     await setUidFromSession(session || null);
     await initAuth();
 
     if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && window.CURRENT_UID) {
-      console.log("↩️ Loading entries after auth...");
 
       try {
         const rows = await safeLoadEntries();
-        console.log("✅ safeLoadEntries returned:", rows?.length);
         _lastLoadedAt = Date.now();
         loadSubscription().catch(() => {});
 
         if (window.__PAGE__ === "main") {
           await refreshUI(rows);
-          console.log("✅ refreshUI complete");
           // Flush any entries queued while offline — boot is the right moment
           // since the online event only fires on transitions, not on fresh loads.
           if (getPendingQueue().length > 0) {

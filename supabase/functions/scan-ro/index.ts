@@ -49,9 +49,12 @@ EXTRACT:
 1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
 2. stk — From "Stock", "STOCK #", or "SOLD-STK:" field. Examples: "VXS13593", "SXS14394A", "S6934", "DT253"
 3. vin — From "VIN Verification", "VIN (LAST 6)", or VIN bar. 6–17 chars. Examples: "TCS19634", "D53269", "4S4WMAJD6K3441392"
+4. job — A short description of the work to be done, inferred from checked boxes or line items:
+   - Type A/B Get Ready: look for checked boxes. Map them: "Detail without FPF" → "Detail no FPF", "Detail with FPF" → "Detail w/ FPF", "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "PRE-OWNED DETAIL" → "Pre-owned detail", "PDI" → "PDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "REPDI" → "REPDI". If multiple boxes checked, join with " + ". If none checked, return null.
+   - Type C Repair Order: use the DESCRIPTIONS/INSTRUCTIONS text from Line A (first line item). Keep it short (under 40 chars). If not readable, return null.
 
 Return ONLY this JSON, nothing else:
-{"ro": null, "vin": "TCS19634", "stk": "VXS13593"}`;
+{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "job": "Detail no FPF"}`;
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -114,6 +117,7 @@ Return ONLY this JSON, nothing else:
         ro: parsed.ro || null,
         vin: parsed.vin || null,
         stk: parsed.stk || null,
+        job: parsed.job || null,
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );

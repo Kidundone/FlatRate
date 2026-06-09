@@ -5,7 +5,6 @@ const FEATURE_FREEZE = Object.freeze({
   entriesDataPath: "supabase",
 });
 const ACTIVE_DATA_PATH = FEATURE_FREEZE.entriesDataPath;
-console.log("__FR_MARKER_20260316");
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -52,7 +51,6 @@ window.__FR.buildTag = BUILD_TAG;
 window.__FR.featureFreeze = FEATURE_FREEZE;
 window.__FR.activeDataPath = ACTIVE_DATA_PATH;
 window.__FR.sb = sb();
-console.log("__FR_READY_20260316", BUILD_TAG, ACTIVE_DATA_PATH, !!window.__FR.sb);
 window.__FR.supabase = window.supabase;
 
 /* -------------------- Boot -------------------- */
