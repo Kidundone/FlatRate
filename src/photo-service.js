@@ -560,7 +560,7 @@ async function scanPhotoAndPrefillForm(file) {
   showStatus("Reading photo…", true);
 
   try {
-    const dataUrl  = await compressImageFileToDataUrl(file, 1200, 0.75);
+    const dataUrl  = await compressImageFileToDataUrl(file, 800, 0.80);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
