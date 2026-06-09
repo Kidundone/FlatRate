@@ -2018,52 +2018,19 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   color: var(--muted);
 }
 
-/* ── Light theme ─────────────────────────────────── */
+/* ── Light theme — forced dark (app is always dark) ── */
 [data-theme="light"] {
-  --bg: #f2f2f7;
-  --surface: #ffffff;
-  --surface2: #f2f2f7;
-  --surface3: #e5e5ea;
-  --stroke: rgba(0,0,0,.09);
-  --stroke2: rgba(0,0,0,.18);
-
-  --text: #1c1c1e;
-  --text2: rgba(0,0,0,.72);
-  --muted: #636366;
-  --muted2: #aeaeb2;
-
-  --danger: #ff3b30;
-
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
+  --bg: #07070f;
+  --surface: #0e0e1a;
+  --surface2: #141426;
+  --surface3: #1c1c30;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
+  --text: #fff;
+  --text2: rgba(255,255,255,.72);
+  --muted: #7a7a9a;
+  --muted2: #3a3a5a;
 }
-
-[data-theme="light"] header {
-  background: rgba(242,242,247,.92);
-}
-
-[data-theme="light"] .top {
-  background: rgba(242,242,247,.92);
-}
-
-[data-theme="light"] .tabBar {
-  background: rgba(249,249,249,.96);
-  border-top-color: rgba(0,0,0,.12);
-}
-
-[data-theme="light"] .tabItem {
-  color: #8e8e93;
-}
-
-[data-theme="light"] .tabItem--active {
-  color: var(--primary);
-}
-
-[data-theme="light"] .itemInner { background: var(--surface); }
-[data-theme="light"] .item:active .itemInner { background: var(--surface2); }
-[data-theme="light"] .swipeDeleteZone { background: #ff3b30; }
-[data-theme="light"] .swipeEditZone   { background: #007aff; }
 
 [data-theme="light"] .moreToggleTrack {
   background: var(--surface3);
