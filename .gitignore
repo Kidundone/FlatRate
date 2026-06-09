@@ -5,3 +5,4 @@
 app.*.js
 app.*.css
 app.src.js
+.claude
