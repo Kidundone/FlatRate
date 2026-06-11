@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.10f79c30df.css">
+  <link rel="stylesheet" href="./app.b42b93b6b5.css">
 </head>
 <body data-page="more">
 
@@ -253,39 +253,34 @@
 
     <!-- ── Pay Trend ── -->
     <section class="card moreCard">
-      <details class="moreSectionDetails" open>
-        <summary class="moreCardHeader moreSectionSummary">Short-Pay History</summary>
-        <div class="moreCardSub" style="padding-top:0;">Load a saved week above or delete a stub here.</div>
-        <div id="payTrendCard"></div>
-      </details>
+      <div class="moreCardHeader">Short-Pay History</div>
+      <div id="payTrendCard"></div>
     </section>
 
     <!-- ── Job Types ── -->
     <section class="card moreCard">
-      <details class="moreSectionDetails">
-        <summary class="moreCardHeader moreSectionSummary">Job Types</summary>
-        <details class="typeAddDetails">
-          <summary class="typeAddSummary">+ New Type</summary>
-          <form id="savedTypeCreateForm" class="typeAddForm">
-            <div class="typeAddFields">
-              <label class="typeEditLabel typeNameField">
-                Type Name
-                <input id="savedTypeName" class="moreInput" type="text" placeholder="Brake job" autocomplete="off" />
-              </label>
-              <label class="typeEditLabel">
-                Default hrs
-                <input id="savedTypeHours" class="moreInput" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" />
-              </label>
-              <label class="typeEditLabel">
-                Rate $/hr
-                <input id="savedTypeRate" class="moreInput" inputmode="decimal" type="number" step="0.01" min="0" value="15" />
-              </label>
-              <button class="btn primary" type="submit">Add Type</button>
-            </div>
-          </form>
-        </details>
-        <div id="savedTypesList" style="padding-bottom:4px;"></div>
+      <div class="moreCardHeader">Job Types</div>
+      <details class="typeAddDetails">
+        <summary class="typeAddSummary">＋ New Type</summary>
+        <form id="savedTypeCreateForm" class="typeAddForm">
+          <div class="typeAddFields">
+            <label class="typeEditLabel typeNameField">
+              Name
+              <input id="savedTypeName" class="moreInput" type="text" placeholder="e.g. PDI" autocomplete="off" />
+            </label>
+            <label class="typeEditLabel">
+              Hrs
+              <input id="savedTypeHours" class="moreInput" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" />
+            </label>
+            <label class="typeEditLabel">
+              $/hr
+              <input id="savedTypeRate" class="moreInput" inputmode="decimal" type="number" step="0.01" min="0" value="15" />
+            </label>
+            <button class="btn primary" type="submit">Add</button>
+          </div>
+        </form>
       </details>
+      <div id="savedTypesList"></div>
     </section>
 
     <!-- ── Feedback ── -->
