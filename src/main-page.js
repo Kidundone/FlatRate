@@ -609,11 +609,11 @@ function animateFirstEntry() {
 
 function checkShortPay(entry, allEntries) {
   if (!entry || !allEntries?.length) return false;
-  const h = Number(entry.hours), d = Number(entry.dollars);
+  const h = Number(entry.hours), d = Number(entry.earnings ?? entry.dollars ?? 0);
   if (h <= 0 || d <= 0) return false;
-  const recent = allEntries.slice(0, 30).filter(e => Number(e.hours) > 0 && Number(e.dollars) > 0);
+  const recent = allEntries.slice(0, 30).filter(e => Number(e.hours) > 0 && Number(e.earnings ?? e.dollars ?? 0) > 0);
   if (recent.length < 4) return false;
-  const avg = recent.reduce((s, e) => s + Number(e.dollars) / Number(e.hours), 0) / recent.length;
+  const avg = recent.reduce((s, e) => s + Number(e.earnings ?? e.dollars ?? 0) / Number(e.hours), 0) / recent.length;
   return (d / h) < avg * 0.62;
 }
 
