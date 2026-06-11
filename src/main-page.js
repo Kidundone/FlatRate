@@ -525,9 +525,11 @@ function renderHeroChart(entries, weekStart) {
     rect.addEventListener("click", () => showDayStats(buckets[i], i));
   });
 
-  // Default: show today
-  const todayIdx = buckets.findIndex(b => b.isToday);
-  if (todayIdx >= 0) showDayStats(buckets[todayIdx], todayIdx);
+  // Default: show today — only in day mode so Week/Month/All stats aren't overwritten
+  if (!window.__RANGE_MODE__ || window.__RANGE_MODE__ === "day") {
+    const todayIdx = buckets.findIndex(b => b.isToday);
+    if (todayIdx >= 0) showDayStats(buckets[todayIdx], todayIdx);
+  }
 }
 
 /* ─── Animation & effects helpers ───────────────────── */
@@ -995,12 +997,15 @@ function buildHistEntryRow(e) {
 
   const row = document.createElement("div");
   row.className = "histEntryRow";
+  // Ref number — tappable to view photo when one exists
+  const refHtml = hasPhoto
+    ? `<span class="histEntryRefNum histEntryRefNum--photo" title="Tap to view photo"><span class="histEntryRefPhotoIcon">📷</span>${refLabel} ${escapeHtml(refVal)}</span>`
+    : `<span class="histEntryRefNum">${refLabel} ${escapeHtml(refVal)}</span>`;
   row.innerHTML = `
     <div class="histEntryLeft">
       <div class="histEntryTopLine">
-        <span class="histEntryRefNum">${refLabel} ${escapeHtml(refVal)}</span>
+        ${refHtml}
         ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
-        ${hasPhoto ? `<span class="histPhotoTag">📷</span>` : ""}
       </div>
       <div class="histEntryTypeLine">
         ${typeBadgeHtml(e.type || e.typeText || "—")}
@@ -1011,7 +1016,6 @@ function buildHistEntryRow(e) {
       <div class="histEntryActions">
         <button class="iBtn" data-edit-id="${escapeHtml(String(e.id ?? ""))}" ${e.id == null ? "disabled" : ""}>Edit</button>
         <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
-        ${hasPhoto ? `<button class="iBtn" data-action="view-photo" data-id="${e.id}">Photo</button>` : ""}
       </div>
     </div>
     <div class="histEntryRight">
@@ -1023,8 +1027,8 @@ function buildHistEntryRow(e) {
   const editBtn = row.querySelector("[data-edit-id]");
   if (editBtn) editBtn.addEventListener("click", () => { showHistory(false); startEditEntry(e); });
   if (hasPhoto) {
-    const photoBtn = row.querySelector('[data-action="view-photo"]');
-    if (photoBtn) photoBtn.addEventListener("click", () => openPhoto(e));
+    const refEl = row.querySelector(".histEntryRefNum--photo");
+    if (refEl) refEl.addEventListener("click", (ev) => { ev.stopPropagation(); openPhoto(e); });
   }
   return row;
 }

@@ -1391,6 +1391,20 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 [data-theme="light"] .histEntryRefNum { color: var(--text); }
 
+/* Tappable ref when entry has a photo */
+.histEntryRefNum--photo {
+  color: var(--primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.histEntryRefNum--photo:active { opacity: .7; }
+.histEntryRefPhotoIcon { font-size: 13px; line-height: 1; }
+[data-theme="light"] .histEntryRefNum--photo { color: var(--primary); }
+
 .histPhotoTag {
   font-size: 14px;
   line-height: 1;
@@ -2742,16 +2756,16 @@ body.compact .list    { gap: 1px; }
 .heroSection {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 8px 16px 10px;
+  gap: 14px;
+  padding: 6px 16px 8px;
   max-width: 680px;
   margin: 0 auto;
 }
 
 .heroGoalRingWrap {
   position: relative;
-  width: 96px;
-  height: 76px;
+  width: 80px;
+  height: 64px;
   flex-shrink: 0;
 }
 .heroGoalRingWrap svg { display: block; }
@@ -2786,27 +2800,27 @@ body.compact .list    { gap: 1px; }
   margin-bottom: 1px;
 }
 .heroAmt {
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 500;
   color: #fff;
-  letter-spacing: -1.5px;
+  letter-spacing: -1.2px;
   line-height: 1;
 }
 .heroSubLine {
   font-size: 10px;
   color: var(--muted2);
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .heroPaceLine {
   font-size: 10px;
   color: var(--primary);
   margin-top: 2px;
-  min-height: 14px;
+  min-height: 13px;
 }
 
 /* ── Hero chart card (unified range + chart + stats) ─ */
 .heroChartCard {
-  padding: 0 16px 12px;
+  padding: 0 16px 8px;
   max-width: 680px;
   margin: 0 auto;
 }

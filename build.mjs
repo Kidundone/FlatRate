@@ -107,18 +107,28 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
-  e.respondWith(
-    caches.match(e.request).then(hit => {
+  e.respondWith((async () => {
+    // Exact cache match
+    let hit = await caches.match(e.request);
+    if (hit) return hit;
+    // For navigation to extensionless paths (e.g. /more), serve cached .html
+    // directly — avoids Safari WebKit redirect error from SW-intercepted redirects
+    if (e.request.mode === "navigate" && !url.pathname.includes(".")) {
+      const htmlPath = url.pathname.replace(/\\/?$/, ".html");
+      hit = await caches.match(new Request(url.origin + htmlPath));
       if (hit) return hit;
-      return fetch(e.request).then(res => {
-        if (res && res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => caches.match("./index.html"));
-    })
-  );
+    }
+    try {
+      const res = await fetch(e.request);
+      if (res && res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    } catch {
+      return caches.match("./index.html");
+    }
+  })());
 });
 `);
 
