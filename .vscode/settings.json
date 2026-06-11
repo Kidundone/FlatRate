@@ -1,0 +1,16 @@
+{
+  "files.exclude": {
+    "**/.claude": true,
+    "**/.netlify": true,
+    "**/.sixth": true,
+    "app.*.css": true,
+    "app.*.js": true,
+    "app.src.js": true,
+    "sw.js": true,
+    "package-lock.json": true,
+    "supabase_feedback.sql": true,
+    "ARCHITECTURE.md": true,
+    "DEPLOY-CHECKLIST.md": true,
+    "TEST-CHECKLIST.md": true
+  }
+}

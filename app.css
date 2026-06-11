@@ -3192,3 +3192,84 @@ body.compact .list    { gap: 1px; }
 .emptyIcon { font-size:40px; line-height:1.1; }
 .emptyTitle { font-size:15px; font-weight:600; color:var(--text); margin-top:4px; }
 .emptySub { font-size:12px; color:var(--muted); max-width:220px; line-height:1.55; }
+
+/* ── fr26Wrap — form positioned outside <main> ────── */
+.fr26Wrap {
+  padding: 0 16px 8px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* ── Label row (label + timer button on same line) ── */
+.fr26LabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Job timer button ───────────────────────────── */
+.fr26TimerBtn {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--stroke2);
+  border-radius: var(--r-pill);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 120ms, color 120ms, border-color 120ms;
+  touch-action: manipulation;
+  letter-spacing: .3px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.fr26TimerBtn::before { content: "⏱"; font-size: 14px; font-family: inherit; }
+.fr26TimerBtn--running {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.45);
+  color: #ef4444;
+}
+.fr26TimerBtn--running::before { content: "■"; font-size: 10px; }
+.fr26TimerBtn:active { transform: scale(.93); transition-duration: 60ms; }
+[data-theme="light"] .fr26TimerBtn { background: var(--surface2); border-color: var(--stroke); }
+
+/* ── Comeback chip active state ─────────────────── */
+.fr26ChipComeback--active {
+  background: rgba(239,68,68,.12) !important;
+  border-color: rgba(239,68,68,.45) !important;
+  color: #ef4444 !important;
+}
+
+/* ── Short-pay alert banner ─────────────────────── */
+.shortPayAlert {
+  display: none;
+  margin: 0 16px 6px;
+  max-width: calc(680px - 32px);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px 14px;
+  background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: var(--r-lg);
+  font-size: 13px;
+  font-weight: 600;
+  color: #f59e0b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.shortPayAlert a {
+  color: inherit;
+  text-decoration: none;
+  margin-left: auto;
+  font-size: 12px;
+  opacity: .85;
+  white-space: nowrap;
+}
+.shortPayAlert:empty, .shortPayAlert[hidden] { display: none !important; }
+[data-theme="light"] .shortPayAlert { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }

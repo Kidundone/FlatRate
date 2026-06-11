@@ -1282,6 +1282,20 @@ function updateShortPayBadge() {
   } else {
     badge.style.display = "none";
   }
+
+  // Surface short-pay alert on main page
+  const alert = document.getElementById("shortPayAlert");
+  if (alert) {
+    if (shortCount > 0) {
+      const span = alert.querySelector("span");
+      if (span) span.textContent = `⚠️ ${shortCount} week${shortCount > 1 ? "s" : ""} with possible short-pay`;
+      alert.removeAttribute("hidden");
+      alert.style.display = "flex";
+    } else {
+      alert.setAttribute("hidden", "");
+      alert.style.display = "none";
+    }
+  }
 }
 
 function maybeShowOnboarding() {
@@ -2678,6 +2692,96 @@ const TOUR_STEPS = [
     action: "goto-more",
   },
 ];
+
+// ── Job Timer ────────────────────────────────────────────
+(function initJobTimer() {
+  const btn = document.getElementById("timerBtn");
+  if (!btn) return;
+  let interval = null;
+
+  function getStart() {
+    const v = localStorage.getItem("fr_timer_start");
+    return v ? parseInt(v, 10) : null;
+  }
+
+  function fmt(ms) {
+    const totalS = Math.floor(ms / 1000);
+    const h = Math.floor(totalS / 3600);
+    const m = Math.floor((totalS % 3600) / 60);
+    const s = totalS % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  }
+
+  function tick() {
+    const start = getStart();
+    if (!start) return;
+    btn.textContent = fmt(Date.now() - start);
+  }
+
+  function startTimer() {
+    localStorage.setItem("fr_timer_start", String(Date.now()));
+    btn.classList.add("fr26TimerBtn--running");
+    clearInterval(interval);
+    interval = setInterval(tick, 1000);
+    tick();
+    toast("Timer started");
+  }
+
+  function stopTimer() {
+    const start = getStart();
+    clearInterval(interval);
+    interval = null;
+    btn.classList.remove("fr26TimerBtn--running");
+    btn.textContent = "Start Timer";
+    localStorage.removeItem("fr_timer_start");
+    if (!start) return;
+    const hrs = (Date.now() - start) / 3_600_000;
+    const rounded = Math.max(0.1, Math.round(hrs * 10) / 10);
+    const hoursEl = document.getElementById("hours");
+    if (hoursEl) {
+      hoursEl.value = String(rounded);
+      hoursEl.dispatchEvent(new Event("input", { bubbles: true }));
+      hoursEl.focus();
+    }
+    toast(`Timer stopped — ${rounded}h logged`);
+  }
+
+  btn.addEventListener("click", () => {
+    if (getStart()) stopTimer();
+    else startTimer();
+  });
+
+  // Resume if timer was running before page reload
+  if (getStart()) {
+    btn.classList.add("fr26TimerBtn--running");
+    tick();
+    clearInterval(interval);
+    interval = setInterval(tick, 1000);
+  }
+})();
+
+// ── Comeback quick chip ───────────────────────────────────
+(function initComebackChip() {
+  const chip = document.getElementById("comebackChipBtn");
+  const cb   = document.getElementById("isComeback");
+  if (!chip || !cb) return;
+
+  function syncChip() {
+    chip.classList.toggle("fr26ChipComeback--active", !!cb.checked);
+    chip.textContent = cb.checked ? "✓ Comeback" : "Comeback";
+  }
+
+  chip.addEventListener("click", () => {
+    cb.checked = !cb.checked;
+    const panel = document.getElementById("detailsPanel");
+    if (cb.checked && panel) panel.style.display = "";
+    syncChip();
+  });
+
+  cb.addEventListener("change", syncChip);
+  syncChip();
+})();
 
 // ── Hero chart range tab wiring ──────────────────────────
 document.addEventListener("click", ev => {
