@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.9113ec63b4.css">
+  <link rel="stylesheet" href="./app.db6e6b81f9.css">
 </head>
 <body data-page="main">
 
@@ -46,6 +46,24 @@
     <div class="heroAmt" id="heroPayAmt">$0</div>
     <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
+    <div id="heroRecords" class="heroRecords" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ── Goal setter popover (tap ring to open) ── -->
+<div id="goalPopover" class="goalPopover" style="display:none;" role="dialog" aria-label="Set weekly goal">
+  <div class="goalPopoverInner card">
+    <div class="goalPopoverTitle">Weekly Goal</div>
+    <div class="seg goalTypeSeg">
+      <button type="button" class="segBtn active" id="goalTypeHours">Hours</button>
+      <button type="button" class="segBtn" id="goalTypePay">Pay ($)</button>
+    </div>
+    <input id="goalValueInput" type="number" inputmode="decimal" step="1" min="0" class="fr26Input" placeholder="40" />
+    <div class="goalPopoverHint" id="goalPopoverHint">Target hours per week</div>
+    <div class="goalPopoverActions">
+      <button type="button" class="fr26BtnPrimary goalSaveBtn" id="goalSaveBtn">Set Goal</button>
+      <button type="button" class="fr26Chip fr26ChipGhost" id="goalCancelBtn">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -339,7 +357,9 @@
     <div class="entryActions">
       <button class="btn" id="historyBtn" type="button">Full History</button>
       <button class="btn" id="shareTodayBtn" type="button">Share Day</button>
+      <button class="btn" id="shareWeekCardBtn" type="button">Share Week 📊</button>
       <button class="btn" id="shareWeekPDFBtn" type="button">Email PDF</button>
+      <button class="btn" id="notifSetupBtn" type="button">🔔 Reminders</button>
       <button class="btn" id="shareReferralBtn" type="button">Refer a Tech 🔧</button>
     </div>
     <div class="entrySelectionActions" id="entrySelectionActions">
@@ -474,6 +494,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.f20507908f.js" defer></script>
+<script src="./app.6664088925.js" defer></script>
 </body>
 </html>

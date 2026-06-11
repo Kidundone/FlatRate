@@ -3236,22 +3236,30 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   const payEl = document.getElementById("heroPayAmt");
   if (payEl) animateHeroNumber(payEl, todayDollars);
 
-  // Goal ring — shows week hours progress
+  // Goal ring — supports hours goal OR pay goal
   const arcEl = document.getElementById("heroGoalArc");
   const pctEl = document.getElementById("heroGoalPct");
   const subEl2 = document.getElementById("heroGoalSub");
   const circ = 238.8;
   if (arcEl && pctEl) {
-    const maxHrs = flaggedHours > 0 ? flaggedHours : 40; // default 40hr week
-    const pct = Math.min(1, weekHours / maxHrs);
+    const goalType = localStorage.getItem("fr_goal_type") || "hours";
+    const goalVal  = Number(localStorage.getItem("fr_goal_value") || 0);
+    let pct, display, subTxt;
+
+    if (goalType === "pay" && goalVal > 0) {
+      pct = Math.min(1, weekDollars / goalVal);
+      display = String(Math.round(pct * 100)) + "%";
+      subTxt = `of ${formatMoney(goalVal)}`;
+    } else {
+      const maxHrs = goalVal > 0 ? goalVal : (flaggedHours > 0 ? flaggedHours : 40);
+      pct = Math.min(1, weekHours / maxHrs);
+      display = weekHours > 0 ? (Math.round(weekHours * 10) / 10).toFixed(1) : "0";
+      subTxt = maxHrs > 40 || goalVal > 0 ? `/ ${(Math.round(maxHrs * 10) / 10).toFixed(0)}h` : "WK HRS";
+    }
+
     arcEl.style.strokeDashoffset = String(circ - pct * circ);
-    const hrsDisplay = weekHours > 0
-      ? (Math.round(weekHours * 10) / 10).toFixed(1)
-      : "0";
-    pctEl.textContent = hrsDisplay;
-    if (subEl2) subEl2.textContent = flaggedHours > 0
-      ? `/ ${(Math.round(flaggedHours * 10) / 10).toFixed(0)}h`
-      : "WK HRS";
+    pctEl.textContent = display;
+    if (subEl2) subEl2.textContent = subTxt;
   }
 
   // Sub line — show week total
@@ -3283,6 +3291,7 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   }
   checkPayMilestone(todayDollars);
   updateStreakBadge(computeStreak(allEntries || []));
+  updateHeroRecords(allEntries || []);
 }
 
 function renderHeroChart(entries, weekStart) {
@@ -4298,6 +4307,10 @@ window.__FR.maybeShowOnboarding = maybeShowOnboarding;
 window.__FR.maybeStartTour = maybeStartTour;
 window.__FR.shareReferral = shareReferral;
 window.__FR.shareWeekPDF = shareWeekPDF;
+window.__FR.shareWeekCard = shareWeekCard;
+window.__FR.requestPushPermission = requestPushPermission;
+window.__FR.render8WeekChart = render8WeekChart;
+window.__FR.renderComebackStats = renderComebackStats;
 
 let _syncLock = false;
 async function flushPendingSync() {
@@ -5490,6 +5503,10 @@ async function refreshUI(entriesOverride){
   syncSelectionUI();
   loadPhotoThumbs();
 
+  // More page extras (no-op if elements don't exist on main page)
+  render8WeekChart(allEntries);
+  renderComebackStats(allEntries);
+
   // stash last week calc for export (delta always set)
   window.__WEEK_STATE__ = { ws, we, week, flagged, delta };
 }
@@ -5549,6 +5566,386 @@ const TOUR_STEPS = [
     action: "goto-more",
   },
 ];
+
+// ── Goal Setter (tap hero ring) ──────────────────────────
+(function initGoalSetter() {
+  const ringWrap  = document.querySelector(".heroGoalRingWrap");
+  const popover   = document.getElementById("goalPopover");
+  if (!ringWrap || !popover) return;
+
+  const LS_TYPE = "fr_goal_type";
+  const LS_VAL  = "fr_goal_value";
+
+  function getGoalType()  { return localStorage.getItem(LS_TYPE) || "hours"; }
+  function getGoalValue() { return Number(localStorage.getItem(LS_VAL) || 0); }
+
+  function syncTypeUI() {
+    const t = getGoalType();
+    document.getElementById("goalTypeHours")?.classList.toggle("active", t === "hours");
+    document.getElementById("goalTypePay")?.classList.toggle("active", t === "pay");
+    const hint = document.getElementById("goalPopoverHint");
+    if (hint) hint.textContent = t === "pay" ? "Target pay per week (e.g. 1500)" : "Target hours per week (e.g. 40)";
+    const input = document.getElementById("goalValueInput");
+    if (input) input.placeholder = t === "pay" ? "1500" : "40";
+  }
+
+  function openPopover() {
+    const input = document.getElementById("goalValueInput");
+    if (input) { input.value = getGoalValue() || ""; }
+    syncTypeUI();
+    popover.style.display = "flex";
+    requestAnimationFrame(() => document.getElementById("goalValueInput")?.focus());
+  }
+
+  function closePopover() { popover.style.display = "none"; }
+
+  ringWrap.addEventListener("click", openPopover);
+
+  document.getElementById("goalTypeHours")?.addEventListener("click", () => {
+    localStorage.setItem(LS_TYPE, "hours");
+    syncTypeUI();
+  });
+  document.getElementById("goalTypePay")?.addEventListener("click", () => {
+    localStorage.setItem(LS_TYPE, "pay");
+    syncTypeUI();
+  });
+
+  document.getElementById("goalSaveBtn")?.addEventListener("click", () => {
+    const val = Number(document.getElementById("goalValueInput")?.value || 0);
+    if (val <= 0) { toast("Enter a goal greater than 0"); return; }
+    localStorage.setItem(LS_VAL, String(val));
+    const type = getGoalType();
+    if (type === "hours") {
+      // Also persist as flaggedHours for backward compat
+      const fhEl = document.getElementById("flaggedHours");
+      if (fhEl) { fhEl.value = String(val); fhEl.dispatchEvent(new Event("change")); }
+      saveSettings?.({ flaggedHours: val });
+    }
+    toast(`Goal set: ${type === "pay" ? formatMoney(val) : val + "h"} / week`);
+    closePopover();
+    refreshUI(CURRENT_ENTRIES);
+  });
+
+  document.getElementById("goalCancelBtn")?.addEventListener("click", closePopover);
+  popover.addEventListener("click", e => { if (e.target === popover) closePopover(); });
+})();
+
+// ── Best records ─────────────────────────────────────────
+function computeBestRecords(entries) {
+  if (!entries?.length) return null;
+  const byDay = new Map();
+  const byWeek = new Map();
+  for (const e of entries) {
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt);
+    const wk = e.weekStartKey || "";
+    if (dk) {
+      const d = byDay.get(dk) || { dollars: 0, hours: 0 };
+      d.dollars += Number(e.earnings || 0);
+      d.hours   += Number(e.hours || 0);
+      byDay.set(dk, d);
+    }
+    if (wk) {
+      const w = byWeek.get(wk) || { dollars: 0, hours: 0 };
+      w.dollars += Number(e.earnings || 0);
+      w.hours   += Number(e.hours || 0);
+      byWeek.set(wk, w);
+    }
+  }
+  let bestDay = null, bestWeek = null;
+  for (const [dk, d] of byDay) if (!bestDay || d.dollars > bestDay.dollars) bestDay = { dk, ...d };
+  for (const [wk, w] of byWeek) if (!bestWeek || w.dollars > bestWeek.dollars) bestWeek = { wk, ...w };
+  return { bestDay, bestWeek };
+}
+
+function updateHeroRecords(allEntries) {
+  const el = document.getElementById("heroRecords");
+  if (!el) return;
+  const empId = getEmpId();
+  if (!empId) { el.style.display = "none"; return; }
+  const own = filterEntriesByEmp(normalizeEntries(allEntries), empId);
+  const records = computeBestRecords(own);
+  const parts = [];
+  if (records?.bestDay?.dollars > 0) parts.push(`🏆 Best day ${formatMoney(round2(records.bestDay.dollars))}`);
+  if (records?.bestWeek?.dollars > 0) parts.push(`📅 Best week ${formatMoney(round2(records.bestWeek.dollars))}`);
+  if (parts.length) {
+    el.textContent = parts.join("  ·  ");
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
+}
+
+// ── Share Week card (Canvas → PNG) ───────────────────────
+async function shareWeekCard() {
+  const empId = getEmpId();
+  if (!empId) { toast("Employee # required"); return; }
+
+  const now = new Date();
+  const ws  = startOfWeekLocal(now);
+  const we  = endOfWeekLocal(now);
+  const wk  = dateKey(ws);
+
+  const all = Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
+  const entries = all.filter(e => {
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt);
+    return dk >= wk && dk <= dateKey(we);
+  });
+
+  const totals = computeTotals(entries);
+  const comebacks = entries.filter(e => e.isComeback).length;
+
+  const W = 560, H = 310;
+  const canvas = document.createElement("canvas");
+  canvas.width = W * 2; canvas.height = H * 2;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#0d1f14");
+  bg.addColorStop(1, "#07070f");
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(0, 0, W, H, 18);
+  else ctx.rect(0, 0, W, H);
+  ctx.fill();
+
+  // Green top bar
+  const bar = ctx.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, "#22c55e");
+  bar.addColorStop(1, "#16a34a");
+  ctx.fillStyle = bar;
+  ctx.fillRect(0, 0, W, 3);
+
+  // Header
+  ctx.fillStyle = "rgba(34,197,94,.9)";
+  ctx.font = "bold 13px -apple-system,system-ui,sans-serif";
+  ctx.fillText("FLAT-RATE TRACKER", 24, 30);
+
+  ctx.fillStyle = "rgba(255,255,255,.45)";
+  ctx.font = "12px -apple-system,system-ui,sans-serif";
+  const dateLabel = `${ws.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${we.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
+  ctx.fillText(dateLabel, 24, 48);
+
+  // Big earnings number
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold 54px -apple-system,system-ui,sans-serif`;
+  ctx.fillText(formatMoney(totals.dollars), 22, 112);
+
+  // Stats row
+  const stats = [
+    { v: String(round1(totals.hours)), l: "hrs" },
+    { v: String(totals.count), l: "jobs" },
+    { v: totals.count > 0 ? formatMoney(round2(totals.dollars / totals.count)) : "—", l: "avg/job" },
+    ...(comebacks > 0 ? [{ v: String(comebacks), l: "comebacks" }] : []),
+  ];
+  let sx = 24;
+  for (const s of stats) {
+    ctx.fillStyle = "rgba(255,255,255,.92)";
+    ctx.font = `bold 17px -apple-system,system-ui,sans-serif`;
+    ctx.fillText(s.v, sx, 148);
+    ctx.fillStyle = "rgba(255,255,255,.38)";
+    ctx.font = `11px -apple-system,system-ui,sans-serif`;
+    ctx.fillText(s.l, sx, 163);
+    sx += 110;
+  }
+
+  // Mini day bars
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const barData = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    const dk = dateKey(d);
+    const dayEntries = entries.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === dk);
+    barData.push({ label: days[d.getDay()], dollars: dayEntries.reduce((s, e) => s + Number(e.earnings || 0), 0) });
+  }
+  const maxBar = Math.max(...barData.map(b => b.dollars), 1);
+  const bH = 65, bW = 52, bGap = (W - 48 - 7 * bW) / 6;
+  barData.forEach((b, i) => {
+    const x = 24 + i * (bW + bGap);
+    const h = Math.max(3, (b.dollars / maxBar) * bH);
+    const y = 175 + bH - h;
+    ctx.fillStyle = b.dollars > 0 ? "rgba(34,197,94,.7)" : "rgba(255,255,255,.08)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, bW, h, 4);
+    else ctx.rect(x, y, bW, h);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.38)";
+    ctx.font = "10px -apple-system,system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(b.label, x + bW / 2, 254);
+  });
+  ctx.textAlign = "left";
+
+  // Watermark
+  ctx.fillStyle = "rgba(255,255,255,.18)";
+  ctx.font = "10px -apple-system,system-ui,sans-serif";
+  ctx.fillText("nellylabs.dev", W - 90, H - 12);
+
+  try {
+    const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+    const file = new File([blob], `flat-rate-week-${wk}.png`, { type: "image/png" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: `Week of ${wk}` });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `flat-rate-week-${wk}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("Week card saved!");
+    }
+  } catch { toast("Couldn't share — try Email PDF instead"); }
+}
+
+// ── Push notification reminder ────────────────────────────
+function initPushNotifications() {
+  if (localStorage.getItem("fr_notif_enabled") === "1" && Notification.permission === "granted") {
+    scheduleEndOfDayReminder();
+  }
+}
+
+function scheduleEndOfDayReminder() {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(16, 30, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const delay = target.getTime() - now.getTime();
+  setTimeout(async () => {
+    const empId = getEmpId();
+    if (empId && Notification.permission === "granted") {
+      const today = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+        .filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === todayKeyLocal() && String(e.empId || "") === String(empId));
+      if (!today.length) {
+        new Notification("Flat-Rate Tracker", {
+          body: "Shift's almost done — did you log all your jobs?",
+          icon: "./icon-192.png",
+        });
+      }
+    }
+    // Reschedule for tomorrow
+    setTimeout(scheduleEndOfDayReminder, 70_000);
+  }, delay);
+}
+
+async function requestPushPermission() {
+  if (!("Notification" in window)) { toast("Notifications not supported on this device"); return; }
+  if (Notification.permission === "denied") {
+    toast("Notifications blocked — enable in your browser/phone Settings");
+    return;
+  }
+  if (Notification.permission === "granted") {
+    localStorage.setItem("fr_notif_enabled", "1");
+    scheduleEndOfDayReminder();
+    toast("🔔 Reminder already enabled — 4:30pm if nothing logged");
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === "granted") {
+    localStorage.setItem("fr_notif_enabled", "1");
+    scheduleEndOfDayReminder();
+    toast("🔔 Reminder set for 4:30pm if no jobs logged");
+  } else {
+    toast("Notifications not enabled");
+  }
+}
+
+// ── 8-week earnings chart (More > History) ───────────────
+function render8WeekChart(allEntries) {
+  const el = document.getElementById("eightWeekChartCard");
+  if (!el) return;
+  const empId = getEmpId();
+  const own = filterEntriesByEmp(normalizeEntries(allEntries || []), empId);
+
+  if (!own.length) {
+    el.innerHTML = `<div class="eightWkEmptyState">Log a few weeks of jobs to see trends here.</div>`;
+    return;
+  }
+
+  const weeks = [];
+  const now = new Date();
+  for (let i = 7; i >= 0; i--) {
+    const anchor = new Date(now);
+    anchor.setDate(anchor.getDate() - i * 7);
+    const ws2 = startOfWeekLocal(anchor);
+    const we2 = endOfWeekLocal(anchor);
+    const wk2 = dateKey(ws2), wkEnd = dateKey(we2);
+    const wEntries = own.filter(e => {
+      const dk = e.dayKey || dayKeyFromISO(e.createdAt || "");
+      return dk >= wk2 && dk <= wkEnd;
+    });
+    const dollars = round2(wEntries.reduce((s, e) => s + Number(e.earnings || 0), 0));
+    const label = ws2.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    weeks.push({ dollars, label, isCurrent: i === 0 });
+  }
+
+  const maxD = Math.max(...weeks.map(w => w.dollars), 1);
+  const W2 = 340, H2 = 80, bW2 = 30, gap2 = (W2 - 8 * bW2) / 9;
+  const isLight = document.documentElement.dataset.theme === "light";
+  const pastC = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+  const emptyC = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
+
+  let rects = "";
+  weeks.forEach((w, i) => {
+    const x = gap2 + i * (bW2 + gap2);
+    const bH2 = Math.max(3, (w.dollars / maxD) * (H2 - 12));
+    const y2 = H2 - bH2;
+    const fill = w.isCurrent ? "#22c55e" : w.dollars > 0 ? pastC : emptyC;
+    rects += `<rect class="eightWkBar" x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bW2}" height="${bH2.toFixed(1)}" rx="4" fill="${fill}" style="transform-origin:${(x+bW2/2).toFixed(1)}px ${H2}px;transform:scaleY(0);transition:transform 360ms cubic-bezier(.34,1.56,.64,1) ${i*40}ms"/>`;
+    if (w.dollars > 0) {
+      rects += `<text x="${(x+bW2/2).toFixed(1)}" y="${(y2-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${w.isCurrent ? "#22c55e" : "rgba(255,255,255,.5)"}">${formatMoney(w.dollars)}</text>`;
+    }
+  });
+
+  const labels = weeks.map((w, i) =>
+    `<span class="eightWkLabel${w.isCurrent ? " eightWkLabel--now" : ""}">${w.label}</span>`
+  ).join("");
+
+  el.innerHTML = `<svg viewBox="0 0 ${W2} ${H2}" style="width:100%;display:block;overflow:visible" preserveAspectRatio="none">${rects}</svg><div class="eightWkLabels">${labels}</div>`;
+
+  // Trigger bar animations
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.querySelectorAll(".eightWkBar").forEach(r => { r.style.transform = "scaleY(1)"; });
+    });
+  });
+}
+
+// ── Comeback stats (More > History) ──────────────────────
+function renderComebackStats(allEntries) {
+  const el = document.getElementById("comebackStatsCard");
+  if (!el) return;
+  const empId = getEmpId();
+  const own = filterEntriesByEmp(normalizeEntries(allEntries || []), empId);
+
+  if (!own.length) {
+    el.innerHTML = `<div class="eightWkEmptyState">Log some jobs to see comeback stats.</div>`;
+    return;
+  }
+
+  const total = own.length;
+  const cbs = own.filter(e => e.isComeback);
+  const cbCount = cbs.length;
+  const cbRate = total > 0 ? Math.round((cbCount / total) * 100) : 0;
+  const cbHours = round1(cbs.reduce((s, e) => s + Number(e.hours || 0), 0));
+  const cbCost = round2(cbs.reduce((s, e) => s + Number(e.earnings || 0), 0));
+
+  const statusHtml = cbRate > 10
+    ? `<div class="cbAlert">⚠️ Your comeback rate is above 10% — track these carefully to dispute unwarranted chargebacks.</div>`
+    : cbCount > 0
+      ? `<div class="cbGood">✅ Comeback rate is under control.</div>`
+      : `<div class="cbGood">✅ No comebacks logged — great job.</div>`;
+
+  el.innerHTML = `
+    <div class="cbStatsGrid">
+      <div class="cbStat"><div class="cbStatVal">${cbCount}</div><div class="cbStatLbl">comebacks</div></div>
+      <div class="cbStat"><div class="cbStatVal">${cbRate}%</div><div class="cbStatLbl">of total jobs</div></div>
+      <div class="cbStat"><div class="cbStatVal">${cbHours}h</div><div class="cbStatLbl">hours spent</div></div>
+      <div class="cbStat cbStat--cost"><div class="cbStatVal">${formatMoney(cbCost)}</div><div class="cbStatLbl">earnings at risk</div></div>
+    </div>
+    ${statusHtml}
+  `;
+}
 
 // ── Job Timer ────────────────────────────────────────────
 (function initJobTimer() {
@@ -7843,6 +8240,7 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
+    initPushNotifications?.();
 
     ["empId", "ref", "typeText", "hours"].forEach((id) => {
       const el = document.getElementById(id);
@@ -7958,7 +8356,9 @@ async function runOnce() {
 
     document.getElementById("shareTodayBtn")?.addEventListener("click", () => shareDaySummary?.());
     document.getElementById("shareWeekPDFBtn")?.addEventListener("click", () => shareWeekPDF?.());
+    document.getElementById("shareWeekCardBtn")?.addEventListener("click", () => shareWeekCard?.());
     document.getElementById("shareReferralBtn")?.addEventListener("click", () => shareReferral?.());
+    document.getElementById("notifSetupBtn")?.addEventListener("click", () => requestPushPermission?.());
 
     document.getElementById("historyBtn")?.addEventListener("click", () => {
       const panel = document.getElementById("historyPanel");

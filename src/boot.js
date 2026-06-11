@@ -228,6 +228,7 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
+    initPushNotifications?.();
 
     ["empId", "ref", "typeText", "hours"].forEach((id) => {
       const el = document.getElementById(id);
@@ -343,7 +344,9 @@ async function runOnce() {
 
     document.getElementById("shareTodayBtn")?.addEventListener("click", () => shareDaySummary?.());
     document.getElementById("shareWeekPDFBtn")?.addEventListener("click", () => shareWeekPDF?.());
+    document.getElementById("shareWeekCardBtn")?.addEventListener("click", () => shareWeekCard?.());
     document.getElementById("shareReferralBtn")?.addEventListener("click", () => shareReferral?.());
+    document.getElementById("notifSetupBtn")?.addEventListener("click", () => requestPushPermission?.());
 
     document.getElementById("historyBtn")?.addEventListener("click", () => {
       const panel = document.getElementById("historyPanel");

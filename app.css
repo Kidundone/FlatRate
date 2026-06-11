@@ -3272,4 +3272,136 @@ body.compact .list    { gap: 1px; }
   white-space: nowrap;
 }
 .shortPayAlert:empty, .shortPayAlert[hidden] { display: none !important; }
+
+/* ── Hero records (best day / best week) ──────────── */
+.heroRecords {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.4;
+  letter-spacing: .1px;
+}
+
+/* ── Goal setter popover ─────────────────────────── */
+.heroGoalRingWrap { cursor: pointer; }
+.heroGoalRingWrap:active { opacity: .85; }
+
+.goalPopover {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.goalPopoverInner {
+  width: 100%;
+  max-width: 320px;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.goalPopoverTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.3px;
+}
+.goalTypeSeg { display: flex; gap: 6px; }
+.goalTypeSeg .segBtn { flex: 1; }
+.goalPopoverHint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -4px;
+}
+.goalPopoverActions {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+.goalSaveBtn {
+  min-height: 48px;
+  font-size: 15px;
+}
+
+/* ── 8-week earnings chart ────────────────────────── */
+.eightWkLabels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  margin-top: 4px;
+}
+.eightWkLabel {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.eightWkLabel--now {
+  color: var(--primary);
+  font-weight: 700;
+}
+.eightWkEmptyState {
+  padding: 16px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Comeback stats grid ─────────────────────────── */
+.cbStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cbStat {
+  background: var(--surface2);
+  border-radius: var(--r-md);
+  padding: 10px 8px;
+  text-align: center;
+}
+.cbStat--cost { background: rgba(239,68,68,.08); }
+.cbStatVal {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.5px;
+  line-height: 1.2;
+}
+.cbStat--cost .cbStatVal { color: #ef4444; }
+.cbStatLbl {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cbAlert {
+  font-size: 12px;
+  color: #f59e0b;
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.2);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  line-height: 1.4;
+}
+.cbGood {
+  font-size: 12px;
+  color: var(--primary);
+  background: rgba(34,197,94,.08);
+  border: 1px solid rgba(34,197,94,.18);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+}
+
+[data-theme="light"] .cbStat { background: var(--surface2); }
+[data-theme="light"] .cbStat--cost { background: rgba(239,68,68,.07); }
 [data-theme="light"] .shortPayAlert { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }
