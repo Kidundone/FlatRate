@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.40d9b9d831.css">
+  <link rel="stylesheet" href="./app.f2e7b940e0.css">
 </head>
 <body data-page="main">
 
@@ -48,14 +48,42 @@
     <div class="heroPaceLine" id="heroPaceLine"></div>
   </div>
 </div>
-<div class="heroChartWrap">
+<div class="heroChartCard">
   <div class="heroChartInner">
-    <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
-    <div class="heroChartLabelsRow" id="heroChartLabels"></div>
-    <div class="heroChartStats" id="heroChartStats">
-      <span class="heroStatCell"><span class="heroStatVal" id="hcsHours">—</span><span class="heroStatLbl">hrs</span></span>
-      <span class="heroStatCell"><span class="heroStatVal" id="hcsJobs">—</span><span class="heroStatLbl">jobs</span></span>
-      <span class="heroStatCell heroStatCell--pay"><span class="heroStatVal" id="hcsPay">—</span><span class="heroStatLbl">pay</span></span>
+    <div class="hcRangeTabs">
+      <button class="hcTab hcTab--active" data-hc-range="day">Day</button>
+      <button class="hcTab" data-hc-range="week">Week</button>
+      <button class="hcTab" data-hc-range="month">Month</button>
+      <button class="hcTab" data-hc-range="all">All</button>
+      <span class="hcRangeLabel" id="hcRangeLabel">Today</span>
+    </div>
+    <div class="hcChartArea" id="hcChartArea">
+      <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
+      <div class="heroChartLabelsRow" id="heroChartLabels"></div>
+    </div>
+    <div class="hcStatsRow" id="heroChartStats">
+      <div class="hcStat">
+        <div class="hcStatVal" id="hcsHours">—</div>
+        <div class="hcStatLbl">hrs</div>
+      </div>
+      <div class="hcStat">
+        <div class="hcStatVal" id="hcsJobs">—</div>
+        <div class="hcStatLbl">jobs</div>
+      </div>
+      <div class="hcStat hcStat--pay">
+        <div class="hcStatVal" id="hcsPay">—</div>
+        <div class="hcStatLbl">pay</div>
+      </div>
+      <div class="hcStat">
+        <div class="hcStatVal" id="hcsAvg">—</div>
+        <div class="hcStatLbl">avg/job</div>
+      </div>
+    </div>
+    <div class="hcGoalBar" id="hcGoalBarWrap" style="display:none;">
+      <div class="hcGoalBarTrack">
+        <div class="hcGoalBarFill" id="weekGoalFill"></div>
+      </div>
+      <div class="hcGoalBarMeta" id="weekGoalLabel"></div>
     </div>
   </div>
 </div>
@@ -234,95 +262,37 @@
     </form>
   </section>
 
-  <!-- ── Stats panel ── -->
-  <details id="statsPanel" class="card statsCard" open>
-    <summary class="statsSummary">
-      <div>
-        <div style="font-weight:700;font-size:15px;">Stats</div>
-        <div class="small">Range totals &amp; breakdown</div>
-      </div>
-      <div class="statsSummaryMeta">
-        <span id="statsSummaryHours">0.0 hrs</span>
-        <span id="statsSummaryDollars">$0.00</span>
-      </div>
-    </summary>
-
-    <div class="statsPanelBody">
-      <section class="card">
-        <div class="u-row" style="justify-content:space-between;">
-          <div class="u-row" style="gap:6px;align-items:center;">
-            <button id="rangeNavPrev" type="button" class="btn rangeNavBtn" style="visibility:hidden;">‹</button>
-            <div class="mono small" id="rangeTitle">Today</div>
-            <button id="rangeNavNext" type="button" class="btn rangeNavBtn" style="visibility:hidden;">›</button>
-          </div>
-          <div class="seg rangeTabs" role="tablist" aria-label="Range">
-            <button id="rangeDayBtn" type="button" class="segBtn active">Day</button>
-            <button id="rangeWeekBtn" type="button" class="segBtn">Week</button>
-            <button id="rangeMonthBtn" type="button" class="segBtn">Month</button>
-            <button id="rangeAllBtn" type="button" class="segBtn">All</button>
-          </div>
-        </div>
-
-        <div id="weekWhichRow" class="seg" style="margin-top:10px;display:none;">
-          <button id="weekThisBtn" type="button" class="segBtn active">This Week</button>
-          <button id="weekLastBtn" type="button" class="segBtn">Last Week</button>
-        </div>
-
-        <div class="pillRow" style="margin-top:12px;">
-          <div class="pill">
-            <div class="k">Hours</div>
-            <div class="v" id="rangeHours">0.0</div>
-          </div>
-          <div class="pill">
-            <div class="k">Pay</div>
-            <div class="v" id="rangeDollars">$0</div>
-          </div>
-          <div class="pill">
-            <div class="k">Jobs</div>
-            <div class="v" id="rangeCount">0</div>
-          </div>
-          <div class="pill">
-            <div class="k">Avg</div>
-            <div class="v" id="rangeAvgHrs">—</div>
-          </div>
-          <div class="pill">
-            <div class="k">$/hr</div>
-            <div class="v" id="rangeEffRate">—</div>
-          </div>
-        </div>
-        <div id="rangeSub" class="muted small" style="margin-top:6px;text-align:center;">—</div>
-      </section>
-
-      <section id="weekGoalCard" class="card" style="display:none;">
-        <div class="u-row" style="justify-content:space-between;gap:8px;">
-          <div class="small" style="text-transform:uppercase;letter-spacing:.4px;font-weight:700;white-space:nowrap;">Week Goal</div>
-          <div id="weekGoalLabel" class="mono" style="font-size:13px;font-weight:700;white-space:nowrap;"></div>
-        </div>
-        <div class="goalBar"><div id="weekGoalFill" class="goalBarFill"></div></div>
-        <div id="weekGoalSub" class="small" style="margin-top:6px;"></div>
-        <div id="paceLine" class="small muted" style="display:none;margin-top:4px;"></div>
-      </section>
-
-      <section id="weekChartCard" class="card" style="display:none;padding:14px 16px;">
-        <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:8px;">Earnings vs Last Week</div>
-        <div id="weekChart"></div>
-      </section>
-
-      <section id="weekBreakdownCard" class="card" style="display:none;">
-        <div class="muted">This Week — tap a day to filter</div>
-        <div id="weekBreakdownList" class="list" style="margin-top:10px;"></div>
-      </section>
-
-      <span id="todayHours" style="display:none"></span>
-      <span id="todayDollars" style="display:none"></span>
-      <span id="todayCount" style="display:none"></span>
-      <span id="weekHours" style="display:none"></span>
-      <span id="weekDollars" style="display:none"></span>
-      <span id="weekRange" style="display:none"></span>
-      <span id="weekDelta" style="display:none"></span>
-      <span id="weekDeltaHint" style="display:none"></span>
-    </div>
-  </details>
+  <!-- JS compat stubs (stats panel removed — merged into chart card above) -->
+  <div class="js-compat" id="weekGoalCard"><div id="weekGoalSub"></div><div id="paceLine"></div></div>
+  <div class="js-compat" id="weekChartCard"><div id="weekChart"></div></div>
+  <div class="js-compat" id="weekBreakdownCard"><div id="weekBreakdownList"></div></div>
+  <div class="js-compat" id="weekWhichRow">
+    <button id="weekThisBtn" type="button" class="segBtn active"></button>
+    <button id="weekLastBtn" type="button" class="segBtn"></button>
+  </div>
+  <button class="js-compat" id="rangeNavPrev" type="button"></button>
+  <button class="js-compat" id="rangeNavNext" type="button"></button>
+  <button class="js-compat" id="rangeDayBtn" type="button"></button>
+  <button class="js-compat" id="rangeWeekBtn" type="button"></button>
+  <button class="js-compat" id="rangeMonthBtn" type="button"></button>
+  <button class="js-compat" id="rangeAllBtn" type="button"></button>
+  <span class="js-compat" id="rangeTitle"></span>
+  <span class="js-compat" id="rangeHours"></span>
+  <span class="js-compat" id="rangeDollars"></span>
+  <span class="js-compat" id="rangeCount"></span>
+  <span class="js-compat" id="rangeAvgHrs"></span>
+  <span class="js-compat" id="rangeEffRate"></span>
+  <span class="js-compat" id="rangeSub"></span>
+  <span class="js-compat" id="statsSummaryHours"></span>
+  <span class="js-compat" id="statsSummaryDollars"></span>
+  <span id="todayHours" style="display:none"></span>
+  <span id="todayDollars" style="display:none"></span>
+  <span id="todayCount" style="display:none"></span>
+  <span id="weekHours" style="display:none"></span>
+  <span id="weekDollars" style="display:none"></span>
+  <span id="weekRange" style="display:none"></span>
+  <span id="weekDelta" style="display:none"></span>
+  <span id="weekDeltaHint" style="display:none"></span>
 
   <!-- ── Entry list ── -->
   <section class="card">
@@ -483,6 +453,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.328759cd24.js" defer></script>
+<script src="./app.240d8316da.js" defer></script>
 </body>
 </html>

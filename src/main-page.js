@@ -491,7 +491,8 @@ function renderHeroChart(entries, weekStart) {
     const hrsEl  = document.getElementById("hcsHours");
     const jobsEl = document.getElementById("hcsJobs");
     const payEl  = document.getElementById("hcsPay");
-    const statsEl = document.getElementById("heroChartStats");
+    const avgEl  = document.getElementById("hcsAvg");
+    const labelEl = document.getElementById("hcRangeLabel");
     if (!hrsEl || !jobsEl || !payEl) return;
 
     const dayEntries = buckets[idx] ? (window.__heroEntries || []).filter(e => {
@@ -499,11 +500,12 @@ function renderHeroChart(entries, weekStart) {
       return k === bucket.key;
     }) : [];
     const hrs = dayEntries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
+    const cnt = dayEntries.length;
     hrsEl.textContent  = hrs > 0 ? round1(hrs) : "0";
-    jobsEl.textContent = dayEntries.length > 0 ? String(dayEntries.length) : "0";
+    jobsEl.textContent = cnt > 0 ? String(cnt) : "0";
     payEl.textContent  = bucket.dollars > 0 ? formatMoney(bucket.dollars) : "$0";
-
-    if (statsEl) statsEl.dataset.day = bucket.label;
+    if (avgEl) avgEl.textContent = cnt > 0 ? formatMoney(round2(bucket.dollars / cnt)) : "—";
+    if (labelEl) labelEl.textContent = bucket.isToday ? "Today" : bucket.label;
 
     // Highlight selected bar, dim others
     svg.querySelectorAll("rect").forEach((r, i) => {
@@ -2434,6 +2436,23 @@ async function refreshUI(entriesOverride){
   setText("statsSummaryHours", `${r1(totals.hours)} hrs`);
   setText("statsSummaryDollars", formatMoney(totals.dollars));
 
+  // ── Unified chart card stats ──
+  {
+    const hcAvg = totals.count > 0 ? formatMoney(round2(totals.dollars / totals.count)) : "—";
+    setText("hcsHours", r1(totals.hours));
+    setText("hcsJobs", String(totals.count));
+    setText("hcsPay", formatMoney(totals.dollars));
+    setText("hcsAvg", hcAvg);
+    setText("hcRangeLabel", title);
+    // Show chart only in day mode
+    const hcChartArea = document.getElementById("hcChartArea");
+    if (hcChartArea) hcChartArea.style.display = mode === "day" ? "" : "none";
+    // Sync tab active state
+    document.querySelectorAll("[data-hc-range]").forEach(t =>
+      t.classList.toggle("hcTab--active", t.getAttribute("data-hc-range") === mode)
+    );
+  }
+
   // Today
   const today = computeToday(entries, dayKey);
   setText("todayHours", round1(today.hours));
@@ -2462,27 +2481,22 @@ async function refreshUI(entriesOverride){
   if (!flagged || flagged <= 0) {
     setText("weekDelta", "—");
     setText("weekDeltaHint", "Set flagged hours in More");
-    const gc = document.getElementById("weekGoalCard");
-    if (gc) gc.style.display = "none";
+    // Hide compact goal bar
+    const hcGoalWrap = document.getElementById("hcGoalBarWrap");
+    if (hcGoalWrap) hcGoalWrap.style.display = "none";
   } else {
     delta = round1(flagged - week.hours);
     setText("weekDelta", String(delta));
     setText("weekDeltaHint", "");
 
     const pct = Math.min(100, Math.round((week.hours / flagged) * 100));
-    const gc = document.getElementById("weekGoalCard");
     const gf = document.getElementById("weekGoalFill");
     const gl = document.getElementById("weekGoalLabel");
-    const gs = document.getElementById("weekGoalSub");
-    if (gc) gc.style.display = "";
     if (gf) { gf.style.width = pct + "%"; gf.classList.toggle("complete", pct >= 100); }
     if (gl) gl.textContent = `${r1(week.hours)} / ${r1(flagged)} hrs`;
-    if (gs) {
-      const rem = round1(Math.max(0, flagged - week.hours));
-      gs.textContent = pct >= 100
-        ? `Goal reached! ${formatMoney(week.dollars)} earned this week`
-        : `${rem} hrs to go • ${formatMoney(week.dollars)} earned so far`;
-    }
+    // Show compact goal bar in chart card
+    const hcGoalWrap = document.getElementById("hcGoalBarWrap");
+    if (hcGoalWrap) hcGoalWrap.style.display = "";
   }
 
   // Hero section update (needs flaggedHours + week data)
@@ -2553,23 +2567,23 @@ async function refreshUI(entriesOverride){
 const TOUR_STEPS = [
   {
     el: null,
-    title: "Welcome to Flat-Rate Log",
-    body: "Built for flat-rate mechanics at Flow Motors WS. Log every job, track your hours and earnings, spot short pay, and keep proof photos — all offline-first. Tap Next for a quick walkthrough.",
+    title: "Welcome to Flat-Rate Tracker",
+    body: "Log every job, track your hours and earnings, spot short pay, and keep proof photos — all offline-first. Tap Next for a quick walkthrough.",
   },
   {
     el: ".heroSection",
     title: "Your Pay Dashboard",
-    body: "The top of the screen is your command center. The big number is today's pay. The green ring tracks your weekly hour goal. The bar chart below shows your earnings by day — today is highlighted green.",
+    body: "The big number is today's pay. The green ring tracks your weekly hour goal — or shows your week total if no goal is set.",
   },
   {
     el: "#empId",
     title: "Employee Number",
-    body: "Enter your employee number here. Every entry is tied to it so your data stays yours even on a shared device. It saves automatically — you only do this once.",
+    body: "Enter your employee number here. Every entry is tied to it so your data stays yours even on a shared device. It saves automatically — you only need to do this once.",
   },
   {
     el: ".fr26QuickHours",
     title: "Log Hours — Quick Buttons",
-    body: "Tap a quick button for the hours the job paid — 0.5, 1.0, 1.5, up to 5.0. Or type any value directly in the Hours field above. Flat-rate doesn't care what the clock said, only what the job paid.",
+    body: "Tap a quick button for the hours the job paid — 0.5, 1.0, 1.5, up to 5.0. Or type any value in the Hours field. Flat-rate doesn't care what the clock said, only what the job paid.",
   },
   {
     el: "#typeText",
@@ -2587,14 +2601,9 @@ const TOUR_STEPS = [
     body: "Hit Save and the job is recorded instantly — even with no signal on the shop floor. Entries queue up offline and sync to the cloud automatically when you reconnect.",
   },
   {
-    el: "#statsStrip",
-    title: "Live Totals Strip",
-    body: "Four tiles below the chart: today's hours, job count, today's pay, and this week's total pay. They update the moment you save a job — no refreshing needed.",
-  },
-  {
-    el: "#statsPanel",
-    title: "Stats — Day, Week, Month, All Time",
-    body: "Tap the Stats card to expand it. Switch between Day, Week, Month, and All Time views. In Week mode you get a daily breakdown — tap any day to filter the list to just that day's jobs.",
+    el: ".heroChartCard",
+    title: "Stats & Chart — All in One",
+    body: "Tap any bar to see that day's hours, jobs, and pay inline. Switch Day / Week / Month / All with the tabs at the top. If you set a weekly hour goal, a progress bar appears at the bottom.",
   },
   {
     el: "#historyBtn",
@@ -2608,6 +2617,19 @@ const TOUR_STEPS = [
     action: "goto-more",
   },
 ];
+
+// ── Hero chart range tab wiring ──────────────────────────
+document.addEventListener("click", ev => {
+  const tab = ev.target?.closest?.("[data-hc-range]");
+  if (!tab) return;
+  const newMode = tab.getAttribute("data-hc-range");
+  if (!newMode) return;
+  window.__RANGE_MODE__ = newMode;
+  window.__NAV_OFFSET__ = 0;
+  window.__WEEK_DAY_PICK__ = "";
+  rangeMode = newMode;
+  refreshUI(CURRENT_ENTRIES);
+});
 
 function maybeStartTour() {
   if (localStorage.getItem("fr_tour_done")) return;
