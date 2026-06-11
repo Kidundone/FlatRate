@@ -379,25 +379,22 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   const payEl = document.getElementById("heroPayAmt");
   if (payEl) animateHeroNumber(payEl, todayDollars);
 
-  // Goal ring
+  // Goal ring — shows week hours progress
   const arcEl = document.getElementById("heroGoalArc");
   const pctEl = document.getElementById("heroGoalPct");
+  const subEl2 = document.getElementById("heroGoalSub");
   const circ = 238.8;
   if (arcEl && pctEl) {
-    if (flaggedHours > 0) {
-      const pct = Math.min(1, weekHours / flaggedHours);
-      arcEl.style.strokeDashoffset = String(circ - pct * circ);
-      pctEl.textContent = Math.round(pct * 100) + "%";
-    } else if (weekDollars > 0) {
-      // No goal set — show week earnings in ring instead
-      arcEl.style.strokeDashoffset = String(circ * 0.85);
-      pctEl.textContent = weekDollars >= 1000
-        ? "$" + (weekDollars / 1000).toFixed(1) + "k"
-        : "$" + Math.round(weekDollars);
-    } else {
-      arcEl.style.strokeDashoffset = String(circ);
-      pctEl.textContent = "WK";
-    }
+    const maxHrs = flaggedHours > 0 ? flaggedHours : 40; // default 40hr week
+    const pct = Math.min(1, weekHours / maxHrs);
+    arcEl.style.strokeDashoffset = String(circ - pct * circ);
+    const hrsDisplay = weekHours > 0
+      ? (Math.round(weekHours * 10) / 10).toFixed(1)
+      : "0";
+    pctEl.textContent = hrsDisplay;
+    if (subEl2) subEl2.textContent = flaggedHours > 0
+      ? `/ ${(Math.round(flaggedHours * 10) / 10).toFixed(0)}h`
+      : "WK HRS";
   }
 
   // Sub line — show week total
@@ -452,7 +449,7 @@ function renderHeroChart(entries, weekStart) {
   }
 
   const max = Math.max(...buckets.map(b => b.dollars), 1);
-  const W = 300, H = 52, barW = 30, gap = (W - 7 * barW) / 8;
+  const W = 300, H = 44, barW = 30, gap = (W - 7 * barW) / 8;
   const isLight = document.documentElement.dataset.theme === "light";
   const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
   const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
@@ -2557,22 +2554,10 @@ async function refreshUI(entriesOverride){
   if (!flagged || flagged <= 0) {
     setText("weekDelta", "—");
     setText("weekDeltaHint", "Set flagged hours in More");
-    // Hide compact goal bar
-    const hcGoalWrap = document.getElementById("hcGoalBarWrap");
-    if (hcGoalWrap) hcGoalWrap.style.display = "none";
   } else {
     delta = round1(flagged - week.hours);
     setText("weekDelta", String(delta));
     setText("weekDeltaHint", "");
-
-    const pct = Math.min(100, Math.round((week.hours / flagged) * 100));
-    const gf = document.getElementById("weekGoalFill");
-    const gl = document.getElementById("weekGoalLabel");
-    if (gf) { gf.style.width = pct + "%"; gf.classList.toggle("complete", pct >= 100); }
-    if (gl) gl.textContent = `${r1(week.hours)} / ${r1(flagged)} hrs`;
-    // Show compact goal bar in chart card
-    const hcGoalWrap = document.getElementById("hcGoalBarWrap");
-    if (hcGoalWrap) hcGoalWrap.style.display = "";
   }
 
   // Hero section update (needs flaggedHours + week data)

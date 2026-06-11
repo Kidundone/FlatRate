@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.4f549c3b10.css">
+  <link rel="stylesheet" href="./app.43321cd70e.css">
 </head>
 <body data-page="main">
 
@@ -29,16 +29,16 @@
 <!-- ── Hero section ── -->
 <div class="heroSection">
   <div class="heroGoalRingWrap">
-    <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="80" height="80">
-      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="6"/>
-      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#22c55e" stroke-width="6"
+    <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="90" height="90">
+      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="5"/>
+      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#22c55e" stroke-width="5"
         stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
         transform="rotate(-90 48 48)"
-        style="transition:stroke-dashoffset 600ms ease;"/>
+        style="transition:stroke-dashoffset 700ms cubic-bezier(.4,0,.2,1);"/>
     </svg>
     <div class="heroGoalRingCenter">
-      <span class="heroGoalPctText" id="heroGoalPct">—</span>
-      <span class="heroGoalSubText">GOAL</span>
+      <span class="heroGoalPctText" id="heroGoalPct">0</span>
+      <span class="heroGoalSubText" id="heroGoalSub">WK HRS</span>
     </div>
   </div>
   <div class="heroRight">
@@ -46,11 +46,6 @@
     <div class="heroAmt" id="heroPayAmt">$0</div>
     <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
-    <!-- Goal bar lives here now -->
-    <div class="hcGoalBar hcGoalBar--hero" id="hcGoalBarWrap" style="display:none;">
-      <div class="hcGoalBarTrack"><div class="hcGoalBarFill" id="weekGoalFill"></div></div>
-      <div class="hcGoalBarMeta" id="weekGoalLabel"></div>
-    </div>
   </div>
 </div>
 
@@ -83,6 +78,20 @@
         <div class="hcStatVal" id="hcsAvg">—</div>
         <div class="hcStatLbl">avg/job</div>
       </div>
+    </div>
+    <!-- Week sparkline — skeleton renders immediately, JS fills data -->
+    <div class="hcChartArea" id="hcChartArea">
+      <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 44" preserveAspectRatio="none">
+        <!-- skeleton bars shown before JS loads -->
+        <rect x="3"   y="28" width="30" height="13" rx="3" class="hcBarSkel"/>
+        <rect x="46"  y="18" width="30" height="23" rx="3" class="hcBarSkel"/>
+        <rect x="89"  y="32" width="30" height="9"  rx="3" class="hcBarSkel"/>
+        <rect x="132" y="22" width="30" height="19" rx="3" class="hcBarSkel"/>
+        <rect x="175" y="12" width="30" height="29" rx="3" class="hcBarSkel"/>
+        <rect x="218" y="6"  width="30" height="35" rx="3" class="hcBarSkel"/>
+        <rect x="261" y="2"  width="30" height="39" rx="3" class="hcBarSkel hcBarSkel--today"/>
+      </svg>
+      <div class="heroChartLabelsRow" id="heroChartLabels"></div>
     </div>
     <!-- Inline entries for current range -->
     <div class="hcEntriesList" id="hcEntriesList"></div>
@@ -452,6 +461,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.11bcc77235.js" defer></script>
+<script src="./app.a48493b710.js" defer></script>
 </body>
 </html>
