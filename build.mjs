@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 const SRC_JS = "app.src.js";
@@ -132,4 +132,23 @@ self.addEventListener("fetch", e => {
 });
 `);
 
-console.log(`Built: ${outJs}  ${outCss}`);
+// Copy built assets to www/ for Capacitor
+const WWW_ASSETS = [
+  "index.html", "more.html", "auth-callback.html", "dashboard.html",
+  "manifest.webmanifest", "sw.js", "app.css",
+  "icon-192.png", "icon-512.png",
+];
+mkdirSync("www", { recursive: true });
+// Copy hashed JS + CSS
+copyFileSync(outJs, `www/${outJs}`);
+copyFileSync(outCss, `www/${outCss}`);
+// Copy static assets
+for (const f of WWW_ASSETS) {
+  if (existsSync(f)) copyFileSync(f, `www/${f}`);
+}
+// Copy icons folder if present
+if (existsSync("icons")) {
+  mkdirSync("www/icons", { recursive: true });
+  for (const f of readdirSync("icons")) copyFileSync(`icons/${f}`, `www/icons/${f}`);
+}
+console.log(`Built: ${outJs}  ${outCss}  → www/`);

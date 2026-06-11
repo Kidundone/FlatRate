@@ -1004,7 +1004,13 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    if (getSettings?.()?.haptic !== false) navigator.vibrate?.([40, 30, 40]);
+    if (getSettings?.()?.haptic !== false) {
+      if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.Haptics) {
+        window.Capacitor.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
+      } else {
+        navigator.vibrate?.([40, 30, 40]);
+      }
+    }
     flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.

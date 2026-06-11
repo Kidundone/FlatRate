@@ -1587,18 +1587,40 @@ function scheduleShiftReminder() {
   clearTimeout(window.__FR_REMINDER__);
   const s = getReminderSettings();
   if (!s.enabled || !s.time) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const [h, m] = String(s.time).split(":").map(Number);
   const now = new Date();
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
   // If today's time already passed, schedule for tomorrow
   if (target <= now) target.setDate(target.getDate() + 1);
+  const msUntil = target.getTime() - now.getTime();
 
+  // On native iOS/Android, use Capacitor Local Notifications
+  if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {
+    const LN = window.Capacitor.Plugins.LocalNotifications;
+    LN.requestPermissions().then(({ display }) => {
+      if (display !== "granted") return;
+      LN.cancel({ notifications: [{ id: 1001 }] }).catch(() => {});
+      LN.schedule({
+        notifications: [{
+          id: 1001,
+          title: "Flat-Rate",
+          body: "End of shift — log your hours before you leave!",
+          schedule: { at: new Date(target.getTime()) },
+          sound: null,
+          smallIcon: "ic_stat_icon",
+        }],
+      }).catch(console.error);
+    });
+    return;
+  }
+
+  // Web fallback: setTimeout + Web Notification API
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_REMINDER__ = setTimeout(() => {
     sendNotification("Flat-Rate", "End of shift — log your hours before you leave!", "shift-reminder");
     scheduleShiftReminder(); // reschedule for same time tomorrow
-  }, target.getTime() - now.getTime());
+  }, msUntil);
 }
 
 window.scheduleShiftReminder = scheduleShiftReminder;

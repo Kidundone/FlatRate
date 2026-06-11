@@ -1,0 +1,23 @@
+{
+  "appId": "dev.nellylabs.flatrate",
+  "appName": "Flat-Rate Tracker",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Haptics": {},
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#22c55e",
+      "sound": "beep.wav"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}
