@@ -2825,34 +2825,7 @@ body.compact .list    { gap: 1px; }
   font-size: 8px;
   color: var(--muted2);
 }
-.heroChartLabel--now { color: var(--primary); font-weight: 700; }
-
-.heroChartStats {
-  display: flex;
-  justify-content: space-around;
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--stroke);
-  margin-top: 2px;
-}
-.heroStatCell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
-.heroStatVal {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1;
-}
-.heroStatLbl {
-  font-size: 9px;
-  color: var(--muted2);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-.heroStatCell--pay .heroStatVal { color: var(--primary); }
+.heroChartLabel--now { color: var(--primary); }
 
 /* ─── Animations & Live Effects ─────────────────────── */
 @keyframes itemSlideIn {

@@ -382,16 +382,30 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   // Goal ring
   const arcEl = document.getElementById("heroGoalArc");
   const pctEl = document.getElementById("heroGoalPct");
-  const circ = 188.5;
+  const circ = 238.8;
   if (arcEl && pctEl) {
     if (flaggedHours > 0) {
       const pct = Math.min(1, weekHours / flaggedHours);
       arcEl.style.strokeDashoffset = String(circ - pct * circ);
       pctEl.textContent = Math.round(pct * 100) + "%";
+    } else if (weekDollars > 0) {
+      // No goal set — show week earnings in ring instead
+      arcEl.style.strokeDashoffset = String(circ * 0.85);
+      pctEl.textContent = weekDollars >= 1000
+        ? "$" + (weekDollars / 1000).toFixed(1) + "k"
+        : "$" + Math.round(weekDollars);
     } else {
       arcEl.style.strokeDashoffset = String(circ);
-      pctEl.textContent = "—";
+      pctEl.textContent = "WK";
     }
+  }
+
+  // Sub line — show week total
+  const subEl = document.getElementById("heroSubLine");
+  if (subEl) {
+    subEl.textContent = weekDollars > 0
+      ? `${formatMoney(weekDollars)} this week`
+      : todayCount > 0 ? `${todayCount} job${todayCount !== 1 ? "s" : ""} today` : "";
   }
 
   // Pace line
@@ -439,16 +453,9 @@ function renderHeroChart(entries, weekStart) {
 
   const max = Math.max(...buckets.map(b => b.dollars), 1);
   const W = 300, H = 52, barW = 30, gap = (W - 7 * barW) / 8;
-
-  let svgContent = "";
-  buckets.forEach((b, i) => {
-    const x = gap + i * (barW + gap);
-    const barH = Math.max(3, (b.dollars / max) * (H - 6));
-    const y = H - barH;
-    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? "rgba(34,197,94,.28)" : "rgba(255,255,255,.06)";
-    svgContent += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${barH.toFixed(1)}" rx="4" fill="${color}"/>`;
-  });
-  svg.innerHTML = svgContent;
+  const isLight = document.documentElement.dataset.theme === "light";
+  const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
+  const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
 
   // Animated bars
   svg.innerHTML = "";
@@ -456,7 +463,7 @@ function renderHeroChart(entries, weekStart) {
     const x = gap + i * (barW + gap);
     const barH = Math.max(3, (b.dollars / max) * (H - 6));
     const y = H - barH;
-    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? "rgba(34,197,94,.28)" : "rgba(255,255,255,.06)";
+    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", x.toFixed(1));
     rect.setAttribute("y", y.toFixed(1));
@@ -478,6 +485,47 @@ function renderHeroChart(entries, weekStart) {
   labelsRow.innerHTML = buckets.map(b =>
     `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">${b.label}</span>`
   ).join("");
+
+  // Tappable bars — show day stats on click
+  function showDayStats(bucket, idx) {
+    const hrsEl  = document.getElementById("hcsHours");
+    const jobsEl = document.getElementById("hcsJobs");
+    const payEl  = document.getElementById("hcsPay");
+    const statsEl = document.getElementById("heroChartStats");
+    if (!hrsEl || !jobsEl || !payEl) return;
+
+    const dayEntries = buckets[idx] ? (window.__heroEntries || []).filter(e => {
+      const k = e.dayKey || dayKeyFromISO(e.createdAt);
+      return k === bucket.key;
+    }) : [];
+    const hrs = dayEntries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
+    hrsEl.textContent  = hrs > 0 ? round1(hrs) : "0";
+    jobsEl.textContent = dayEntries.length > 0 ? String(dayEntries.length) : "0";
+    payEl.textContent  = bucket.dollars > 0 ? formatMoney(bucket.dollars) : "$0";
+
+    if (statsEl) statsEl.dataset.day = bucket.label;
+
+    // Highlight selected bar, dim others
+    svg.querySelectorAll("rect").forEach((r, i) => {
+      r.style.opacity = i === idx ? "1" : "0.45";
+    });
+    labelsRow.querySelectorAll("span").forEach((s, i) => {
+      s.classList.toggle("heroChartLabel--now", i === idx);
+    });
+  }
+
+  // Store entries for tap handler access
+  window.__heroEntries = entries;
+
+  // Wire click on each bar
+  svg.querySelectorAll("rect").forEach((rect, i) => {
+    rect.style.cursor = "pointer";
+    rect.addEventListener("click", () => showDayStats(buckets[i], i));
+  });
+
+  // Default: show today
+  const todayIdx = buckets.findIndex(b => b.isToday);
+  if (todayIdx >= 0) showDayStats(buckets[todayIdx], todayIdx);
 }
 
 /* ─── Animation & effects helpers ───────────────────── */

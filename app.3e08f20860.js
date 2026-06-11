@@ -3342,47 +3342,6 @@ function renderHeroChart(entries, weekStart) {
   labelsRow.innerHTML = buckets.map(b =>
     `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">${b.label}</span>`
   ).join("");
-
-  // Tappable bars — show day stats on click
-  function showDayStats(bucket, idx) {
-    const hrsEl  = document.getElementById("hcsHours");
-    const jobsEl = document.getElementById("hcsJobs");
-    const payEl  = document.getElementById("hcsPay");
-    const statsEl = document.getElementById("heroChartStats");
-    if (!hrsEl || !jobsEl || !payEl) return;
-
-    const dayEntries = buckets[idx] ? (window.__heroEntries || []).filter(e => {
-      const k = e.dayKey || dayKeyFromISO(e.createdAt);
-      return k === bucket.key;
-    }) : [];
-    const hrs = dayEntries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
-    hrsEl.textContent  = hrs > 0 ? round1(hrs) : "0";
-    jobsEl.textContent = dayEntries.length > 0 ? String(dayEntries.length) : "0";
-    payEl.textContent  = bucket.dollars > 0 ? formatMoney(bucket.dollars) : "$0";
-
-    if (statsEl) statsEl.dataset.day = bucket.label;
-
-    // Highlight selected bar, dim others
-    svg.querySelectorAll("rect").forEach((r, i) => {
-      r.style.opacity = i === idx ? "1" : "0.45";
-    });
-    labelsRow.querySelectorAll("span").forEach((s, i) => {
-      s.classList.toggle("heroChartLabel--now", i === idx);
-    });
-  }
-
-  // Store entries for tap handler access
-  window.__heroEntries = entries;
-
-  // Wire click on each bar
-  svg.querySelectorAll("rect").forEach((rect, i) => {
-    rect.style.cursor = "pointer";
-    rect.addEventListener("click", () => showDayStats(buckets[i], i));
-  });
-
-  // Default: show today
-  const todayIdx = buckets.findIndex(b => b.isToday);
-  if (todayIdx >= 0) showDayStats(buckets[todayIdx], todayIdx);
 }
 
 /* ─── Animation & effects helpers ───────────────────── */

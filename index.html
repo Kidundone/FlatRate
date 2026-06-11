@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.5c6b35dbec.css">
+  <link rel="stylesheet" href="./app.40d9b9d831.css">
 </head>
 <body data-page="main">
 
@@ -29,11 +29,11 @@
 <!-- ── Hero section ── -->
 <div class="heroSection">
   <div class="heroGoalRingWrap">
-    <svg id="heroGoalRingEl" viewBox="0 0 76 76" width="76" height="76">
-      <circle cx="38" cy="38" r="30" fill="none" stroke="var(--surface2)" stroke-width="5.5"/>
-      <circle id="heroGoalArc" cx="38" cy="38" r="30" fill="none" stroke="#22c55e" stroke-width="5.5"
-        stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"
-        transform="rotate(-90 38 38)"
+    <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="96" height="96">
+      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="6"/>
+      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#22c55e" stroke-width="6"
+        stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
+        transform="rotate(-90 48 48)"
         style="transition:stroke-dashoffset 600ms ease;"/>
     </svg>
     <div class="heroGoalRingCenter">
@@ -44,7 +44,7 @@
   <div class="heroRight">
     <div class="heroEyebrow">Today's Pay</div>
     <div class="heroAmt" id="heroPayAmt">$0</div>
-    <div class="heroSubLine">Flow Motors WS</div>
+    <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
   </div>
 </div>
@@ -52,6 +52,11 @@
   <div class="heroChartInner">
     <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
     <div class="heroChartLabelsRow" id="heroChartLabels"></div>
+    <div class="heroChartStats" id="heroChartStats">
+      <span class="heroStatCell"><span class="heroStatVal" id="hcsHours">—</span><span class="heroStatLbl">hrs</span></span>
+      <span class="heroStatCell"><span class="heroStatVal" id="hcsJobs">—</span><span class="heroStatLbl">jobs</span></span>
+      <span class="heroStatCell heroStatCell--pay"><span class="heroStatVal" id="hcsPay">—</span><span class="heroStatLbl">pay</span></span>
+    </div>
   </div>
 </div>
 
@@ -88,25 +93,12 @@
   </div>
 </div>
 
-<div id="statsStrip">
-  <div class="stripCell">
-    <div class="stripLabel">Today Hrs</div>
-    <div class="stripValue" id="stripTodayHours">—</div>
-  </div>
-  <div class="stripCell">
-    <div class="stripLabel">Jobs</div>
-    <div class="stripValue" id="stripTodayCount">—</div>
-    <div id="stripComebackHint" class="stripComebackHint" style="display:none;"></div>
-  </div>
-  <div class="stripCell">
-    <div class="stripLabel">Today Pay</div>
-    <div class="stripValue stripValue--accent" id="stripTodayDollars">—</div>
-  </div>
-  <div class="stripCell">
-    <div class="stripLabel">Week Pay</div>
-    <div class="stripValue stripValue--primary" id="stripWeekDollars">—</div>
-  </div>
-</div>
+<!-- statsStrip elements kept hidden for JS compatibility -->
+<span id="stripTodayHours" style="display:none"></span>
+<span id="stripTodayCount" style="display:none"></span>
+<span id="stripTodayDollars" style="display:none"></span>
+<span id="stripWeekDollars" style="display:none"></span>
+<span id="stripComebackHint" style="display:none"></span>
 
 <main>
 
@@ -491,6 +483,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.aeaf9068c8.js" defer></script>
+<script src="./app.328759cd24.js" defer></script>
 </body>
 </html>
