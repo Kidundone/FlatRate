@@ -532,6 +532,63 @@ function renderHeroChart(entries, weekStart) {
   }
 }
 
+/* ─── Records entries list (inside chart card) ─────── */
+
+function renderRangeEntries(entries, mode) {
+  const container = document.getElementById("hcEntriesList");
+  if (!container) return;
+
+  if (!entries || entries.length === 0) {
+    container.innerHTML = `<div class="hcEntryEmpty">No entries for this period</div>`;
+    return;
+  }
+
+  const MAX = 30;
+  const shown = entries.slice(0, MAX);
+  const hasMore = entries.length > MAX;
+  const showDate = mode !== "day";
+
+  const fmtDay = (dk) => {
+    if (!dk) return "";
+    const d = new Date(dk + "T12:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  const html = shown.map(e => {
+    const refLabel = e.refType === "STOCK" ? "STK" : "RO";
+    const refVal = e.ref || e.ro || "—";
+    const hasPhoto = entryHasPhoto(e);
+    const refClass = hasPhoto ? "hcEntryRef hcEntryRef--photo" : "hcEntryRef";
+    const photoAttr = hasPhoto ? ` data-hc-photo-id="${escapeHtml(String(e.id))}"` : "";
+    const photoIcon = hasPhoto ? `<span class="hcEntryPhotoIcon">📷</span>` : "";
+    const dateHtml = showDate && e.dayKey ? `<span class="hcEntryDate">${fmtDay(e.dayKey)}</span>` : "";
+    const typeStr = escapeHtml(e.type || e.typeText || "—");
+    return `<div class="hcEntryRow">
+      <div class="hcEntryLeft">
+        <span class="${refClass}"${photoAttr}>${photoIcon}${refLabel} ${escapeHtml(refVal)}</span>
+        <span class="hcEntryType">${typeStr}</span>${dateHtml}
+      </div>
+      <div class="hcEntryRight">
+        <span class="hcEntryPay">${formatMoney(e.earnings)}</span>
+        <span class="hcEntryHrs">${(Math.round(Number(e.hours||0)*10)/10).toFixed(1)}h</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = html + (hasMore
+    ? `<div class="hcEntryMore">+${entries.length - MAX} more — open History to see all</div>` : "");
+
+  // Wire photo taps
+  container.querySelectorAll(".hcEntryRef--photo").forEach(el => {
+    const id = el.getAttribute("data-hc-photo-id");
+    if (!id) return;
+    el.addEventListener("click", () => {
+      const entry = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []).find(x => String(x.id) === id);
+      if (entry) openPhoto(entry);
+    });
+  });
+}
+
 /* ─── Animation & effects helpers ───────────────────── */
 
 let __lastGoalPct = 0;
@@ -1808,6 +1865,10 @@ function filterByMode(entries, mode){
     const ms = startOfMonthLocal(now);
     return entries.filter(e => inMonth(e.dayKey, ms));
   }
+  if (mode === "year") {
+    const yr = now.getFullYear().toString();
+    return entries.filter(e => (e.dayKey || "").startsWith(yr));
+  }
   return entries;
 }
 
@@ -2425,10 +2486,12 @@ async function refreshUI(entriesOverride){
 
   const navOff = Number(window.__NAV_OFFSET__ || 0);
   const mo = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const moLabel = (d) => d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const title =
     mode === "day"   ? (navOff === 0 ? "Today" : mo(navNow)) :
-    mode === "week"  ? (navOff === 0 ? (summaryRange === "lastWeek" ? "Last Week" : "This Week") : `Week of ${dateKey(ws)}`) :
-    mode === "month" ? "This Month" : "All Time";
+    mode === "week"  ? (navOff === 0 ? "This Week" : `Week of ${dateKey(ws)}`) :
+    mode === "month" ? moLabel(navNow) :
+    mode === "year"  ? String(navNow.getFullYear()) : "All Time";
 
   setText("rangeTitle", title);
   setText("rangeHours", r1(totals.hours));
@@ -2448,13 +2511,22 @@ async function refreshUI(entriesOverride){
     setText("hcsPay", formatMoney(totals.dollars));
     setText("hcsAvg", hcAvg);
     setText("hcRangeLabel", title);
-    // Show chart only in day mode
-    const hcChartArea = document.getElementById("hcChartArea");
-    if (hcChartArea) hcChartArea.style.display = mode === "day" ? "" : "none";
     // Sync tab active state
     document.querySelectorAll("[data-hc-range]").forEach(t =>
       t.classList.toggle("hcTab--active", t.getAttribute("data-hc-range") === mode)
     );
+    // Nav buttons: show in day and week mode
+    const showNav = mode === "day" || mode === "week";
+    const navPrevEl = document.getElementById("rangeNavPrev");
+    const navNextEl = document.getElementById("rangeNavNext");
+    if (navPrevEl) navPrevEl.style.display = showNav ? "" : "none";
+    if (navNextEl) {
+      navNextEl.style.display = showNav ? "" : "none";
+      navNextEl.disabled = navOff >= 0;
+      navNextEl.style.opacity = navOff >= 0 ? "0.3" : "";
+    }
+    // Render entries list for current range
+    renderRangeEntries(searched.length > 0 ? searched : shownEntries, mode);
   }
 
   // Today

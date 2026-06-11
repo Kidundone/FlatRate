@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.79bd0dcd4e.css">
+  <link rel="stylesheet" href="./app.4f549c3b10.css">
 </head>
 <body data-page="main">
 
@@ -46,20 +46,25 @@
     <div class="heroAmt" id="heroPayAmt">$0</div>
     <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
+    <!-- Goal bar lives here now -->
+    <div class="hcGoalBar hcGoalBar--hero" id="hcGoalBarWrap" style="display:none;">
+      <div class="hcGoalBarTrack"><div class="hcGoalBarFill" id="weekGoalFill"></div></div>
+      <div class="hcGoalBarMeta" id="weekGoalLabel"></div>
+    </div>
   </div>
 </div>
+
+<!-- ── Records card ── -->
 <div class="heroChartCard">
   <div class="heroChartInner">
     <div class="hcRangeTabs">
       <button class="hcTab hcTab--active" data-hc-range="day">Day</button>
       <button class="hcTab" data-hc-range="week">Week</button>
       <button class="hcTab" data-hc-range="month">Month</button>
-      <button class="hcTab" data-hc-range="all">All</button>
+      <button class="hcTab" data-hc-range="year">Year</button>
       <span class="hcRangeLabel" id="hcRangeLabel">Today</span>
-    </div>
-    <div class="hcChartArea" id="hcChartArea">
-      <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 52" preserveAspectRatio="none"></svg>
-      <div class="heroChartLabelsRow" id="heroChartLabels"></div>
+      <button class="hcNavBtn" id="rangeNavPrev" type="button" style="display:none;" aria-label="Previous">‹</button>
+      <button class="hcNavBtn" id="rangeNavNext" type="button" style="display:none;" aria-label="Next">›</button>
     </div>
     <div class="hcStatsRow" id="heroChartStats">
       <div class="hcStat">
@@ -79,12 +84,8 @@
         <div class="hcStatLbl">avg/job</div>
       </div>
     </div>
-    <div class="hcGoalBar" id="hcGoalBarWrap" style="display:none;">
-      <div class="hcGoalBarTrack">
-        <div class="hcGoalBarFill" id="weekGoalFill"></div>
-      </div>
-      <div class="hcGoalBarMeta" id="weekGoalLabel"></div>
-    </div>
+    <!-- Inline entries for current range -->
+    <div class="hcEntriesList" id="hcEntriesList"></div>
   </div>
 </div>
 
@@ -270,8 +271,6 @@
     <button id="weekThisBtn" type="button" class="segBtn active"></button>
     <button id="weekLastBtn" type="button" class="segBtn"></button>
   </div>
-  <button class="js-compat" id="rangeNavPrev" type="button"></button>
-  <button class="js-compat" id="rangeNavNext" type="button"></button>
   <button class="js-compat" id="rangeDayBtn" type="button"></button>
   <button class="js-compat" id="rangeWeekBtn" type="button"></button>
   <button class="js-compat" id="rangeMonthBtn" type="button"></button>
@@ -453,6 +452,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.0f4c9233d8.js" defer></script>
+<script src="./app.11bcc77235.js" defer></script>
 </body>
 </html>

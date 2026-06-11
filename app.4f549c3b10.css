@@ -2085,8 +2085,10 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 [data-theme="light"] .hcTab { color: var(--muted); }
 [data-theme="light"] .hcStat { border-right-color: var(--stroke2); }
 [data-theme="light"] .hcStatsRow { border-top-color: var(--stroke2); }
-[data-theme="light"] .hcGoalBar { border-top-color: var(--stroke2); }
-[data-theme="light"] .hcGoalBarTrack { background: var(--surface3); }
+[data-theme="light"] .hcGoalBarTrack { background: rgba(0,0,0,.12); }
+[data-theme="light"] .hcEntriesList { border-top-color: var(--stroke2); }
+[data-theme="light"] .hcEntryRow { border-bottom-color: var(--stroke2); }
+[data-theme="light"] .hcEntryMore { border-top-color: var(--stroke2); }
 
 /* Light theme — form & input visibility */
 [data-theme="light"] .fr26Input { background: var(--surface2); color: var(--text); border-color: var(--stroke2); }
@@ -2916,18 +2918,17 @@ body.compact .list    { gap: 1px; }
   margin-top: 3px;
 }
 
-/* Compact goal bar */
+/* Goal bar — now lives inside heroRight */
 .hcGoalBar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 14px 9px;
-  border-top: 1px solid var(--stroke);
+  gap: 8px;
+  margin-top: 5px;
 }
 .hcGoalBarTrack {
   flex: 1;
-  height: 3px;
-  background: var(--surface3);
+  height: 2px;
+  background: rgba(255,255,255,.12);
   border-radius: var(--r-pill);
   overflow: hidden;
 }
@@ -2940,11 +2941,117 @@ body.compact .list    { gap: 1px; }
 }
 .hcGoalBarFill.complete { background: var(--accent); }
 .hcGoalBarMeta {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted2);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* Nav buttons inside range tab row */
+.hcNavBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+  margin-left: 2px;
+  transition: background 120ms, color 120ms;
+}
+.hcNavBtn:not(:disabled):active { background: var(--primary); color: #fff; }
+.hcNavBtn:disabled { opacity: .3; cursor: default; }
+
+/* Inline entries list */
+.hcEntriesList {
+  border-top: 1px solid var(--stroke);
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.hcEntryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--stroke);
+  gap: 8px;
+  min-height: 44px;
+}
+.hcEntryRow:last-child { border-bottom: none; }
+.hcEntryLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.hcEntryRef {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--text);
+  line-height: 1.2;
+}
+.hcEntryRef--photo {
+  color: var(--primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.hcEntryRef--photo:active { opacity: .7; }
+.hcEntryPhotoIcon { font-size: 11px; }
+.hcEntryType {
+  font-size: 11px;
+  color: var(--muted2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hcEntryDate {
+  font-size: 10px;
+  color: var(--muted2);
+  margin-left: 4px;
+}
+.hcEntryRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.hcEntryPay {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.hcEntryHrs {
+  font-size: 11px;
+  color: var(--muted2);
+}
+.hcEntryEmpty {
+  padding: 20px 14px;
+  font-size: 13px;
+  color: var(--muted2);
+  text-align: center;
+}
+.hcEntryMore {
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--muted2);
+  text-align: center;
+  border-top: 1px solid var(--stroke);
 }
 
 /* JS compat — always hidden, JS can't override */
