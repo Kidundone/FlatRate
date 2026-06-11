@@ -632,7 +632,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   grid-template-columns: auto minmax(0,1fr);
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 9px 16px;
   border-bottom: 1px solid var(--stroke);
   background: var(--surface2);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -683,7 +683,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 .fr26Row {
   display: grid;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 11px 16px;
   border-top: 1px solid var(--stroke);
   background: var(--surface);
 }
@@ -793,15 +793,21 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 .fr26QuickHours {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  overflow-x: auto;
   gap: 6px;
-  padding: 4px 0 2px;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
 }
+.fr26QuickHours::-webkit-scrollbar { display: none; }
 
 .fr26HourBtn {
-  height: 48px;
-  padding: 0;
+  flex: 0 0 auto;
+  min-width: 60px;
+  height: 42px;
+  padding: 0 4px;
   border: 1px solid var(--stroke2);
   border-radius: 10px;
   background: var(--surface2);
@@ -893,7 +899,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 .fr26ChipGhost { background: transparent; color: var(--muted); }
 
 .fr26PrimaryAction {
-  padding: 14px 16px;
+  padding: 12px 14px 14px;
   border-top: 1px solid var(--stroke);
   background: var(--surface);
 }
@@ -903,23 +909,24 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 150ms var(--ease), transform 100ms var(--ease);
+  transition: opacity 150ms var(--ease), transform 100ms var(--ease), box-shadow 150ms var(--ease);
 }
 
 .fr26BtnPrimary {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
   border: none;
   background: var(--primary);
   color: #000;
-  letter-spacing: .1px;
-  font-size: 16px;
-  font-weight: 700;
+  letter-spacing: .2px;
+  font-size: 17px;
+  font-weight: 800;
   border-radius: var(--r-lg);
+  box-shadow: 0 4px 16px rgba(34,197,94,.28);
 }
 
 .fr26BtnPrimary:active { opacity: .85; transform: scale(.99); }
-.fr26BtnPrimary:disabled { background: var(--surface2); color: var(--muted2); opacity: 1; }
+.fr26BtnPrimary:disabled { background: var(--surface2); color: var(--muted2); opacity: 1; box-shadow: none; }
 
 .fr26BtnGhost {
   border: 1px solid var(--stroke2);
@@ -1958,27 +1965,44 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 .entryListHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+.entryListHeader > div > div:first-child {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.entryListHeader > div > .small {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
 }
 
 .searchRow {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
-/* Primary entry actions: always visible */
+/* Primary entry actions: scrollable chip row */
 .entryActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   gap: 8px;
   margin-top: 10px;
+  padding-bottom: 2px;
 }
+.entryActions::-webkit-scrollbar { display: none; }
 .entryActions .btn {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
 }
 
 /* Selection actions: hidden until items selected */
@@ -2076,12 +2100,13 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 /* Light theme — hero & chart fixes */
-[data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); }
+[data-theme="light"] .heroSection { background: linear-gradient(to bottom, rgba(34,197,94,.06) 0%, transparent 100%); }
+[data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(34,197,94,.3); }
 [data-theme="light"] .heroGoalPctText { color: var(--text); }
 [data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
 [data-theme="light"] .heroAmt { color: var(--text); }
 [data-theme="light"] .heroEyebrow { color: var(--muted); }
-[data-theme="light"] .heroSubLine { color: var(--muted); }
+[data-theme="light"] .heroSubLine { color: var(--text2); }
 [data-theme="light"] .heroPaceLine { color: var(--primary); }
 [data-theme="light"] .hcTab { color: var(--muted); }
 [data-theme="light"] .hcStat { border-right-color: var(--stroke2); }
@@ -2713,7 +2738,7 @@ body.compact .list    { gap: 1px; }
   .moreInputNarrow { min-width: 72px; }
   .seg { font-size: 13px; }
   .segBtn { padding: 8px 6px; }
-  .fr26HourBtn { font-size: 13px; padding: 6px 8px; }
+  .fr26HourBtn { font-size: 13px; min-width: 52px; }
   .histEntryRefNum { font-size: 14px; }
 }
 
@@ -2759,19 +2784,20 @@ body.compact .list    { gap: 1px; }
 .heroSection {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 16px 10px;
+  gap: 18px;
+  padding: 14px 16px 16px;
   max-width: 680px;
   margin: 0 auto;
+  background: linear-gradient(to bottom, rgba(34,197,94,.07) 0%, transparent 100%);
 }
 
 .heroGoalRingWrap {
   position: relative;
-  width: 90px;
-  height: 90px;
+  width: 102px;
+  height: 102px;
   flex-shrink: 0;
 }
-.heroGoalRingWrap svg { display: block; }
+.heroGoalRingWrap svg { display: block; width: 102px; height: 102px; }
 .heroGoalRingCenter {
   position: absolute;
   inset: 0;
@@ -2782,56 +2808,59 @@ body.compact .list    { gap: 1px; }
   pointer-events: none;
 }
 .heroGoalPctText {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 800;
   color: #fff;
   line-height: 1;
-  letter-spacing: -.5px;
+  letter-spacing: -.8px;
 }
 .heroGoalSubText {
-  font-size: 8px;
-  color: var(--muted2);
-  letter-spacing: 0.04em;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
   margin-top: 3px;
   text-transform: uppercase;
 }
 
 .heroRight { flex: 1; min-width: 0; }
 .heroEyebrow {
-  font-size: 9px;
-  color: var(--muted2);
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 .heroAmt {
-  font-size: 36px;
-  font-weight: 500;
+  font-size: 40px;
+  font-weight: 700;
   color: #fff;
-  letter-spacing: -1.2px;
+  letter-spacing: -1.8px;
   line-height: 1;
 }
 .heroSubLine {
-  font-size: 10px;
-  color: var(--muted2);
-  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 5px;
 }
 .heroPaceLine {
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--primary);
-  margin-top: 2px;
-  min-height: 13px;
+  margin-top: 3px;
+  min-height: 14px;
 }
 
 /* ── Hero chart card (unified range + chart + stats) ─ */
 .heroChartCard {
-  padding: 0 16px 8px;
+  padding: 0 16px 10px;
   max-width: 680px;
   margin: 0 auto;
 }
 .heroChartInner {
   background: var(--surface);
   border: 1px solid var(--stroke);
+  border-top: 2px solid rgba(34,197,94,.25);
   border-radius: var(--r-xl);
   overflow: hidden;
 }
@@ -2841,10 +2870,10 @@ body.compact .list    { gap: 1px; }
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 10px 12px 6px;
+  padding: 10px 12px 8px;
 }
 .hcTab {
-  padding: 5px 13px;
+  padding: 6px 14px;
   border-radius: var(--r-pill);
   border: none;
   background: transparent;
@@ -2852,19 +2881,28 @@ body.compact .list    { gap: 1px; }
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 120ms, color 120ms;
+  transition: background 150ms, color 150ms, box-shadow 150ms;
   touch-action: manipulation;
 }
 .hcTab.hcTab--active {
   background: var(--primary);
   color: #fff;
+  box-shadow: 0 2px 10px rgba(34,197,94,.35);
+}
+/* Nav group: label flanked by prev/next arrows */
+.hcNavGroup {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .hcRangeLabel {
-  margin-left: auto;
   font-size: 11px;
   color: var(--muted2);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: .2px;
+  min-width: 52px;
+  text-align: center;
 }
 
 /* Chart area — always visible, skeleton → real bars */
@@ -2912,15 +2950,15 @@ body.compact .list    { gap: 1px; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 11px 6px 10px;
+  padding: 13px 6px 11px;
   border-right: 1px solid var(--stroke);
 }
 .hcStat:last-child { border-right: none; }
 .hcStatVal {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: -.4px;
+  letter-spacing: -.5px;
   line-height: 1;
 }
 .hcStat--pay .hcStatVal { color: var(--primary); }
@@ -2929,7 +2967,7 @@ body.compact .list    { gap: 1px; }
   color: var(--muted2);
   text-transform: uppercase;
   letter-spacing: .5px;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 /* Goal bar — now lives inside heroRight */
@@ -2962,7 +3000,7 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
 }
 
-/* Nav buttons inside range tab row */
+/* Nav buttons — live inside .hcNavGroup flanking the label */
 .hcNavBtn {
   width: 26px;
   height: 26px;
@@ -2978,7 +3016,6 @@ body.compact .list    { gap: 1px; }
   cursor: pointer;
   touch-action: manipulation;
   flex-shrink: 0;
-  margin-left: 2px;
   transition: background 120ms, color 120ms;
 }
 .hcNavBtn:not(:disabled):active { background: var(--primary); color: #fff; }
@@ -2987,7 +3024,7 @@ body.compact .list    { gap: 1px; }
 /* Inline entries list */
 .hcEntriesList {
   border-top: 1px solid var(--stroke);
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -2996,16 +3033,18 @@ body.compact .list    { gap: 1px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--stroke);
-  gap: 8px;
-  min-height: 44px;
+  gap: 10px;
+  min-height: 48px;
+  transition: background 120ms;
 }
 .hcEntryRow:last-child { border-bottom: none; }
+.hcEntryRow:active { background: var(--surface2); }
 .hcEntryLeft {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   flex: 1;
 }
@@ -3027,32 +3066,32 @@ body.compact .list    { gap: 1px; }
 .hcEntryRef--photo:active { opacity: .7; }
 .hcEntryPhotoIcon { font-size: 11px; }
 .hcEntryType {
-  font-size: 11px;
-  color: var(--muted2);
+  font-size: 12px;
+  color: var(--text2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .hcEntryDate {
   font-size: 10px;
-  color: var(--muted2);
+  color: var(--muted);
   margin-left: 4px;
 }
 .hcEntryRight {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 3px;
   flex-shrink: 0;
 }
 .hcEntryPay {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--primary);
 }
 .hcEntryHrs {
   font-size: 11px;
-  color: var(--muted2);
+  color: var(--muted);
 }
 .hcEntryEmpty {
   padding: 20px 14px;

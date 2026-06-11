@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.43321cd70e.css">
+  <link rel="stylesheet" href="./app.299aedf86c.css">
 </head>
 <body data-page="main">
 
@@ -29,9 +29,9 @@
 <!-- ── Hero section ── -->
 <div class="heroSection">
   <div class="heroGoalRingWrap">
-    <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="90" height="90">
-      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="5"/>
-      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#22c55e" stroke-width="5"
+    <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="102" height="102">
+      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="6"/>
+      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#22c55e" stroke-width="6"
         stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
         transform="rotate(-90 48 48)"
         style="transition:stroke-dashoffset 700ms cubic-bezier(.4,0,.2,1);"/>
@@ -57,9 +57,11 @@
       <button class="hcTab" data-hc-range="week">Week</button>
       <button class="hcTab" data-hc-range="month">Month</button>
       <button class="hcTab" data-hc-range="year">Year</button>
-      <span class="hcRangeLabel" id="hcRangeLabel">Today</span>
-      <button class="hcNavBtn" id="rangeNavPrev" type="button" style="display:none;" aria-label="Previous">‹</button>
-      <button class="hcNavBtn" id="rangeNavNext" type="button" style="display:none;" aria-label="Next">›</button>
+      <div class="hcNavGroup">
+        <button class="hcNavBtn" id="rangeNavPrev" type="button" style="display:none;" aria-label="Previous">‹</button>
+        <span class="hcRangeLabel" id="hcRangeLabel">Today</span>
+        <button class="hcNavBtn" id="rangeNavNext" type="button" style="display:none;" aria-label="Next">›</button>
+      </div>
     </div>
     <div class="hcStatsRow" id="heroChartStats">
       <div class="hcStat">
