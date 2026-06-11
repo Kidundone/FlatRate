@@ -228,7 +228,12 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
-    initPushNotifications?.();
+    // Re-arm notification schedules on every boot (reminders live in more-page.js
+    // but must fire even when user opens index.html directly)
+    setTimeout(() => {
+      window.scheduleShiftReminder?.();
+      window.schedulePaydayReminder?.();
+    }, 1500);
 
     ["empId", "ref", "typeText", "hours"].forEach((id) => {
       const el = document.getElementById(id);

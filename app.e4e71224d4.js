@@ -3861,7 +3861,7 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    navigator.vibrate?.([40, 30, 40]);
+    if (getSettings?.()?.haptic !== false) navigator.vibrate?.([40, 30, 40]);
     flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.
@@ -5798,53 +5798,28 @@ async function shareWeekCard() {
   } catch { toast("Couldn't share — try Email PDF instead"); }
 }
 
-// ── Push notification reminder ────────────────────────────
-function initPushNotifications() {
-  if (localStorage.getItem("fr_notif_enabled") === "1" && Notification.permission === "granted") {
-    scheduleEndOfDayReminder();
-  }
-}
-
-function scheduleEndOfDayReminder() {
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(16, 30, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  const delay = target.getTime() - now.getTime();
-  setTimeout(async () => {
-    const empId = getEmpId();
-    if (empId && Notification.permission === "granted") {
-      const today = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
-        .filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === todayKeyLocal() && String(e.empId || "") === String(empId));
-      if (!today.length) {
-        new Notification("Flat-Rate Tracker", {
-          body: "Shift's almost done — did you log all your jobs?",
-          icon: "./icon-192.png",
-        });
-      }
-    }
-    // Reschedule for tomorrow
-    setTimeout(scheduleEndOfDayReminder, 70_000);
-  }, delay);
-}
-
+// ── Push notification helper (delegates to more-page.js schedulers) ──
 async function requestPushPermission() {
-  if (!("Notification" in window)) { toast("Notifications not supported on this device"); return; }
+  if (!("Notification" in window)) {
+    toast("Notifications not supported on this browser");
+    return;
+  }
   if (Notification.permission === "denied") {
-    toast("Notifications blocked — enable in your browser/phone Settings");
+    toast("Notifications blocked — go to Settings → Notifications and allow this site");
     return;
   }
-  if (Notification.permission === "granted") {
-    localStorage.setItem("fr_notif_enabled", "1");
-    scheduleEndOfDayReminder();
-    toast("🔔 Reminder already enabled — 4:30pm if nothing logged");
-    return;
+  let perm = Notification.permission;
+  if (perm !== "granted") {
+    perm = await Notification.requestPermission().catch(() => "denied");
   }
-  const perm = await Notification.requestPermission();
   if (perm === "granted") {
-    localStorage.setItem("fr_notif_enabled", "1");
-    scheduleEndOfDayReminder();
-    toast("🔔 Reminder set for 4:30pm if no jobs logged");
+    // Enable shift reminder if not already set
+    const ls = (() => { try { return JSON.parse(localStorage.getItem("fr_reminder") || "{}"); } catch { return {}; } })();
+    if (!ls.enabled) {
+      localStorage.setItem("fr_reminder", JSON.stringify({ ...ls, enabled: true, time: "16:30" }));
+    }
+    window.scheduleShiftReminder?.();
+    toast("🔔 Reminders on — go to More → Settings to adjust the time");
   } else {
     toast("Notifications not enabled");
   }
@@ -7261,6 +7236,7 @@ window.__FR.initFeedbackUI = initFeedbackUI;
 function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
   const compactToggle = document.getElementById("settingsCompactList");
+  const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
   const colorPreview  = document.getElementById("accentColorPreview");
   const saveBtn       = document.getElementById("settingsSaveBtn");
@@ -7273,6 +7249,8 @@ function initSettingsUI() {
 
   if (rateInput)   rateInput.value        = String(s.defaultRate || 15);
   if (compactToggle) compactToggle.checked = !!s.compactList;
+  // Haptic defaults ON; only off if explicitly saved as false
+  if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
   if (colorPicker) colorPicker.value      = s.accentColor || "#0095f6";
   if (colorPreview) colorPreview.style.background = s.accentColor || "#0095f6";
 
@@ -7304,10 +7282,12 @@ function initSettingsUI() {
     const color   = colorPicker?.value   || s.accentColor;
     const rate    = parseFloat(rateInput?.value) || 15;
     const compact = compactToggle?.checked ?? false;
-    saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode });
+    const haptic  = hapticToggle?.checked ?? true;
+    saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
   };
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
+  hapticToggle?.addEventListener("change", autosave);
   colorPicker?.addEventListener("change", autosave);
 
   // ── Shift reminder ──
@@ -8240,7 +8220,12 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
-    initPushNotifications?.();
+    // Re-arm notification schedules on every boot (reminders live in more-page.js
+    // but must fire even when user opens index.html directly)
+    setTimeout(() => {
+      window.scheduleShiftReminder?.();
+      window.schedulePaydayReminder?.();
+    }, 1500);
 
     ["empId", "ref", "typeText", "hours"].forEach((id) => {
       const el = document.getElementById(id);

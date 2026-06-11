@@ -1105,6 +1105,7 @@ window.__FR.initFeedbackUI = initFeedbackUI;
 function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
   const compactToggle = document.getElementById("settingsCompactList");
+  const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
   const colorPreview  = document.getElementById("accentColorPreview");
   const saveBtn       = document.getElementById("settingsSaveBtn");
@@ -1117,6 +1118,8 @@ function initSettingsUI() {
 
   if (rateInput)   rateInput.value        = String(s.defaultRate || 15);
   if (compactToggle) compactToggle.checked = !!s.compactList;
+  // Haptic defaults ON; only off if explicitly saved as false
+  if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
   if (colorPicker) colorPicker.value      = s.accentColor || "#0095f6";
   if (colorPreview) colorPreview.style.background = s.accentColor || "#0095f6";
 
@@ -1148,10 +1151,12 @@ function initSettingsUI() {
     const color   = colorPicker?.value   || s.accentColor;
     const rate    = parseFloat(rateInput?.value) || 15;
     const compact = compactToggle?.checked ?? false;
-    saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode });
+    const haptic  = hapticToggle?.checked ?? true;
+    saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
   };
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
+  hapticToggle?.addEventListener("change", autosave);
   colorPicker?.addEventListener("change", autosave);
 
   // ── Shift reminder ──

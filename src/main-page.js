@@ -1004,7 +1004,7 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    navigator.vibrate?.([40, 30, 40]);
+    if (getSettings?.()?.haptic !== false) navigator.vibrate?.([40, 30, 40]);
     flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.
@@ -2941,53 +2941,28 @@ async function shareWeekCard() {
   } catch { toast("Couldn't share — try Email PDF instead"); }
 }
 
-// ── Push notification reminder ────────────────────────────
-function initPushNotifications() {
-  if (localStorage.getItem("fr_notif_enabled") === "1" && Notification.permission === "granted") {
-    scheduleEndOfDayReminder();
-  }
-}
-
-function scheduleEndOfDayReminder() {
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(16, 30, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  const delay = target.getTime() - now.getTime();
-  setTimeout(async () => {
-    const empId = getEmpId();
-    if (empId && Notification.permission === "granted") {
-      const today = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
-        .filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === todayKeyLocal() && String(e.empId || "") === String(empId));
-      if (!today.length) {
-        new Notification("Flat-Rate Tracker", {
-          body: "Shift's almost done — did you log all your jobs?",
-          icon: "./icon-192.png",
-        });
-      }
-    }
-    // Reschedule for tomorrow
-    setTimeout(scheduleEndOfDayReminder, 70_000);
-  }, delay);
-}
-
+// ── Push notification helper (delegates to more-page.js schedulers) ──
 async function requestPushPermission() {
-  if (!("Notification" in window)) { toast("Notifications not supported on this device"); return; }
+  if (!("Notification" in window)) {
+    toast("Notifications not supported on this browser");
+    return;
+  }
   if (Notification.permission === "denied") {
-    toast("Notifications blocked — enable in your browser/phone Settings");
+    toast("Notifications blocked — go to Settings → Notifications and allow this site");
     return;
   }
-  if (Notification.permission === "granted") {
-    localStorage.setItem("fr_notif_enabled", "1");
-    scheduleEndOfDayReminder();
-    toast("🔔 Reminder already enabled — 4:30pm if nothing logged");
-    return;
+  let perm = Notification.permission;
+  if (perm !== "granted") {
+    perm = await Notification.requestPermission().catch(() => "denied");
   }
-  const perm = await Notification.requestPermission();
   if (perm === "granted") {
-    localStorage.setItem("fr_notif_enabled", "1");
-    scheduleEndOfDayReminder();
-    toast("🔔 Reminder set for 4:30pm if no jobs logged");
+    // Enable shift reminder if not already set
+    const ls = (() => { try { return JSON.parse(localStorage.getItem("fr_reminder") || "{}"); } catch { return {}; } })();
+    if (!ls.enabled) {
+      localStorage.setItem("fr_reminder", JSON.stringify({ ...ls, enabled: true, time: "16:30" }));
+    }
+    window.scheduleShiftReminder?.();
+    toast("🔔 Reminders on — go to More → Settings to adjust the time");
   } else {
     toast("Notifications not enabled");
   }
