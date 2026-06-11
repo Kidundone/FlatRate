@@ -433,7 +433,7 @@ function renderHeroChart(entries, weekStart) {
     d.setDate(d.getDate() + i);
     const k = dateKey(d);
     const dayEntries = entries.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === k);
-    const dollars = dayEntries.reduce((s, e) => s + (Number(e.dollars) || 0), 0);
+    const dollars = dayEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
     buckets.push({ label: days[d.getDay()], key: k, dollars, isToday: k === todayKey });
   }
 
