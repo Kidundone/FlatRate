@@ -1598,47 +1598,174 @@ function scheduleShiftReminder() {
 
 window.scheduleShiftReminder = scheduleShiftReminder;
 
+/* ── More-page inner tab switching ───────────────── */
+function initMoreTabs() {
+  const tabs = document.querySelectorAll(".moreTab[data-tab]");
+  if (!tabs.length) return;
+
+  function switchTab(name) {
+    tabs.forEach(t => {
+      const active = t.dataset.tab === name;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    document.querySelectorAll(".moreTabPanel").forEach(p => {
+      p.classList.toggle("active", p.id === `mPanel-${name}`);
+    });
+    localStorage.setItem("fr_more_tab", name);
+    if (name === "history") renderBulkEntryList?.();
+  }
+
+  tabs.forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+  const saved = localStorage.getItem("fr_more_tab") || "jobs";
+  const valid = ["jobs", "history", "settings"];
+  switchTab(valid.includes(saved) ? saved : "jobs");
+}
+
+/* ── Bulk entry delete (History tab) ─────────────── */
+let _bulkSelectMode = false;
+
+async function renderBulkEntryList() {
+  const container = document.getElementById("bulkEntryList");
+  if (!container) return;
+
+  const empId = getEmpId();
+  if (!empId) {
+    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">Enter Employee # in Settings to view entries.</div>`;
+    return;
+  }
+
+  const all = await getAll(STORES.entries);
+  const entries = filterEntriesByEmp(all, empId);
+  entries.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const recent = entries.slice(0, 60);
+
+  if (!recent.length) {
+    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No entries yet.</div>`;
+    return;
+  }
+
+  container.innerHTML = "";
+  for (const e of recent) {
+    const row = document.createElement("div");
+    row.className = "bulkEntryRow";
+    row.dataset.id = String(e.id ?? "");
+    const checkDisplay = _bulkSelectMode ? "" : "none";
+    row.innerHTML = `
+      <label class="bulkEntryCheck" style="display:${checkDisplay};">
+        <input type="checkbox" class="bulkCheck" />
+      </label>
+      <div class="bulkEntryInfo">
+        <div class="bulkEntryRef">${escapeHtml(e.ro || e.ref || "—")} <span class="bulkEntryType">(${escapeHtml(e.type || e.typeText || "—")})</span></div>
+        <div class="bulkEntryMeta">${formatMoney(Number(e.earnings ?? e.dollars ?? 0))} · ${round1(Number(e.hours || 0))} hrs · ${e.dayKey || ""}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+}
+
+function initBulkDelete() {
+  const toggle  = document.getElementById("bulkSelectToggle");
+  const delBtn  = document.getElementById("bulkDeleteBtn");
+  const bar     = document.getElementById("bulkDeleteBar");
+  const countEl = document.getElementById("bulkSelectedCount");
+  const list    = document.getElementById("bulkEntryList");
+  if (!toggle) return;
+
+  const syncBar = () => {
+    const checked = list?.querySelectorAll(".bulkCheck:checked").length ?? 0;
+    if (bar) bar.style.display = (_bulkSelectMode && checked > 0) ? "flex" : "none";
+    if (countEl) countEl.textContent = `${checked} selected`;
+  };
+
+  toggle.addEventListener("click", () => {
+    _bulkSelectMode = !_bulkSelectMode;
+    toggle.textContent = _bulkSelectMode ? "Cancel" : "Select";
+    toggle.classList.toggle("active", _bulkSelectMode);
+    list?.querySelectorAll(".bulkEntryCheck").forEach(el => {
+      el.style.display = _bulkSelectMode ? "" : "none";
+    });
+    list?.querySelectorAll(".bulkCheck").forEach(cb => { cb.checked = false; });
+    syncBar();
+  });
+
+  list?.addEventListener("change", (e) => {
+    if (e.target?.classList.contains("bulkCheck")) syncBar();
+  });
+
+  delBtn?.addEventListener("click", async () => {
+    const checked = [...(list?.querySelectorAll(".bulkCheck:checked") ?? [])];
+    if (!checked.length) return;
+    const n = checked.length;
+    if (!confirm(`Delete ${n} entr${n === 1 ? "y" : "ies"}? This cannot be undone.`)) return;
+
+    const ids = checked.map(cb => cb.closest(".bulkEntryRow")?.dataset.id).filter(Boolean);
+    for (const id of ids) {
+      await del(STORES.entries, id).catch(console.warn);
+    }
+
+    toast?.(`Deleted ${ids.length} entr${ids.length === 1 ? "y" : "ies"}`);
+    _bulkSelectMode = false;
+    if (toggle) { toggle.textContent = "Select"; toggle.classList.remove("active"); }
+    if (bar) bar.style.display = "none";
+
+    await renderBulkEntryList();
+    await renderPayTrend?.();
+    await renderInsights?.();
+  });
+}
+
+window.initMoreTabs = initMoreTabs;
+window.renderBulkEntryList = renderBulkEntryList;
+window.initBulkDelete = initBulkDelete;
+
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
   {
     el: null,
-    title: "You Made It to Settings",
-    body: "This is the More tab — your hub for account setup, pay stub tracking, earnings history, and preferences. Let's walk through the most important parts.",
+    title: "Welcome to More",
+    body: "The More page has three tabs — Job Types, History, and Settings. Each tab is focused so nothing gets buried. Let's walk through the most important parts.",
+  },
+  {
+    el: "#moreTabBar",
+    title: "Three Tabs, Three Jobs",
+    body: "Job Types is where you manage your saved job templates. History shows your earnings chart and short-pay tracking. Settings holds your account, reminders, and pay stub tools.",
+  },
+  {
+    el: "#mPanel-jobs",
+    title: "Job Types — Your Templates",
+    body: "Every job type you've saved appears here. Tap the pencil to edit hours or rate. Tap the trash to delete. The + New Type button at the top adds a new one. These fill in automatically when you log jobs on the main page.",
   },
   {
     el: "#authForm",
     title: "Sign In — Back Up Your Data",
-    body: "Enter your email and password to create an account or sign in. Once signed in, every entry you log is encrypted and stored in the cloud. You can switch devices or reinstall the app and nothing is lost.",
+    body: "Go to Settings → Profile to sign in. Once signed in, every entry is encrypted and stored in the cloud. Switch devices or reinstall and nothing is lost.",
   },
   {
     el: "#insightsCard",
-    title: "This Week at a Glance",
-    body: "After signing in, this card shows your effective hourly rate, average pay per day, comeback count, and projected weekly pay based on today's pace. Great for knowing if you are on track before Friday.",
+    title: "This Week at a Glance (History tab)",
+    body: "In the History tab, this card shows your effective hourly rate, average pay per day, comeback count, and projected weekly pay based on today's pace.",
   },
   {
-    el: "#earningsChart",
-    title: "Earnings History Chart",
-    body: "A bar chart of your weekly earnings going back as far as you have data. Quickly spot your best and worst weeks. Tap any bar to filter down to that week in your log.",
+    el: "#bulkSelectToggle",
+    title: "Bulk Delete Entries",
+    body: "Tap Select in the Recent Entries section to enter selection mode. Check the entries you want to remove, then tap Delete Selected. Great for cleaning up test entries or duplicates.",
   },
   {
     el: "#settingsDefaultRate",
-    title: "Set Your Default Hourly Rate",
-    body: "Enter your flat-rate wage here. The app uses this to calculate earnings for every job you log. You can always override it on a single job using the rate field in Add Details.",
+    title: "Default Hourly Rate (Settings tab)",
+    body: "Set your flat-rate wage here. The app uses this to calculate earnings for every job you log. You can override it per-entry using the rate field in Add Details.",
   },
   {
     el: null,
     title: "Pay Stub — Catch Short Pay",
-    body: "Scroll down to the Pay Stub section. Each Friday, enter your check amount and tap Save. The app compares it against your logged hours so you can immediately see if you were short-paid and by how much.",
-  },
-  {
-    el: "#feedbackCard",
-    title: "Send Feedback — Talk to Us",
-    body: "Got a bug? An idea? Something confusing? Tap 'Send Feedback' here, pick a category, and type your message. It goes straight to the developer. This is the fastest way to get something fixed or added.",
+    body: "In Settings → Pay Stub, enter your check amount each Friday. The app compares it to your logged hours and shows you immediately if you were short-paid.",
   },
   {
     el: null,
     title: "You Are All Set ✓",
-    body: "Sign in, log your first job, and check back after your first pay day. If anything feels unclear, come back to this tour anytime from More → Help → Take Tour. Good luck out there.",
+    body: "Sign in, log your first job, and check back after your first pay day. If anything feels off, come back to this tour anytime from Settings → Help → Take Tour.",
     last: true,
   },
 ];

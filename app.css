@@ -2020,16 +2020,40 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 /* ── Light theme — forced dark (app is always dark) ── */
 [data-theme="light"] {
-  --bg: #07070f;
-  --surface: #0e0e1a;
-  --surface2: #141426;
-  --surface3: #1c1c30;
-  --stroke: rgba(255,255,255,.07);
-  --stroke2: rgba(255,255,255,.13);
-  --text: #fff;
-  --text2: rgba(255,255,255,.72);
-  --muted: #7a7a9a;
-  --muted2: #3a3a5a;
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f6f7f9;
+  --surface3: #eceef2;
+  --stroke: rgba(0,0,0,.07);
+  --stroke2: rgba(0,0,0,.13);
+  --text: #111827;
+  --text2: rgba(17,24,39,.72);
+  --muted: #6b7280;
+  --muted2: #9ca3af;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.14);
+}
+
+[data-theme="light"] header {
+  background: rgba(240,242,245,.94);
+  border-bottom-color: rgba(0,0,0,.10);
+}
+
+[data-theme="light"] .tabBar {
+  background: rgba(255,255,255,.97);
+  border-top-color: rgba(0,0,0,.10);
+}
+
+[data-theme="light"] .card {
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+[data-theme="light"] .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+
+[data-theme="light"] .moreTabBar {
+  background: #ffffff;
+  border-bottom-color: rgba(0,0,0,.08);
 }
 
 [data-theme="light"] .moreToggleTrack {
@@ -2271,6 +2295,105 @@ body.compact .list    { gap: 1px; }
   letter-spacing: .4px;
 }
 .typeEditLabel input { font-size: 14px; }
+
+/* ── Inner More-page tab bar ─────────────────────────── */
+.moreTabBar {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--stroke);
+  padding: 0 4px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+
+.moreTab {
+  flex: 1;
+  padding: 12px 4px 11px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .1px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 140ms var(--ease);
+  touch-action: manipulation;
+}
+
+.moreTab.active { color: var(--primary); }
+
+.moreTab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.moreTabPanel { display: none; }
+.moreTabPanel.active { display: block; }
+
+/* ── Icon-only buttons for job type rows ─────────────── */
+.typeIconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke2);
+  background: var(--surface2);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms, color 120ms;
+  touch-action: manipulation;
+  padding: 0;
+}
+.typeIconBtn:active { opacity: .65; }
+.typeIconBtn--del {
+  color: var(--danger);
+  border-color: rgba(239,68,68,.2);
+  background: rgba(239,68,68,.05);
+}
+
+/* ── Bulk delete (History tab) ───────────────────────── */
+.bulkEntryRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--stroke);
+  transition: background 120ms;
+}
+.bulkEntryRow:first-child { border-top: none; }
+.bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; }
+.bulkEntryCheck input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.bulkEntryInfo { flex: 1; min-width: 0; }
+.bulkEntryRef { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bulkEntryType { font-weight: 400; color: var(--muted); }
+.bulkEntryMeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.bulkDeleteBar {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--stroke);
+  background: var(--surface2);
+}
+
+.moreCardHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 12px;
+}
 
 /* ── Offline dot ─────────────────────────────────── */
 .offlineDot {

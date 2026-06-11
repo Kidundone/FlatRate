@@ -12,16 +12,22 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.b42b93b6b5.css">
+  <link rel="stylesheet" href="./app.5c6b35dbec.css">
 </head>
 <body data-page="more">
 
   <header class="top">
     <div class="topRow">
-      <div class="topTitle">Settings</div>
+      <div class="topTitle">More</div>
       <a class="btn" href="./index.html">Done</a>
     </div>
   </header>
+
+  <nav class="moreTabBar" id="moreTabBar" role="tablist">
+    <button class="moreTab active" data-tab="jobs" role="tab" aria-selected="true" type="button">Job Types</button>
+    <button class="moreTab" data-tab="history" role="tab" aria-selected="false" type="button">History</button>
+    <button class="moreTab" data-tab="settings" role="tab" aria-selected="false" type="button">Settings</button>
+  </nav>
 
   <main class="wrap">
 
@@ -29,326 +35,345 @@
     <div class="muted small" id="statusMsg" style="padding:0 4px;"></div>
     <div id="dataWarning" class="warningBanner" style="display:none;margin:10px 0 0;"></div>
 
-    <!-- ── Profile ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Profile</div>
+    <!-- ══════════════ JOB TYPES TAB ══════════════ -->
+    <div class="moreTabPanel active" id="mPanel-jobs" role="tabpanel">
 
-      <div class="moreRow">
-        <div class="moreRowLabel">Employee #</div>
-        <input id="empId" inputmode="numeric" placeholder="12345" class="moreInput moreInputNarrow" />
-      </div>
+      <section class="card moreCard" style="margin-top:12px;">
+        <details class="typeAddDetails">
+          <summary class="typeAddSummary">＋ New Type</summary>
+          <form id="savedTypeCreateForm" class="typeAddForm">
+            <div class="typeAddFields">
+              <label class="typeEditLabel typeNameField">
+                Name
+                <input id="savedTypeName" class="moreInput" type="text" placeholder="e.g. PDI" autocomplete="off" />
+              </label>
+              <label class="typeEditLabel">
+                Hrs
+                <input id="savedTypeHours" class="moreInput" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" />
+              </label>
+              <label class="typeEditLabel">
+                $/hr
+                <input id="savedTypeRate" class="moreInput" inputmode="decimal" type="number" step="0.01" min="0" value="15" />
+              </label>
+              <button class="btn primary" type="submit">Add</button>
+            </div>
+          </form>
+        </details>
+        <div id="savedTypesList"></div>
+      </section>
 
-      <div class="moreDivider"></div>
+    </div><!-- /mPanel-jobs -->
 
-      <!-- Shown when NOT signed in -->
-      <div id="authForm">
-        <div class="authFields">
-          <input id="authEmail" type="email" placeholder="Email" class="moreInput" />
-          <input id="authPassword" type="password" placeholder="Password" class="moreInput" style="margin-top:8px;" />
+    <!-- ══════════════ HISTORY TAB ══════════════ -->
+    <div class="moreTabPanel" id="mPanel-history" role="tabpanel">
+
+      <section class="card moreCard" style="margin-top:12px;">
+        <div class="moreCardHeader">This Week</div>
+        <div id="insightsCard" style="padding:4px 16px 14px;"></div>
+      </section>
+
+      <section class="card moreCard">
+        <div class="moreCardHeader">Earnings History</div>
+        <div id="earningsChart" style="padding:12px 16px 8px;"></div>
+      </section>
+
+      <section class="card moreCard">
+        <div class="moreCardHeader">Short-Pay History</div>
+        <div id="payTrendCard"></div>
+      </section>
+
+      <!-- Entries with bulk delete -->
+      <section class="card moreCard">
+        <div class="moreCardHeader moreCardHeaderRow">
+          <span>Recent Entries</span>
+          <button class="btn" id="bulkSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
         </div>
-        <div class="moreAuthActions">
-          <button id="authSignIn" class="btn primary" type="button" style="flex:1;">Sign In</button>
-          <button id="authSignUp" class="btn" type="button" style="flex:1;">Sign Up</button>
+        <div id="bulkEntryList"></div>
+        <div class="bulkDeleteBar" id="bulkDeleteBar" style="display:none;">
+          <span class="muted" id="bulkSelectedCount" style="font-size:13px;">0 selected</span>
+          <button class="btn danger" id="bulkDeleteBtn" type="button">Delete Selected</button>
         </div>
-        <div class="moreAuthSecondary">
-          <button id="authReset" class="btn moreTextBtn" type="button">Forgot Password</button>
-        </div>
-        <div id="authMsg" class="muted small" style="padding-top:10px;display:none;"></div>
-      </div>
+      </section>
 
-      <!-- Shown when signed in -->
-      <div id="authSignedIn" style="display:none;">
-        <div class="moreRow">
-          <div class="moreRowLabel">Account</div>
-          <div id="authStatus" class="muted" style="font-size:13px;"></div>
-        </div>
-        <div class="moreRow" style="padding-top:4px;padding-bottom:14px;">
-          <button id="authSignOut" class="btn danger-ghost" style="display:none;">Sign Out</button>
-        </div>
-      </div>
+    </div><!-- /mPanel-history -->
 
-    </section>
+    <!-- ══════════════ SETTINGS TAB ══════════════ -->
+    <div class="moreTabPanel" id="mPanel-settings" role="tabpanel">
 
-    <!-- ── This Week ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">This Week</div>
-      <div id="insightsCard" style="padding:4px 16px 14px;"></div>
-    </section>
-
-    <!-- ── Earnings History ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Earnings History</div>
-      <div id="earningsChart" style="padding:12px 16px 8px;"></div>
-    </section>
-
-    <!-- ── Preferences ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Preferences</div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Default Rate ($/hr)</div>
-          <div class="moreRowSub">Applied to all new entries</div>
-        </div>
-        <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="15.00" class="moreInput moreInputNarrow" />
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div class="moreRowLabel">Accent Color</div>
-        <label class="accentPickerLabel" title="Choose accent color">
-          <input type="color" id="accentColorInput" />
-          <div id="accentColorPreview" class="accentColorPreview"></div>
-        </label>
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Appearance</div>
-          <div class="moreRowSub">Auto follows system setting</div>
-        </div>
-        <div class="seg">
-          <button class="segBtn" id="dmAuto" type="button">Auto</button>
-          <button class="segBtn" id="dmLight" type="button">Light</button>
-          <button class="segBtn" id="dmDark" type="button">Dark</button>
-        </div>
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Compact List</div>
-          <div class="moreRowSub">More entries on screen at once</div>
-        </div>
-        <label class="moreToggle">
-          <input id="settingsCompactList" type="checkbox" />
-          <span class="moreToggleTrack"></span>
-        </label>
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Shift Reminder</div>
-          <div class="moreRowSub">Notification to log at end of shift</div>
-        </div>
-        <label class="moreToggle">
-          <input id="reminderEnabled" type="checkbox" />
-          <span class="moreToggleTrack"></span>
-        </label>
-      </div>
-
-      <div id="reminderTimeRow" class="moreRow" style="display:none;">
-        <div class="moreRowLabel">Reminder Time</div>
-        <input id="reminderTime" type="time" class="moreInput moreInputNarrow" value="16:30" />
-      </div>
-
-      <div class="moreDivider"></div>
-
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Payday Reminder</div>
-          <div class="moreRowSub">Reminds you to log your pay stub</div>
-        </div>
-        <label class="moreToggle">
-          <input id="paydayReminderEnabled" type="checkbox" />
-          <span class="moreToggleTrack"></span>
-        </label>
-      </div>
-
-      <div id="paydayReminderRow" class="moreRow" style="display:none;">
-        <div class="moreRowLabel">Payday</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="paydayDay" class="moreInput moreInputNarrow">
-            <option value="1">Mon</option>
-            <option value="2">Tue</option>
-            <option value="3">Wed</option>
-            <option value="4">Thu</option>
-            <option value="5" selected>Fri</option>
-            <option value="6">Sat</option>
-            <option value="0">Sun</option>
-          </select>
-          <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
-        </div>
-      </div>
-
-    </section>
-
-    <!-- ── Weekly Goal ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Weekly Goal</div>
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">Target Hours</div>
-          <div class="moreRowSub">Shows progress bar on main page</div>
-        </div>
-        <div class="moreInputGroup">
-          <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
-          <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Pay Stub ── -->
-    <section class="card moreCard">
-      <details class="moreSectionDetails" id="payStubDetails">
-        <summary class="moreCardHeader moreSectionSummary">Pay Stub</summary>
+      <!-- Profile -->
+      <section class="card moreCard" style="margin-top:12px;">
+        <div class="moreCardHeader">Profile</div>
 
         <div class="moreRow">
-          <div class="moreRowLabel">Pay Period</div>
-          <div class="seg">
-            <button class="segBtn active" id="payPeriodWeekly" type="button">Weekly</button>
-            <button class="segBtn" id="payPeriodBiweekly" type="button">Biweekly</button>
+          <div class="moreRowLabel">Employee #</div>
+          <input id="empId" inputmode="numeric" placeholder="12345" class="moreInput moreInputNarrow" />
+        </div>
+
+        <div class="moreDivider"></div>
+
+        <div id="authForm">
+          <div class="authFields">
+            <input id="authEmail" type="email" placeholder="Email" class="moreInput" />
+            <input id="authPassword" type="password" placeholder="Password" class="moreInput" style="margin-top:8px;" />
           </div>
+          <div class="moreAuthActions">
+            <button id="authSignIn" class="btn primary" type="button" style="flex:1;">Sign In</button>
+            <button id="authSignUp" class="btn" type="button" style="flex:1;">Sign Up</button>
+          </div>
+          <div class="moreAuthSecondary">
+            <button id="authReset" class="btn moreTextBtn" type="button">Forgot Password</button>
+          </div>
+          <div id="authMsg" class="muted small" style="padding-top:10px;display:none;"></div>
+        </div>
+
+        <div id="authSignedIn" style="display:none;">
+          <div class="moreRow">
+            <div class="moreRowLabel">Account</div>
+            <div id="authStatus" class="muted" style="font-size:13px;"></div>
+          </div>
+          <div class="moreRow" style="padding-top:4px;padding-bottom:14px;">
+            <button id="authSignOut" class="btn danger-ghost" style="display:none;">Sign Out</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Preferences -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Preferences</div>
+
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Default Rate ($/hr)</div>
+            <div class="moreRowSub">Applied to all new entries</div>
+          </div>
+          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="15.00" class="moreInput moreInputNarrow" />
         </div>
 
         <div class="moreDivider"></div>
 
         <div class="moreRow">
-          <div class="moreRowLabel">Week of</div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <button class="btn" id="payStubPrevWeekBtn" type="button" style="padding:6px 10px;">‹</button>
-            <input id="payStubWeekEnding" type="date" class="moreInput moreInputNarrow" />
-            <button class="btn" id="payStubNextWeekBtn" type="button" style="padding:6px 10px;">›</button>
-          </div>
-        </div>
-
-        <div id="payStubWeek2Row" class="moreRow" style="display:none;">
-          <div class="moreRowLabel" style="color:var(--muted);font-size:12px;">+ Week 2</div>
-          <div id="payStubWeek2Label" class="muted small" style="text-align:right;"></div>
+          <div class="moreRowLabel">Accent Color</div>
+          <label class="accentPickerLabel" title="Choose accent color">
+            <input type="color" id="accentColorInput" />
+            <div id="accentColorPreview" class="accentColorPreview"></div>
+          </label>
         </div>
 
         <div class="moreDivider"></div>
 
         <div class="moreRow">
           <div>
-            <div class="moreRowLabel">Check Amount</div>
-            <div class="moreRowSub">Gross pay — covers both weeks if biweekly</div>
+            <div class="moreRowLabel">Appearance</div>
+            <div class="moreRowSub">Auto follows system setting</div>
           </div>
-          <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
-        </div>
-
-        <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
-        <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
-        <div class="moreSaveRow">
-          <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
-          <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
-        </div>
-        <div class="moreSaveRow" style="padding-top:0;">
-          <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
-          <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
-        </div>
-
-        <div id="payStubSummary" class="moreResultText"></div>
-        <div id="payStubExpected" class="moreResultMono"></div>
-        <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
-        <div id="missingWorkList" style="padding:0 16px 8px;"></div>
-      </details>
-    </section>
-
-    <!-- ── Pay Trend ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Short-Pay History</div>
-      <div id="payTrendCard"></div>
-    </section>
-
-    <!-- ── Job Types ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Job Types</div>
-      <details class="typeAddDetails">
-        <summary class="typeAddSummary">＋ New Type</summary>
-        <form id="savedTypeCreateForm" class="typeAddForm">
-          <div class="typeAddFields">
-            <label class="typeEditLabel typeNameField">
-              Name
-              <input id="savedTypeName" class="moreInput" type="text" placeholder="e.g. PDI" autocomplete="off" />
-            </label>
-            <label class="typeEditLabel">
-              Hrs
-              <input id="savedTypeHours" class="moreInput" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" />
-            </label>
-            <label class="typeEditLabel">
-              $/hr
-              <input id="savedTypeRate" class="moreInput" inputmode="decimal" type="number" step="0.01" min="0" value="15" />
-            </label>
-            <button class="btn primary" type="submit">Add</button>
+          <div class="seg">
+            <button class="segBtn" id="dmAuto" type="button">Auto</button>
+            <button class="segBtn" id="dmLight" type="button">Light</button>
+            <button class="segBtn" id="dmDark" type="button">Dark</button>
           </div>
-        </form>
-      </details>
-      <div id="savedTypesList"></div>
-    </section>
+        </div>
 
-    <!-- ── Feedback ── -->
-    <section class="card moreCard" id="feedbackCard">
-      <details class="moreSectionDetails">
-        <summary class="moreCardHeader moreSectionSummary">Send Feedback</summary>
-        <div style="padding:0 16px 16px;">
-          <div class="moreRow" style="padding-left:0;padding-right:0;padding-top:12px;">
-            <div class="moreRowLabel">Category</div>
-            <select id="feedbackCategory" class="moreInput moreInputNarrow">
-              <option value="bug">🐛 Bug Report</option>
-              <option value="feature">💡 Feature Request</option>
-              <option value="usability">🎨 Usability</option>
-              <option value="performance">⚡ Performance</option>
-              <option value="general">💬 General</option>
+        <div class="moreDivider"></div>
+
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Compact List</div>
+            <div class="moreRowSub">More entries on screen at once</div>
+          </div>
+          <label class="moreToggle">
+            <input id="settingsCompactList" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+
+        <div class="moreDivider"></div>
+
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Shift Reminder</div>
+            <div class="moreRowSub">Notification to log at end of shift</div>
+          </div>
+          <label class="moreToggle">
+            <input id="reminderEnabled" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+
+        <div id="reminderTimeRow" class="moreRow" style="display:none;">
+          <div class="moreRowLabel">Reminder Time</div>
+          <input id="reminderTime" type="time" class="moreInput moreInputNarrow" value="16:30" />
+        </div>
+
+        <div class="moreDivider"></div>
+
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Payday Reminder</div>
+            <div class="moreRowSub">Reminds you to log your pay stub</div>
+          </div>
+          <label class="moreToggle">
+            <input id="paydayReminderEnabled" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+
+        <div id="paydayReminderRow" class="moreRow" style="display:none;">
+          <div class="moreRowLabel">Payday</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="paydayDay" class="moreInput moreInputNarrow">
+              <option value="1">Mon</option>
+              <option value="2">Tue</option>
+              <option value="3">Wed</option>
+              <option value="4">Thu</option>
+              <option value="5" selected>Fri</option>
+              <option value="6">Sat</option>
+              <option value="0">Sun</option>
             </select>
+            <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
           </div>
-          <textarea id="feedbackMessage" class="moreInput" placeholder="Describe the bug, idea, or anything on your mind…" style="margin-top:10px;min-height:96px;resize:vertical;display:block;width:100%;box-sizing:border-box;"></textarea>
-          <button class="btn primary" id="submitFeedbackBtn" type="button" style="width:100%;margin-top:10px;min-height:48px;">Submit</button>
-          <div id="feedbackStatus" class="muted small" style="text-align:center;margin-top:8px;display:none;"></div>
         </div>
-      </details>
-    </section>
+      </section>
 
-    <!-- ── Help ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Help</div>
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">App Tour</div>
-          <div class="moreRowSub">Replay the getting-started walkthrough</div>
+      <!-- Weekly Goal -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Weekly Goal</div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Target Hours</div>
+            <div class="moreRowSub">Shows progress bar on main page</div>
+          </div>
+          <div class="moreInputGroup">
+            <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
+            <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
+          </div>
         </div>
-        <button class="btn" id="retakeTourBtn" type="button">Take Tour</button>
-      </div>
+      </section>
 
-      <div class="moreDivider"></div>
+      <!-- Pay Stub -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="payStubDetails">
+          <summary class="moreCardHeader moreSectionSummary">Pay Stub</summary>
 
-      <div class="moreRow">
-        <div>
-          <div class="moreRowLabel">App Update</div>
-          <div class="moreRowSub">Force-check for the latest version</div>
+          <div class="moreRow">
+            <div class="moreRowLabel">Pay Period</div>
+            <div class="seg">
+              <button class="segBtn active" id="payPeriodWeekly" type="button">Weekly</button>
+              <button class="segBtn" id="payPeriodBiweekly" type="button">Biweekly</button>
+            </div>
+          </div>
+
+          <div class="moreDivider"></div>
+
+          <div class="moreRow">
+            <div class="moreRowLabel">Week of</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button class="btn" id="payStubPrevWeekBtn" type="button" style="padding:6px 10px;">‹</button>
+              <input id="payStubWeekEnding" type="date" class="moreInput moreInputNarrow" />
+              <button class="btn" id="payStubNextWeekBtn" type="button" style="padding:6px 10px;">›</button>
+            </div>
+          </div>
+
+          <div id="payStubWeek2Row" class="moreRow" style="display:none;">
+            <div class="moreRowLabel" style="color:var(--muted);font-size:12px;">+ Week 2</div>
+            <div id="payStubWeek2Label" class="muted small" style="text-align:right;"></div>
+          </div>
+
+          <div class="moreDivider"></div>
+
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Check Amount</div>
+              <div class="moreRowSub">Gross pay — covers both weeks if biweekly</div>
+            </div>
+            <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
+          </div>
+
+          <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
+          <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+          <div class="moreSaveRow">
+            <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
+            <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
+          </div>
+          <div class="moreSaveRow" style="padding-top:0;">
+            <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
+            <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
+          </div>
+
+          <div id="payStubSummary" class="moreResultText"></div>
+          <div id="payStubExpected" class="moreResultMono"></div>
+          <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
+          <div id="missingWorkList" style="padding:0 16px 8px;"></div>
+        </details>
+      </section>
+
+      <!-- Export & Tools -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Export &amp; Tools</div>
+        <div class="exportGrid">
+          <button class="exportBtn" type="button" id="exportCsvBtn">
+            <div class="exportBtnIcon">CSV</div>
+            <div class="exportBtnLabel">Export CSV</div>
+          </button>
+          <button class="exportBtn" type="button" id="exportJsonBtn">
+            <div class="exportBtnIcon">JSON</div>
+            <div class="exportBtnLabel">Export JSON</div>
+          </button>
+          <button class="exportBtn" type="button" id="exportAuditBtn">
+            <div class="exportBtnIcon">PDF</div>
+            <div class="exportBtnLabel">Audit Report</div>
+          </button>
+          <button class="exportBtn" type="button" id="repairBtn">
+            <div class="exportBtnIcon">Fix</div>
+            <div class="exportBtnLabel">Repair Data</div>
+          </button>
         </div>
-        <button class="btn" id="checkUpdateBtn" type="button" onclick="window.__FR?.checkForAppUpdate?.()">Check for Update</button>
-      </div>
-    </section>
+      </section>
 
-    <!-- ── Export & Tools ── -->
-    <section class="card moreCard">
-      <div class="moreCardHeader">Export & Tools</div>
-      <div class="exportGrid">
-        <button class="exportBtn" type="button" id="exportCsvBtn">
-          <div class="exportBtnIcon">CSV</div>
-          <div class="exportBtnLabel">Export CSV</div>
-        </button>
-        <button class="exportBtn" type="button" id="exportJsonBtn">
-          <div class="exportBtnIcon">JSON</div>
-          <div class="exportBtnLabel">Export JSON</div>
-        </button>
-        <button class="exportBtn" type="button" id="exportAuditBtn">
-          <div class="exportBtnIcon">PDF</div>
-          <div class="exportBtnLabel">Audit Report</div>
-        </button>
-        <button class="exportBtn" type="button" id="repairBtn">
-          <div class="exportBtnIcon">Fix</div>
-          <div class="exportBtnLabel">Repair Data</div>
-        </button>
-      </div>
-    </section>
+      <!-- Feedback -->
+      <section class="card moreCard" id="feedbackCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Send Feedback</summary>
+          <div style="padding:0 16px 16px;">
+            <div class="moreRow" style="padding-left:0;padding-right:0;padding-top:12px;">
+              <div class="moreRowLabel">Category</div>
+              <select id="feedbackCategory" class="moreInput moreInputNarrow">
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="usability">Usability</option>
+                <option value="performance">Performance</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <textarea id="feedbackMessage" class="moreInput" placeholder="Describe the bug, idea, or anything on your mind…" style="margin-top:10px;min-height:96px;resize:vertical;display:block;width:100%;box-sizing:border-box;"></textarea>
+            <button class="btn primary" id="submitFeedbackBtn" type="button" style="width:100%;margin-top:10px;min-height:48px;">Submit</button>
+            <div id="feedbackStatus" class="muted small" style="text-align:center;margin-top:8px;display:none;"></div>
+          </div>
+        </details>
+      </section>
+
+      <!-- Help -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Help</div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">App Tour</div>
+            <div class="moreRowSub">Replay the getting-started walkthrough</div>
+          </div>
+          <button class="btn" id="retakeTourBtn" type="button">Take Tour</button>
+        </div>
+
+        <div class="moreDivider"></div>
+
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">App Update</div>
+            <div class="moreRowSub">Force-check for the latest version</div>
+          </div>
+          <button class="btn" id="checkUpdateBtn" type="button" onclick="window.__FR?.checkForAppUpdate?.()">Check</button>
+        </div>
+      </section>
+
+    </div><!-- /mPanel-settings -->
 
 
     <!-- ── More-page tour overlay ── -->
@@ -443,6 +468,6 @@
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
     };
   </script>
-  <script src="./app.ef9d81eb5f.js" defer></script>
+  <script src="./app.aeaf9068c8.js" defer></script>
 </body>
 </html>

@@ -455,6 +455,8 @@ async function runOnce() {
       });
     }
 
+    initMoreTabs?.();
+    initBulkDelete?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();

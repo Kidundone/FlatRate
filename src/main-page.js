@@ -1630,8 +1630,12 @@ async function renderTypesListInMore(){
           <div class="typeRowMeta">${round1(t.lastHours||0)} hrs · ${formatMoney(t.lastRate||0)}/hr</div>
         </div>
         <div class="typeRowActions">
-          <button class="iBtn typeEditBtn" type="button">Edit</button>
-          <button class="iBtn iBtn--danger typeDelBtn" type="button">Delete</button>
+          <button class="typeIconBtn typeEditBtn" type="button" aria-label="Edit ${escapeHtml(t.name)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="typeIconBtn typeIconBtn--del typeDelBtn" type="button" aria-label="Delete ${escapeHtml(t.name)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
         </div>
       </div>
       <div class="typeEditForm" style="display:none;">
@@ -1659,11 +1663,17 @@ async function renderTypesListInMore(){
     editBtn.addEventListener("click", () => {
       const open = form.style.display !== "none";
       form.style.display = open ? "none" : "block";
-      editBtn.textContent = open ? "Edit" : "Close";
+      editBtn.style.opacity = open ? "" : "1";
+      editBtn.style.background = open ? "" : "rgba(34,197,94,.12)";
+      editBtn.style.borderColor = open ? "" : "rgba(34,197,94,.35)";
+      editBtn.style.color = open ? "" : "var(--primary)";
     });
     cancelBtn.addEventListener("click", () => {
       form.style.display = "none";
-      editBtn.textContent = "Edit";
+      editBtn.style.opacity = "";
+      editBtn.style.background = "";
+      editBtn.style.borderColor = "";
+      editBtn.style.color = "";
     });
     saveBtn.addEventListener("click", async () => {
       const hrs  = Number(div.querySelector(".typeEditHours").value || 0);
@@ -1672,7 +1682,10 @@ async function renderTypesListInMore(){
       if (!Number.isFinite(rate) || rate < 0) return;
       await upsertTypeDefaults(t.name, hrs, rate);
       form.style.display = "none";
-      editBtn.textContent = "Edit";
+      editBtn.style.opacity = "";
+      editBtn.style.background = "";
+      editBtn.style.borderColor = "";
+      editBtn.style.color = "";
       div.querySelector(".typeRowMeta").textContent = `${round1(hrs)} hrs · ${formatMoney(rate)}/hr`;
       toast?.(`${t.name} updated`);
     });
