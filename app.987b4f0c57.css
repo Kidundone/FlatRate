@@ -580,7 +580,7 @@ a.btn {
 }
 
 /* Bare buttons inherit .btn look */
-button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26Chip):not(.fr26HourBtn) {
+button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26Chip):not(.fr26HourBtn):not(.typeIconBtn):not(.clockInBtn):not(.repeatChip):not(.comboSuggestChip) {
   display: inline-flex;
   align-items: center;
   justify-content: center;

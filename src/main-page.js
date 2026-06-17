@@ -357,7 +357,7 @@ function updateEarningsPreview() {
   const hours = parseFloat(document.getElementById("hours")?.value) || 0;
   const rate = parseFloat(document.querySelector('input[name="rate"]')?.value) || getDefaultRate();
   if (hours > 0 && rate > 0) {
-    el.innerHTML = `= ${formatMoney(round2(hours * rate))}<span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
+    el.innerHTML = `= ${formatMoney(round2(hours * rate))} <span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
     el.classList.add("hasValue");
   } else {
     el.innerHTML = "";
@@ -1735,11 +1735,11 @@ async function renderTypeDatalist(){
     const shown = types.slice(0, 14);
     strip.innerHTML = "";
     if (shown.length === 0) {
-      strip.hidden = false;
       strip.innerHTML = `<span class="typeSuggestHint">Type anything — saved types appear here after you log entries</span>`;
+      // Don't set hidden — focus handler controls visibility
       return;
     }
-    strip.hidden = false;
+    // Don't set hidden here — focus handler controls visibility
     for (const t of shown) {
       const chip = document.createElement("button");
       chip.type = "button";
