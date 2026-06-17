@@ -1884,50 +1884,61 @@ window.initEntrySearch = initEntrySearch;
 
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
-  {
-    el: null,
-    title: "The More Page",
-    body: "Three tabs: Job Types, History, and Settings. Everything that isn't logging a job lives here.",
-  },
+  /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
     title: "Three Tabs",
-    body: "Job Types manages your saved job templates. History is your full entry list with search and bulk delete. Settings covers your rate, appearance, notifications, and account.",
+    body: "Job Types manages your saved job templates. History shows your full entry list. Settings holds your rate, notifications, pay stub, and account. We'll walk through each one.",
+    action: "switch-tab:jobs",
   },
   {
-    el: "#mPanel-jobs",
-    title: "Job Types",
-    body: "Add a new type with the form at the top — name, hours, and rate. Your saved types appear in the list below. Tap the pencil to edit, the trash to delete. Tap Select to delete multiple at once.",
+    el: "#savedTypeCreateForm",
+    title: "Add a Job Type",
+    body: "Type the job name, set the default hours and rate, then tap Save. That type is now available as a chip suggestion every time you log a job on the main page.",
+    action: "switch-tab:jobs",
   },
+  {
+    el: "#savedTypesList",
+    title: "Your Saved Types",
+    body: "All your job templates appear here. Tap the pencil to edit the hours or rate. Tap trash to delete. Tap the Select button at the top right to check multiple types and delete them all at once.",
+    action: "switch-tab:jobs",
+  },
+  /* ── History tab ───────────────────────── */
   {
     el: "#entrySearchInput",
     title: "Search Your History",
-    body: "In the History tab, type here to filter entries by job type, RO number, or any other text. The list updates instantly as you type.",
+    body: "Filter your entries in real time — type a job name, RO number, or any keyword. Every entry you've ever logged is here.",
+    action: "switch-tab:history",
   },
   {
     el: "#bulkSelectToggle",
     title: "Bulk Delete Entries",
-    body: "Tap Select to enter selection mode — tap any row to check it, tap All to grab everything, then Delete to remove. Use this to clean up test entries.",
+    body: "Tap Select to enter selection mode. Tap any row to check it, or tap All to select everything. Then hit Delete to remove them. Great for clearing out test entries.",
+    action: "switch-tab:history",
   },
+  /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Default Rate",
-    body: "Your flat-rate wage. Every job uses this to calculate earnings unless you override it per-entry in the More Details panel.",
+    title: "Default Hourly Rate",
+    body: "This is the rate used to calculate earnings on every job you log. You can override it on a per-job basis in the More Details panel when logging.",
+    action: "switch-tab:settings",
   },
   {
-    el: null,
+    el: "#authForm",
+    title: "Sign In — Cloud Backup",
+    body: "Sign in here to back up all your data to the cloud. Switch phones, reinstall — nothing is ever lost. Your entries are tied to your account, not your device.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#payStubDetails",
     title: "Pay Stub — Catch Short Pay",
-    body: "In Settings → Pay Stub, enter your check amount each pay period. The app compares it against your logged hours and flags any difference immediately.",
+    body: "Enter your check amount each pay period and the app compares it against your logged hours. If the numbers don't match, it flags the difference so you know exactly what to dispute.",
+    action: "open-paystub",
   },
   {
     el: null,
-    title: "Sign In for Cloud Backup",
-    body: "Go to Settings → Profile and sign in. Your data is encrypted and stored in the cloud — switch phones, reinstall, and nothing is lost.",
-  },
-  {
-    el: null,
-    title: "You're Set ✓",
-    body: "Log your first job, check back after payday. Restart this tour anytime from Settings → Help → Take Tour.",
+    title: "You're All Set ✓",
+    body: "Log your first job and check back after payday. Restart this tour anytime from Settings → Help → Take Tour.",
     last: true,
   },
 ];
@@ -1977,8 +1988,23 @@ function startMoreTour() {
     }, 300);
   }
 
+  function runAction(action) {
+    if (!action) return;
+    if (action.startsWith("switch-tab:")) {
+      const tabName = action.split(":")[1];
+      document.querySelector(`.moreTab[data-tab="${tabName}"]`)?.click();
+    }
+    if (action === "open-paystub") {
+      document.querySelector('.moreTab[data-tab="settings"]')?.click();
+      const det = document.getElementById("payStubDetails");
+      if (det && !det.open) det.open = true;
+    }
+  }
+
   function show(idx) {
     const s = MORE_TOUR_STEPS[idx];
+    // Run the action BEFORE spotlighting so the tab panel / element is visible
+    runAction(s.action);
     const stepLabel = document.getElementById("tourStep");
     const titleEl   = document.getElementById("tourTitle");
     const bodyEl    = document.getElementById("tourBody");
@@ -1989,7 +2015,8 @@ function startMoreTour() {
     nextBtn.textContent = s.last ? "Finish ✓" : "Next →";
     overlay.style.display = "block";
     buildDots();
-    positionSpotlight(s.el);
+    // Small delay so tab panel has rendered before we measure spotlight position
+    setTimeout(() => positionSpotlight(s.el), 120);
     if (tooltip) {
       tooltip.classList.remove("step-enter");
       void tooltip.offsetWidth;

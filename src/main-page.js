@@ -2716,47 +2716,58 @@ const TOUR_STEPS = [
   {
     el: null,
     title: "Welcome to Flat-Rate Tracker",
-    body: "Log every job, track your hours and earnings, spot short pay — all offline-first. Tap Next for a quick walkthrough.",
+    body: "Log every job, track your hours and earnings, and catch short pay — all offline-first on the shop floor. Here's a quick tour of every section.",
   },
   {
-    el: ".heroSection",
-    title: "Your Pay Dashboard",
-    body: "The big number is today's earnings. The ring tracks your weekly goal — tap it to set a dollar or hour target. Bars show the week at a glance; tap any bar for that day's breakdown.",
+    el: ".heroGoalRingWrap",
+    title: "Weekly Goal Ring",
+    body: "This ring shows your progress toward your weekly goal. Tap it right now to set a target — either total hours or total pay for the week. The ring fills green as you hit it.",
+  },
+  {
+    el: ".heroAmt",
+    title: "Today's Earnings",
+    body: "The big number is what you've earned today based on your logged hours and rate. It updates the instant you save a new entry.",
+  },
+  {
+    el: ".heroChartCard",
+    title: "Week Chart",
+    body: "Each bar is one day this week. Tap any bar to see that day's hours, jobs, and pay right below. Switch between Day / Week / Month / All using the tabs at the top of the chart.",
   },
   {
     el: ".fr26QuickHours",
-    title: "Log Hours",
-    body: "Tap a quick button for what the job paid — 0.5, 1.0, 1.5, up to 5.0. Or type any value directly. Flat-rate only cares what the job paid, not what the clock said.",
+    title: "Log Hours — Quick Buttons",
+    body: "Tap the button that matches what the job paid in flat-rate hours — 0.5, 1.0, 1.5, up to 5.0. Or type any amount in the Hours field. The clock doesn't matter, only what the job paid.",
   },
   {
-    el: "#typeText",
-    title: "Work Done",
-    body: "Type the job — 'Front brakes', 'Oil change', 'PDI'. Chips appear below with your most-used types; tap one to fill it in instantly. The more you log, the smarter the suggestions get.",
+    el: "#typeSuggestStrip",
+    title: "Work Done — Smart Chips",
+    body: "Type the job in the 'Work Done' field. Your most-used job types appear as chips below — tap one to fill it in instantly. The suggestions get smarter the more you log.",
   },
   {
     el: "#ref",
     title: "RO / STK Number",
-    body: "Enter the RO or stock number right in the main form — no extra taps needed. Toggle between RO and STK with the buttons on the right. Optional, but great for looking up jobs later.",
+    body: "Enter the repair order or stock number here. Toggle between RO and STK with the buttons to the right. This field is optional but makes it easy to look up any job later.",
+  },
+  {
+    el: ".fr26QuickTools",
+    title: "More Details Panel",
+    body: "Tap 'More' to reveal extra fields — last 8 of VIN, a per-job rate override, notes, and a comeback flag. Always fill these in if the job might end up in dispute.",
+    action: "open-details",
+  },
+  {
+    el: "#vin8",
+    title: "VIN, Rate Override & Notes",
+    body: "Last 8 of the VIN, a custom rate just for this job, and a free-text notes field. The comeback checkbox flags the job as a return visit — tracked separately in your stats.",
   },
   {
     el: "#saveBtn",
     title: "Save",
-    body: "Hit Save and the job is logged instantly — even offline on the shop floor. Entries sync to the cloud automatically when you reconnect.",
-  },
-  {
-    el: ".fr26QuickTools",
-    title: "More Details",
-    body: "Tap 'More' to open extra fields: last 8 of VIN, a per-job rate override, notes, and a comeback flag. Use these when you need to dispute a repair order.",
-  },
-  {
-    el: ".heroChartCard",
-    title: "Chart & Stats",
-    body: "Tap any bar to see that day's breakdown inline. Switch Day / Week / Month with the tabs. Your effective hourly rate, comeback count, and pace show below the chart.",
+    body: "Tap Save and the entry is logged instantly — even with no signal. Jobs queue locally and sync to the cloud the moment you get back online.",
   },
   {
     el: ".tabItem:last-child",
-    title: "Set Up Cloud Backup →",
-    body: "Last step: go to More → Settings → Profile to sign in. Your data backs up to the cloud and syncs across devices. Tap Next to head there now.",
+    title: "More → Settings, History & Job Types",
+    body: "The More tab is your control center — manage job type templates, browse your full history, and configure your rate and notifications. Tap Next and we'll walk through it.",
     action: "goto-more",
   },
 ];
@@ -3308,11 +3319,19 @@ function startTour() {
   nextBtn.onclick = () => {
     const current = TOUR_STEPS[step];
     if (current?.action === "goto-more") {
-      // Mark tour as mid-flight so the More page continues it
       localStorage.setItem("fr_tour_more", "1");
       endTour();
       window.location.href = "./more.html";
       return;
+    }
+    if (current?.action === "open-details") {
+      // Open the details panel so the next step can highlight fields inside it
+      const panel = document.getElementById("detailsPanel");
+      const btn   = document.getElementById("toggleDetailsBtn");
+      if (panel && panel.style.display === "none") {
+        panel.style.display = "block";
+        if (btn) btn.textContent = "Less";
+      }
     }
     step++;
     if (step >= TOUR_STEPS.length) endTour();

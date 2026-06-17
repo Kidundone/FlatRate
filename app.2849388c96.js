@@ -5573,47 +5573,58 @@ const TOUR_STEPS = [
   {
     el: null,
     title: "Welcome to Flat-Rate Tracker",
-    body: "Log every job, track your hours and earnings, spot short pay — all offline-first. Tap Next for a quick walkthrough.",
+    body: "Log every job, track your hours and earnings, and catch short pay — all offline-first on the shop floor. Here's a quick tour of every section.",
   },
   {
-    el: ".heroSection",
-    title: "Your Pay Dashboard",
-    body: "The big number is today's earnings. The ring tracks your weekly goal — tap it to set a dollar or hour target. Bars show the week at a glance; tap any bar for that day's breakdown.",
+    el: ".heroGoalRingWrap",
+    title: "Weekly Goal Ring",
+    body: "This ring shows your progress toward your weekly goal. Tap it right now to set a target — either total hours or total pay for the week. The ring fills green as you hit it.",
+  },
+  {
+    el: ".heroAmt",
+    title: "Today's Earnings",
+    body: "The big number is what you've earned today based on your logged hours and rate. It updates the instant you save a new entry.",
+  },
+  {
+    el: ".heroChartCard",
+    title: "Week Chart",
+    body: "Each bar is one day this week. Tap any bar to see that day's hours, jobs, and pay right below. Switch between Day / Week / Month / All using the tabs at the top of the chart.",
   },
   {
     el: ".fr26QuickHours",
-    title: "Log Hours",
-    body: "Tap a quick button for what the job paid — 0.5, 1.0, 1.5, up to 5.0. Or type any value directly. Flat-rate only cares what the job paid, not what the clock said.",
+    title: "Log Hours — Quick Buttons",
+    body: "Tap the button that matches what the job paid in flat-rate hours — 0.5, 1.0, 1.5, up to 5.0. Or type any amount in the Hours field. The clock doesn't matter, only what the job paid.",
   },
   {
-    el: "#typeText",
-    title: "Work Done",
-    body: "Type the job — 'Front brakes', 'Oil change', 'PDI'. Chips appear below with your most-used types; tap one to fill it in instantly. The more you log, the smarter the suggestions get.",
+    el: "#typeSuggestStrip",
+    title: "Work Done — Smart Chips",
+    body: "Type the job in the 'Work Done' field. Your most-used job types appear as chips below — tap one to fill it in instantly. The suggestions get smarter the more you log.",
   },
   {
     el: "#ref",
     title: "RO / STK Number",
-    body: "Enter the RO or stock number right in the main form — no extra taps needed. Toggle between RO and STK with the buttons on the right. Optional, but great for looking up jobs later.",
+    body: "Enter the repair order or stock number here. Toggle between RO and STK with the buttons to the right. This field is optional but makes it easy to look up any job later.",
+  },
+  {
+    el: ".fr26QuickTools",
+    title: "More Details Panel",
+    body: "Tap 'More' to reveal extra fields — last 8 of VIN, a per-job rate override, notes, and a comeback flag. Always fill these in if the job might end up in dispute.",
+    action: "open-details",
+  },
+  {
+    el: "#vin8",
+    title: "VIN, Rate Override & Notes",
+    body: "Last 8 of the VIN, a custom rate just for this job, and a free-text notes field. The comeback checkbox flags the job as a return visit — tracked separately in your stats.",
   },
   {
     el: "#saveBtn",
     title: "Save",
-    body: "Hit Save and the job is logged instantly — even offline on the shop floor. Entries sync to the cloud automatically when you reconnect.",
-  },
-  {
-    el: ".fr26QuickTools",
-    title: "More Details",
-    body: "Tap 'More' to open extra fields: last 8 of VIN, a per-job rate override, notes, and a comeback flag. Use these when you need to dispute a repair order.",
-  },
-  {
-    el: ".heroChartCard",
-    title: "Chart & Stats",
-    body: "Tap any bar to see that day's breakdown inline. Switch Day / Week / Month with the tabs. Your effective hourly rate, comeback count, and pace show below the chart.",
+    body: "Tap Save and the entry is logged instantly — even with no signal. Jobs queue locally and sync to the cloud the moment you get back online.",
   },
   {
     el: ".tabItem:last-child",
-    title: "Set Up Cloud Backup →",
-    body: "Last step: go to More → Settings → Profile to sign in. Your data backs up to the cloud and syncs across devices. Tap Next to head there now.",
+    title: "More → Settings, History & Job Types",
+    body: "The More tab is your control center — manage job type templates, browse your full history, and configure your rate and notifications. Tap Next and we'll walk through it.",
     action: "goto-more",
   },
 ];
@@ -6165,11 +6176,19 @@ function startTour() {
   nextBtn.onclick = () => {
     const current = TOUR_STEPS[step];
     if (current?.action === "goto-more") {
-      // Mark tour as mid-flight so the More page continues it
       localStorage.setItem("fr_tour_more", "1");
       endTour();
       window.location.href = "./more.html";
       return;
+    }
+    if (current?.action === "open-details") {
+      // Open the details panel so the next step can highlight fields inside it
+      const panel = document.getElementById("detailsPanel");
+      const btn   = document.getElementById("toggleDetailsBtn");
+      if (panel && panel.style.display === "none") {
+        panel.style.display = "block";
+        if (btn) btn.textContent = "Less";
+      }
     }
     step++;
     if (step >= TOUR_STEPS.length) endTour();
@@ -8066,50 +8085,61 @@ window.initEntrySearch = initEntrySearch;
 
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
-  {
-    el: null,
-    title: "The More Page",
-    body: "Three tabs: Job Types, History, and Settings. Everything that isn't logging a job lives here.",
-  },
+  /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
     title: "Three Tabs",
-    body: "Job Types manages your saved job templates. History is your full entry list with search and bulk delete. Settings covers your rate, appearance, notifications, and account.",
+    body: "Job Types manages your saved job templates. History shows your full entry list. Settings holds your rate, notifications, pay stub, and account. We'll walk through each one.",
+    action: "switch-tab:jobs",
   },
   {
-    el: "#mPanel-jobs",
-    title: "Job Types",
-    body: "Add a new type with the form at the top — name, hours, and rate. Your saved types appear in the list below. Tap the pencil to edit, the trash to delete. Tap Select to delete multiple at once.",
+    el: "#savedTypeCreateForm",
+    title: "Add a Job Type",
+    body: "Type the job name, set the default hours and rate, then tap Save. That type is now available as a chip suggestion every time you log a job on the main page.",
+    action: "switch-tab:jobs",
   },
+  {
+    el: "#savedTypesList",
+    title: "Your Saved Types",
+    body: "All your job templates appear here. Tap the pencil to edit the hours or rate. Tap trash to delete. Tap the Select button at the top right to check multiple types and delete them all at once.",
+    action: "switch-tab:jobs",
+  },
+  /* ── History tab ───────────────────────── */
   {
     el: "#entrySearchInput",
     title: "Search Your History",
-    body: "In the History tab, type here to filter entries by job type, RO number, or any other text. The list updates instantly as you type.",
+    body: "Filter your entries in real time — type a job name, RO number, or any keyword. Every entry you've ever logged is here.",
+    action: "switch-tab:history",
   },
   {
     el: "#bulkSelectToggle",
     title: "Bulk Delete Entries",
-    body: "Tap Select to enter selection mode — tap any row to check it, tap All to grab everything, then Delete to remove. Use this to clean up test entries.",
+    body: "Tap Select to enter selection mode. Tap any row to check it, or tap All to select everything. Then hit Delete to remove them. Great for clearing out test entries.",
+    action: "switch-tab:history",
   },
+  /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Default Rate",
-    body: "Your flat-rate wage. Every job uses this to calculate earnings unless you override it per-entry in the More Details panel.",
+    title: "Default Hourly Rate",
+    body: "This is the rate used to calculate earnings on every job you log. You can override it on a per-job basis in the More Details panel when logging.",
+    action: "switch-tab:settings",
   },
   {
-    el: null,
+    el: "#authForm",
+    title: "Sign In — Cloud Backup",
+    body: "Sign in here to back up all your data to the cloud. Switch phones, reinstall — nothing is ever lost. Your entries are tied to your account, not your device.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#payStubDetails",
     title: "Pay Stub — Catch Short Pay",
-    body: "In Settings → Pay Stub, enter your check amount each pay period. The app compares it against your logged hours and flags any difference immediately.",
+    body: "Enter your check amount each pay period and the app compares it against your logged hours. If the numbers don't match, it flags the difference so you know exactly what to dispute.",
+    action: "open-paystub",
   },
   {
     el: null,
-    title: "Sign In for Cloud Backup",
-    body: "Go to Settings → Profile and sign in. Your data is encrypted and stored in the cloud — switch phones, reinstall, and nothing is lost.",
-  },
-  {
-    el: null,
-    title: "You're Set ✓",
-    body: "Log your first job, check back after payday. Restart this tour anytime from Settings → Help → Take Tour.",
+    title: "You're All Set ✓",
+    body: "Log your first job and check back after payday. Restart this tour anytime from Settings → Help → Take Tour.",
     last: true,
   },
 ];
@@ -8159,8 +8189,23 @@ function startMoreTour() {
     }, 300);
   }
 
+  function runAction(action) {
+    if (!action) return;
+    if (action.startsWith("switch-tab:")) {
+      const tabName = action.split(":")[1];
+      document.querySelector(`.moreTab[data-tab="${tabName}"]`)?.click();
+    }
+    if (action === "open-paystub") {
+      document.querySelector('.moreTab[data-tab="settings"]')?.click();
+      const det = document.getElementById("payStubDetails");
+      if (det && !det.open) det.open = true;
+    }
+  }
+
   function show(idx) {
     const s = MORE_TOUR_STEPS[idx];
+    // Run the action BEFORE spotlighting so the tab panel / element is visible
+    runAction(s.action);
     const stepLabel = document.getElementById("tourStep");
     const titleEl   = document.getElementById("tourTitle");
     const bodyEl    = document.getElementById("tourBody");
@@ -8171,7 +8216,8 @@ function startMoreTour() {
     nextBtn.textContent = s.last ? "Finish ✓" : "Next →";
     overlay.style.display = "block";
     buildDots();
-    positionSpotlight(s.el);
+    // Small delay so tab panel has rendered before we measure spotlight position
+    setTimeout(() => positionSpotlight(s.el), 120);
     if (tooltip) {
       tooltip.classList.remove("step-enter");
       void tooltip.offsetWidth;
