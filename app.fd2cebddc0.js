@@ -9232,6 +9232,22 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
   if (banner) banner.style.display = "none";
 });
 
+// Auto-reload when a new service worker activates (clears stale CSS/JS cache on phone)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data?.type === "SW_UPDATED") {
+      // Small delay so the SW finishes claiming before we reload
+      setTimeout(() => window.location.reload(), 300);
+    }
+  });
+  // Also detect controller change (SW took over mid-session)
+  let _swController = navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (_swController) window.location.reload();
+    _swController = navigator.serviceWorker.controller;
+  });
+}
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     runOnce().catch(console.error);

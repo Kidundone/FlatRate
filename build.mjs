@@ -98,9 +98,14 @@ self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
+      .then(() =>
+        // Tell all open tabs to reload so they pick up the new assets immediately
+        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(wins => {
+          wins.forEach(w => w.postMessage({ type: "SW_UPDATED" }));
+        })
+      )
   );
-  self.clients.claim();
 });
 
 self.addEventListener("notificationclick", e => {
