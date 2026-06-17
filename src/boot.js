@@ -503,6 +503,15 @@ async function runOnce() {
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
     }
+    // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
+    if (new URLSearchParams(location.search).get("paystub") === "1") {
+      history.replaceState({}, "", location.pathname);
+      setTimeout(() => {
+        document.querySelector('.moreTab[data-tab="settings"]')?.click();
+        const det = document.getElementById("payStubDetails");
+        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }, 600);
+    }
     initPayStubUI();
     await safeLoadEntries({ fullHistory: true });
     await refreshMorePagePanels?.();

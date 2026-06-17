@@ -355,10 +355,10 @@ function updateEarningsPreview() {
   const hours = parseFloat(document.getElementById("hours")?.value) || 0;
   const rate = parseFloat(document.querySelector('input[name="rate"]')?.value) || getDefaultRate();
   if (hours > 0 && rate > 0) {
-    el.textContent = `= ${formatMoney(round2(hours * rate))}`;
+    el.innerHTML = `= ${formatMoney(round2(hours * rate))}<span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
     el.classList.add("hasValue");
   } else {
-    el.textContent = "";
+    el.innerHTML = "";
     el.classList.remove("hasValue");
   }
 }
@@ -788,6 +788,7 @@ async function deleteSelectedEntries() {
 
 window.__FR = window.__FR || {};
 window.__FR.updateEarningsPreview = updateEarningsPreview;
+window.syncOfflineDot = syncOfflineDot;
 window.__FR.repeatLastEntry = repeatLastEntry;
 window.__FR.deleteSelectedEntries = deleteSelectedEntries;
 window.__FR.checkDuplicates = checkDuplicates;
@@ -1339,8 +1340,24 @@ function maybeShowOnboarding() {
 
 function syncOfflineDot() {
   const dot = document.getElementById("offlineDot");
-  if (dot) dot.style.display = !navigator.onLine ? "" : "none";
   updatePendingBadge?.();
+  if (!dot) return;
+  const online = navigator.onLine;
+  const pending = (getPendingQueue?.() || []).length;
+  dot.classList.remove("offlineDot--offline", "offlineDot--pending", "offlineDot--synced");
+  if (!online) {
+    dot.className = "offlineDot offlineDot--offline";
+    dot.title = "Offline — entries saved locally";
+    dot.style.display = "";
+  } else if (pending > 0) {
+    dot.className = "offlineDot offlineDot--pending";
+    dot.title = `${pending} entr${pending === 1 ? "y" : "ies"} syncing…`;
+    dot.style.display = "";
+  } else {
+    dot.className = "offlineDot offlineDot--synced";
+    dot.title = "All synced";
+    dot.style.display = "";
+  }
 }
 
 // ── Referral share ──────────────────────────────────────────────

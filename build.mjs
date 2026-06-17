@@ -103,6 +103,23 @@ self.addEventListener("activate", e => {
   self.clients.claim();
 });
 
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const url = e.notification.data?.url || "./";
+  e.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(wins => {
+      for (const w of wins) {
+        if (w.url.includes(self.registration.scope)) {
+          w.focus();
+          w.navigate(url);
+          return;
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);

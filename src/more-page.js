@@ -1515,11 +1515,10 @@ function savePaydaySettings(patch) {
 }
 
 /* ── Shared notification helper ──────────────────── */
-async function sendNotification(title, body, tag = "fr-note") {
+async function sendNotification(title, body, tag = "fr-note", extra = {}) {
   if (!("Notification" in window)) return false;
   if (Notification.permission !== "granted") return false;
   try {
-    // Use SW registration.showNotification — works backgrounded on Android/desktop
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
       body,
@@ -1527,6 +1526,7 @@ async function sendNotification(title, body, tag = "fr-note") {
       badge: "./icon-192.png",
       tag,
       renotify: true,
+      data: extra.data || {},
     });
     return true;
   } catch {
@@ -1565,7 +1565,7 @@ function schedulePaydayReminder() {
   d.setHours(h, m, 0, 0);
 
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday! Remember to log your pay stub.", "payday-reminder");
+    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -1669,7 +1669,31 @@ async function renderBulkEntryList() {
 
   if (!entries.length) {
     container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No entries yet.</div>`;
+    const bar = document.getElementById("histWeekSummary");
+    if (bar) bar.style.display = "none";
     return;
+  }
+
+  // ── Week summary bar ───────────────────────────
+  const nowKey = new Date().toISOString().slice(0, 10);
+  const weekStart = (() => {
+    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+  })();
+  const weekEntries = entries.filter(e => (e.dayKey || "") >= weekStart);
+  const wkJobs = weekEntries.length;
+  const wkHours = weekEntries.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+  const wkPay   = weekEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
+  const bar = document.getElementById("histWeekSummary");
+  if (bar && wkJobs > 0) {
+    bar.style.display = "flex";
+    const jEl = document.getElementById("histWeekJobs");
+    const hEl = document.getElementById("histWeekHours");
+    const pEl = document.getElementById("histWeekPay");
+    if (jEl) jEl.textContent = `${wkJobs} job${wkJobs !== 1 ? "s" : ""}`;
+    if (hEl) hEl.textContent = `${Math.round(wkHours * 10) / 10} hrs`;
+    if (pEl) pEl.textContent = `$${wkPay.toFixed(2)}`;
+  } else if (bar) {
+    bar.style.display = "none";
   }
 
   container.innerHTML = "";

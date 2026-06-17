@@ -993,4 +993,7 @@ function updatePendingBadge() {
       badge.style.display = "none";
     }
   }
+
+  // Keep 3-state sync dot in sync
+  window.syncOfflineDot?.();
 }

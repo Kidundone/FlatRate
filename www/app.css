@@ -2529,12 +2529,34 @@ body.compact .list    { gap: 1px; }
   border-radius: 50%;
   background: var(--danger);
   flex-shrink: 0;
-  animation: pulseDot 1.4s ease-in-out infinite;
+  transition: background 400ms;
 }
+/* 3 states: offline (red pulse), pending (orange pulse), synced (green dim) */
+.offlineDot--offline  { background: var(--danger); animation: pulseDot 1.4s ease-in-out infinite; }
+.offlineDot--pending  { background: #f59e0b; animation: pulseDot 1s ease-in-out infinite; }
+.offlineDot--synced   { background: var(--primary); opacity: .55; animation: none; }
+
 @keyframes pulseDot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: .5; transform: scale(.75); }
 }
+
+/* Rate hint in earnings preview */
+.epRate { font-size: 11px; color: var(--muted2); margin-left: 4px; }
+
+/* ── Week summary bar (History tab) ──────────────── */
+.histWeekBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--stroke);
+  font-size: 12px;
+}
+.histWeekLabel { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+.histWeekStat  { color: var(--text2); }
+.histWeekPay   { color: var(--primary); font-weight: 700; margin-left: auto; }
 
 /* ── Short-pay badge on More button ──────────────── */
 .headerMoreBtn { position: relative; }

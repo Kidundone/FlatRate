@@ -1283,6 +1283,9 @@ function updatePendingBadge() {
       badge.style.display = "none";
     }
   }
+
+  // Keep 3-state sync dot in sync
+  window.syncOfflineDot?.();
 }
 
 /* ── Settings ────────────────────────────────────────────────────────────── */
@@ -3212,10 +3215,10 @@ function updateEarningsPreview() {
   const hours = parseFloat(document.getElementById("hours")?.value) || 0;
   const rate = parseFloat(document.querySelector('input[name="rate"]')?.value) || getDefaultRate();
   if (hours > 0 && rate > 0) {
-    el.textContent = `= ${formatMoney(round2(hours * rate))}`;
+    el.innerHTML = `= ${formatMoney(round2(hours * rate))}<span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
     el.classList.add("hasValue");
   } else {
-    el.textContent = "";
+    el.innerHTML = "";
     el.classList.remove("hasValue");
   }
 }
@@ -3645,6 +3648,7 @@ async function deleteSelectedEntries() {
 
 window.__FR = window.__FR || {};
 window.__FR.updateEarningsPreview = updateEarningsPreview;
+window.syncOfflineDot = syncOfflineDot;
 window.__FR.repeatLastEntry = repeatLastEntry;
 window.__FR.deleteSelectedEntries = deleteSelectedEntries;
 window.__FR.checkDuplicates = checkDuplicates;
@@ -4196,8 +4200,24 @@ function maybeShowOnboarding() {
 
 function syncOfflineDot() {
   const dot = document.getElementById("offlineDot");
-  if (dot) dot.style.display = !navigator.onLine ? "" : "none";
   updatePendingBadge?.();
+  if (!dot) return;
+  const online = navigator.onLine;
+  const pending = (getPendingQueue?.() || []).length;
+  dot.classList.remove("offlineDot--offline", "offlineDot--pending", "offlineDot--synced");
+  if (!online) {
+    dot.className = "offlineDot offlineDot--offline";
+    dot.title = "Offline — entries saved locally";
+    dot.style.display = "";
+  } else if (pending > 0) {
+    dot.className = "offlineDot offlineDot--pending";
+    dot.title = `${pending} entr${pending === 1 ? "y" : "ies"} syncing…`;
+    dot.style.display = "";
+  } else {
+    dot.className = "offlineDot offlineDot--synced";
+    dot.title = "All synced";
+    dot.style.display = "";
+  }
 }
 
 // ── Referral share ──────────────────────────────────────────────
@@ -7716,11 +7736,10 @@ function savePaydaySettings(patch) {
 }
 
 /* ── Shared notification helper ──────────────────── */
-async function sendNotification(title, body, tag = "fr-note") {
+async function sendNotification(title, body, tag = "fr-note", extra = {}) {
   if (!("Notification" in window)) return false;
   if (Notification.permission !== "granted") return false;
   try {
-    // Use SW registration.showNotification — works backgrounded on Android/desktop
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
       body,
@@ -7728,6 +7747,7 @@ async function sendNotification(title, body, tag = "fr-note") {
       badge: "./icon-192.png",
       tag,
       renotify: true,
+      data: extra.data || {},
     });
     return true;
   } catch {
@@ -7766,7 +7786,7 @@ function schedulePaydayReminder() {
   d.setHours(h, m, 0, 0);
 
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday! Remember to log your pay stub.", "payday-reminder");
+    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -7870,7 +7890,31 @@ async function renderBulkEntryList() {
 
   if (!entries.length) {
     container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No entries yet.</div>`;
+    const bar = document.getElementById("histWeekSummary");
+    if (bar) bar.style.display = "none";
     return;
+  }
+
+  // ── Week summary bar ───────────────────────────
+  const nowKey = new Date().toISOString().slice(0, 10);
+  const weekStart = (() => {
+    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+  })();
+  const weekEntries = entries.filter(e => (e.dayKey || "") >= weekStart);
+  const wkJobs = weekEntries.length;
+  const wkHours = weekEntries.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+  const wkPay   = weekEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
+  const bar = document.getElementById("histWeekSummary");
+  if (bar && wkJobs > 0) {
+    bar.style.display = "flex";
+    const jEl = document.getElementById("histWeekJobs");
+    const hEl = document.getElementById("histWeekHours");
+    const pEl = document.getElementById("histWeekPay");
+    if (jEl) jEl.textContent = `${wkJobs} job${wkJobs !== 1 ? "s" : ""}`;
+    if (hEl) hEl.textContent = `${Math.round(wkHours * 10) / 10} hrs`;
+    if (pEl) pEl.textContent = `$${wkPay.toFixed(2)}`;
+  } else if (bar) {
+    bar.style.display = "none";
   }
 
   container.innerHTML = "";
@@ -8748,6 +8792,15 @@ async function runOnce() {
       await loadSubscription?.();
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
+    }
+    // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
+    if (new URLSearchParams(location.search).get("paystub") === "1") {
+      history.replaceState({}, "", location.pathname);
+      setTimeout(() => {
+        document.querySelector('.moreTab[data-tab="settings"]')?.click();
+        const det = document.getElementById("payStubDetails");
+        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }, 600);
     }
     initPayStubUI();
     await safeLoadEntries({ fullHistory: true });
