@@ -1625,7 +1625,7 @@ async function renderTypeDatalist(){
   }
 
   if (strip) {
-    const shown = types.slice(0, 8);
+    const shown = types.slice(0, 14);
     strip.innerHTML = "";
     if (shown.length === 0) {
       strip.hidden = false;
@@ -1637,16 +1637,25 @@ async function renderTypeDatalist(){
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "typeSuggestChip";
-      chip.textContent = t.name;
+      chip.dataset.name = t.name.toLowerCase();
+      // Meta line: show hours and use count if available
+      const metaParts = [];
+      if (t.lastHours) metaParts.push(`${t.lastHours}h`);
+      if (t.useCount > 1) metaParts.push(`×${t.useCount}`);
+      chip.innerHTML = `<span class="tscName">${escapeHtml(t.name)}</span>${metaParts.length ? `<span class="tscMeta">${metaParts.join(" · ")}</span>` : ""}`;
       const applyChip = (e) => {
         e.preventDefault();
         const typeEl = $("typeText");
         if (!typeEl) return;
+        // No-op if already the same value
+        if (typeEl.value.toLowerCase() === t.name.toLowerCase()) {
+          strip.hidden = true;
+          return;
+        }
         typeEl.value = t.name;
         typeEl.dispatchEvent(new Event("input", { bubbles: true }));
         typeEl.dispatchEvent(new Event("change", { bubbles: true }));
         strip.hidden = true;
-        typeEl.focus();
       };
       chip.addEventListener("mousedown", applyChip);
       chip.addEventListener("touchstart", applyChip, { passive: false });
@@ -1683,6 +1692,7 @@ async function upsertTypeDefaults(nameRaw, hours, rate){
     nameLower,
     lastHours: Number(hours),
     lastRate: Number(rate),
+    useCount: (existing?.useCount || 0) + 1,
     updatedAt: nowISO()
   };
   await put(STORES.types, payload);

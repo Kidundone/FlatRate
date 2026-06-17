@@ -274,14 +274,31 @@ async function runOnce() {
     document.getElementById("typeText")?.addEventListener("input", syncClearTypeBtn);
     document.getElementById("typeText")?.addEventListener("change", syncClearTypeBtn);
 
-    // Strip is rendered once after load; focus/blur only toggle visibility
+    // Strip is rendered once after load; focus/blur toggle visibility + filter out dupes
     const typeStrip = document.getElementById("typeSuggestStrip");
+    function filterTypeChips() {
+      if (!typeStrip) return;
+      const q = (document.getElementById("typeText")?.value || "").toLowerCase().trim();
+      let anyVisible = false;
+      typeStrip.querySelectorAll(".typeSuggestChip").forEach(c => {
+        const name = (c.dataset.name || "");
+        // Hide if exact match (already selected) OR if typed 2+ chars and chip doesn't contain query
+        const isExact = name === q;
+        const noMatch = q.length >= 2 && !name.includes(q);
+        c.hidden = isExact || noMatch;
+        if (!c.hidden) anyVisible = true;
+      });
+      // Show/hide the hint element if all chips hidden
+      const hint = typeStrip.querySelector(".typeSuggestHint");
+      if (hint) hint.hidden = anyVisible;
+    }
     document.getElementById("typeText")?.addEventListener("focus", () => {
-      if (typeStrip) typeStrip.hidden = false;
+      if (typeStrip) { typeStrip.hidden = false; filterTypeChips(); }
     });
     document.getElementById("typeText")?.addEventListener("blur", () => {
       if (typeStrip) typeStrip.hidden = true;
     });
+    document.getElementById("typeText")?.addEventListener("input", filterTypeChips);
 
     syncClearTypeBtn();
     updateSaveEnabled();

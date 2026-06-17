@@ -763,22 +763,37 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 .typeSuggestChip {
   display: inline-flex;
-  align-items: center;
-  padding: 5px 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 5px 10px 4px;
   border-radius: var(--r-pill);
   background: var(--surface3);
   border: 1px solid var(--stroke2);
-  color: var(--text2);
-  font-size: 13px;
+  color: var(--text1);
   cursor: pointer;
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 200px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background 120ms;
+  transition: background 120ms, border-color 120ms;
+  gap: 1px;
 }
 
 .typeSuggestChip:active { background: var(--surface2); opacity: .75; }
+
+.tscName {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  display: block;
+}
+
+.tscMeta {
+  font-size: 10px;
+  color: var(--muted2);
+  letter-spacing: 0.02em;
+}
 
 .typeSuggestHint {
   font-size: 12px;
