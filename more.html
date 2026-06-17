@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.84e5d9f68e.css">
+  <link rel="stylesheet" href="./app.ebf6f065d2.css">
 </head>
 <body data-page="more">
 
@@ -103,10 +103,26 @@
         </div>
         <div id="bulkEntryList"></div>
         <div class="bulkDeleteBar" id="bulkDeleteBar" style="display:none;">
+
           <button class="btn" id="bulkSelectAllBtn" type="button" style="font-size:12px;padding:5px 10px;">All</button>
           <span class="muted" id="bulkSelectedCount" style="font-size:13px;flex:1;text-align:center;">0 selected</span>
           <button class="btn danger" id="bulkDeleteBtn" type="button">Delete</button>
         </div>
+      </section>
+
+      <!-- ── Owe Me tracker ─── -->
+      <section class="card moreCard" style="margin-top:10px;">
+        <div class="moreCardHeader" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Owe Me</span>
+          <span id="oweMeTotalBadge" class="oweMeTotalBadge" style="display:none;"></span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);padding:0 14px 6px;margin:0;">Log what the shop owes you — comebacks, warranty, goodwill, parts delays.</p>
+        <form id="oweMeForm" style="display:flex;gap:8px;padding:0 14px 10px;flex-wrap:wrap;">
+          <input id="oweMeDesc" class="moreInput" type="text" placeholder="e.g. Warranty callback – Brakes" style="flex:1;min-width:140px;" autocomplete="off" />
+          <input id="oweMeAmt"  class="moreInput" type="number" inputmode="decimal" step="0.01" placeholder="$0.00" style="width:90px;" />
+          <button type="submit" class="btn" style="white-space:nowrap;">Add</button>
+        </form>
+        <div id="oweMeList"></div>
       </section>
 
     </div><!-- /mPanel-history -->
@@ -522,6 +538,6 @@
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
     };
   </script>
-  <script src="./app.f0f3dd39db.js" defer></script>
+  <script src="./app.2905e7be10.js" defer></script>
 </body>
 </html>

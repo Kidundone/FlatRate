@@ -1906,6 +1906,77 @@ window.initBulkDelete = initBulkDelete;
 window.initJobTypeBulkDelete = initJobTypeBulkDelete;
 window.initEntrySearch = initEntrySearch;
 
+// ═══════════════════════════════════════════════════════════════
+// OWE ME TRACKER
+// ═══════════════════════════════════════════════════════════════
+const LS_OWE_ME = "fr_owe_me_";
+
+function getOweMeItems(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_OWE_ME + empId) || "[]"); } catch { return []; }
+}
+function saveOweMeItems(empId, items) {
+  try { localStorage.setItem(LS_OWE_ME + empId, JSON.stringify(items)); } catch {}
+}
+
+function renderOweMeList() {
+  const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+  const list   = document.getElementById("oweMeList");
+  const badge  = document.getElementById("oweMeTotalBadge");
+  if (!list) return;
+  const items  = getOweMeItems(empId);
+  const total  = items.reduce((s, i) => s + (Number(i.amt) || 0), 0);
+  if (badge) {
+    if (total > 0) { badge.textContent = `$${total.toFixed(2)} owed`; badge.style.display = ""; }
+    else badge.style.display = "none";
+  }
+  if (!items.length) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--muted);padding:0 14px 12px;margin:0;">Nothing logged yet.</p>`;
+    return;
+  }
+  list.innerHTML = items.map((item, idx) => `
+    <div class="oweMeRow" data-idx="${idx}">
+      <div class="oweMeDesc">${escapeHtml?.(item.desc) || ""}</div>
+      <div class="oweMeRight">
+        <span class="oweMeAmt">$${Number(item.amt || 0).toFixed(2)}</span>
+        <span class="oweMeDate">${item.date || ""}</span>
+        <button class="iBtn iBtn--danger oweMeDelBtn" data-idx="${idx}" type="button">✕</button>
+      </div>
+    </div>
+  `).join("");
+  list.querySelectorAll(".oweMeDelBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.idx);
+      const items2 = getOweMeItems(empId);
+      items2.splice(i, 1);
+      saveOweMeItems(empId, items2);
+      renderOweMeList();
+      toast?.("Removed");
+    });
+  });
+}
+
+function initOweMe() {
+  const form    = document.getElementById("oweMeForm");
+  if (!form || form.dataset.wired) return;
+  form.dataset.wired = "1";
+  renderOweMeList();
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+    const desc   = (document.getElementById("oweMeDesc")?.value || "").trim();
+    const amt    = parseFloat(document.getElementById("oweMeAmt")?.value || "0") || 0;
+    if (!desc) { toast?.("Enter a description"); return; }
+    const items  = getOweMeItems(empId);
+    items.unshift({ desc, amt, date: new Date().toLocaleDateString() });
+    saveOweMeItems(empId, items);
+    document.getElementById("oweMeDesc").value = "";
+    document.getElementById("oweMeAmt").value  = "";
+    renderOweMeList();
+    toast?.(`Added · $${amt.toFixed(2)}`);
+  });
+}
+window.initOweMe = initOweMe;
+
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
   /* ── Job Types tab ─────────────────────── */

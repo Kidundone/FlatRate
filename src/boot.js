@@ -395,6 +395,9 @@ async function runOnce() {
 
     initPhotosUI();
     updateShortPayBadge?.();
+    initClockIn?.();
+    initRepeatChip?.();
+    initComboChip?.();
 
     // Draft auto-save
     ["hours", "typeText", "ref", "vin8"].forEach(id =>
@@ -484,6 +487,7 @@ async function runOnce() {
     initBulkDelete?.();
     initJobTypeBulkDelete?.();
     initEntrySearch?.();
+    initOweMe?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();

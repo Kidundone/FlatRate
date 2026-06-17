@@ -3131,6 +3131,8 @@ function handleClear(ev, options = {}) {
   if (dw) { dw.style.display = "none"; dw.dataset.level = ""; }
   const ep = document.getElementById("earningsPreview");
   if (ep) { ep.textContent = ""; ep.classList.remove("hasValue"); }
+  // Show repeat chip if a last job is stored
+  setTimeout(() => updateRepeatChip?.(), 50);
 }
 
 function focusHoursInput() {
@@ -3320,8 +3322,19 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
       }
     }
     paceWarnEl.style.display = behindPace ? "" : "none";
-    if (behindPace) paceWarnEl.textContent = "⚠ Behind pace — pick up the rate";
+    if (behindPace) {
+      const dayOfWeekNow = new Date().getDay();
+      const daysLeft = Math.max(1, 5 - Math.min(dayOfWeekNow, 5));
+      if (goalType === "pay") {
+        const needPerDay = round2(Math.max(0, goalVal - weekDollars) / daysLeft);
+        paceWarnEl.textContent = `⚠ Need ${formatMoney(needPerDay)}/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      } else {
+        const needPerDay = round1(Math.max(0, goalVal - weekHours) / daysLeft);
+        paceWarnEl.textContent = `⚠ Need ${needPerDay.toFixed(1)} hrs/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      }
+    }
   }
+  updateClockInDisplay?.();
 }
 
 function renderHeroChart(entries, weekStart) {
@@ -3802,6 +3815,19 @@ async function saveEntry(entry, options = {}) {
   if (photoStatus === "fail") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} (photo failed)`);
   else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} + Photo`);
   else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix}`);
+
+  if (!isEdit) {
+    const _empId = getEmpId();
+    // Store for repeat-chip
+    storeLastJob?.(_empId, entry);
+    // Personal records check
+    checkPersonalRecords?.(CURRENT_ENTRIES, entry);
+    // Combo suggestion (show after tiny delay so save toast is first)
+    setTimeout(() => showComboSuggestion?.(entry.type || entry.typeText || "", CURRENT_ENTRIES), 2200);
+    // Show repeat chip on next clear
+    setTimeout(() => updateRepeatChip?.(), 400);
+  }
+
   handleClear(null, { preserveType, typeValue: preservedType });
   return _savedEntry;
 }
@@ -6281,6 +6307,238 @@ function startTour() {
   show(0);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SHIFT EFFICIENCY RATIO
+// ═══════════════════════════════════════════════════════════════
+const LS_CLOCKIN = "fr_clockin_";
+
+function getClockInMs(empId) {
+  try { return Number(localStorage.getItem(LS_CLOCKIN + empId) || 0) || 0; } catch { return 0; }
+}
+function setClockInMs(empId, ms) {
+  try { localStorage.setItem(LS_CLOCKIN + empId, String(ms)); } catch {}
+}
+function clearClockIn(empId) {
+  try { localStorage.removeItem(LS_CLOCKIN + empId); } catch {}
+}
+
+function updateClockInDisplay() {
+  const btn   = document.getElementById("clockInBtn");
+  const effEl = document.getElementById("heroEfficiency");
+  if (!btn) return;
+  const empId = getEmpId();
+  const ms    = getClockInMs(empId);
+  if (ms > 0) {
+    btn.textContent = "Clock Out";
+    btn.classList.add("clockInBtn--active");
+    const shiftHrs = (Date.now() - ms) / 3600000;
+    const todayKey = todayKeyLocal?.();
+    const flatHrs  = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+      .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey)
+      .reduce((s, e) => s + (Number(e.hours) || 0), 0);
+    const ratio = shiftHrs > 0.05 ? flatHrs / shiftHrs : 0;
+    if (effEl) {
+      const color = ratio >= 1 ? "var(--primary)" : ratio >= 0.7 ? "#f59e0b" : "var(--danger)";
+      effEl.style.display = "";
+      effEl.innerHTML = `<span style="color:${color};font-weight:700;">${ratio.toFixed(2)}×</span><span class="effLabel"> eff · ${flatHrs.toFixed(1)}f / ${shiftHrs.toFixed(1)}h shift</span>`;
+    }
+  } else {
+    btn.textContent = "Clock In";
+    btn.classList.remove("clockInBtn--active");
+    if (effEl) effEl.style.display = "none";
+  }
+}
+
+function initClockIn() {
+  const btn = document.getElementById("clockInBtn");
+  if (!btn) return;
+  updateClockInDisplay();
+  setInterval(() => { if (getClockInMs(getEmpId()) > 0) updateClockInDisplay(); }, 60000);
+  btn.addEventListener("click", () => {
+    const empId = getEmpId();
+    const ms    = getClockInMs(empId);
+    if (ms > 0) {
+      const shiftHrs = round2((Date.now() - ms) / 3600000);
+      const todayKey = todayKeyLocal?.();
+      const flatHrs  = round2((Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+        .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey)
+        .reduce((s, e) => s + (Number(e.hours) || 0), 0));
+      const ratio = shiftHrs > 0 ? round2(flatHrs / shiftHrs) : 0;
+      clearClockIn(empId);
+      toast(`Shift ended · ${shiftHrs.toFixed(1)} hrs · ${flatHrs.toFixed(1)} flat · Eff ${ratio.toFixed(2)}×`, 5000);
+    } else {
+      setClockInMs(empId, Date.now());
+      toast("Clocked in ✓");
+    }
+    updateClockInDisplay();
+  });
+}
+window.updateClockInDisplay = updateClockInDisplay;
+window.initClockIn = initClockIn;
+
+// ═══════════════════════════════════════════════════════════════
+// TAP-TO-REPEAT LAST JOB
+// ═══════════════════════════════════════════════════════════════
+const LS_LAST_JOB = "fr_last_job_";
+
+function storeLastJob(empId, entry) {
+  try {
+    localStorage.setItem(LS_LAST_JOB + empId, JSON.stringify({
+      type:  entry.type || entry.typeText || "",
+      hours: entry.hours || 0,
+      rate:  entry.rate  || 0,
+    }));
+  } catch {}
+}
+
+function getLastJob(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_LAST_JOB + empId) || "null"); } catch { return null; }
+}
+
+function updateRepeatChip() {
+  const chip = document.getElementById("repeatChip");
+  if (!chip) return;
+  const empId = getEmpId();
+  const last  = getLastJob(empId);
+  const formEmpty = !document.getElementById("hours")?.value && !document.getElementById("typeText")?.value;
+  if (!last?.type || !formEmpty || EDITING_ID) { chip.style.display = "none"; return; }
+  chip.style.display = "";
+  chip.textContent = `↺ ${last.type} · ${formatHours(last.hours)} hrs`;
+}
+
+function initRepeatChip() {
+  const chip = document.getElementById("repeatChip");
+  if (!chip) return;
+  updateRepeatChip();
+  chip.addEventListener("click", () => {
+    const empId = getEmpId();
+    const last  = getLastJob(empId);
+    if (!last) return;
+    const typeEl  = document.getElementById("typeText");
+    const hoursEl = document.getElementById("hours");
+    const rateEl  = document.querySelector('input[name="rate"]');
+    if (typeEl)  typeEl.value  = last.type;
+    if (hoursEl) { hoursEl.value = String(last.hours); hoursEl.dataset.touched = "1"; }
+    if (rateEl && last.rate) { rateEl.value = String(last.rate); rateEl.dataset.touched = "1"; }
+    updateEarningsPreview?.();
+    ["hours", "typeText"].forEach(id =>
+      document.getElementById(id)?.dispatchEvent(new Event("input", { bubbles: true }))
+    );
+    chip.style.display = "none";
+    document.getElementById("ref")?.focus();
+    toast(`${last.type} loaded — add RO and save`);
+  });
+}
+window.updateRepeatChip = updateRepeatChip;
+window.initRepeatChip = initRepeatChip;
+window.storeLastJob = storeLastJob;
+
+// ═══════════════════════════════════════════════════════════════
+// COMBO SUGGESTIONS
+// ═══════════════════════════════════════════════════════════════
+function buildComboMap(entries) {
+  const byDay = {};
+  for (const e of entries) {
+    const dk = e.dayKey || dayKeyFromISO?.(e.createdAt) || "";
+    if (!byDay[dk]) byDay[dk] = [];
+    byDay[dk].push(e);
+  }
+  const map = {};
+  for (const day of Object.values(byDay)) {
+    day.sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+    for (let i = 0; i < day.length - 1; i++) {
+      const a = (day[i].type || day[i].typeText || "").toLowerCase().trim();
+      const b = (day[i+1].type || day[i+1].typeText || "").toLowerCase().trim();
+      if (!a || !b || a === b) continue;
+      if (!map[a]) map[a] = {};
+      map[a][b] = (map[a][b] || 0) + 1;
+    }
+  }
+  return map;
+}
+
+function showComboSuggestion(savedType, entries) {
+  if (!savedType || !entries?.length) return;
+  const map  = buildComboMap(entries);
+  const key  = savedType.toLowerCase().trim();
+  const combos = map[key];
+  if (!combos) return;
+  const total = Object.values(combos).reduce((s, n) => s + n, 0);
+  const [topType, topCount] = Object.entries(combos).sort((a, b) => b[1] - a[1])[0] || [];
+  if (!topType || !topCount || total < 3 || topCount / total < 0.5) return;
+  const chip = document.getElementById("comboSuggestChip");
+  if (!chip) return;
+  const label = topType.charAt(0).toUpperCase() + topType.slice(1);
+  chip.textContent = `Often paired: ${label} →`;
+  chip.dataset.suggest = label;
+  chip.style.display = "";
+  clearTimeout(window.__comboHideT__);
+  window.__comboHideT__ = setTimeout(() => { chip.style.display = "none"; }, 14000);
+}
+
+function initComboChip() {
+  const chip = document.getElementById("comboSuggestChip");
+  if (!chip) return;
+  chip.addEventListener("click", () => {
+    const suggest = chip.dataset.suggest;
+    if (!suggest) return;
+    const typeEl = document.getElementById("typeText");
+    if (typeEl) {
+      typeEl.value = suggest;
+      typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      typeEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    chip.style.display = "none";
+    document.getElementById("hours")?.focus();
+    toast(`${suggest} prefilled — add hours & RO`);
+  });
+}
+window.showComboSuggestion = showComboSuggestion;
+window.initComboChip = initComboChip;
+
+// ═══════════════════════════════════════════════════════════════
+// PERSONAL RECORDS
+// ═══════════════════════════════════════════════════════════════
+const LS_RECORDS = "fr_personal_records_";
+
+function getPersonalRecords(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_RECORDS + empId) || "{}"); } catch { return {}; }
+}
+function savePersonalRecords(empId, rec) {
+  try { localStorage.setItem(LS_RECORDS + empId, JSON.stringify(rec)); } catch {}
+}
+
+function checkPersonalRecords(allEntries, newEntry) {
+  if (!newEntry) return;
+  const empId = getEmpId();
+  const rec   = getPersonalRecords(empId);
+  const todayKey2 = todayKeyLocal?.();
+  const weekStart = dateKey?.(startOfWeekLocal?.(new Date())) || "";
+
+  const todayAll = (Array.isArray(allEntries) ? allEntries : [])
+    .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey2);
+  const todayPay  = todayAll.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (Number(newEntry.earnings) || 0);
+  const todayJobs = todayAll.length + 1;
+
+  const weekPay = (Array.isArray(allEntries) ? allEntries : [])
+    .filter(e => { const dk = e.dayKey || dayKeyFromISO?.(e.createdAt) || ""; return dk >= weekStart; })
+    .reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (Number(newEntry.earnings) || 0);
+
+  let newRecord = null;
+  if (rec.bestDay  != null && todayPay  > rec.bestDay)  newRecord = `🏆 New best day! ${formatMoney(todayPay)}`;
+  if (rec.bestWeek != null && weekPay   > rec.bestWeek) newRecord = `🏆 New best week! ${formatMoney(weekPay)}`;
+  if (rec.mostJobs != null && todayJobs > rec.mostJobs) newRecord = `🏆 Most jobs in a day! ${todayJobs}`;
+  // Update regardless (first save initialises the records)
+  if (rec.bestDay  == null || todayPay  > rec.bestDay)  rec.bestDay  = todayPay;
+  if (rec.bestWeek == null || weekPay   > rec.bestWeek) rec.bestWeek = weekPay;
+  if (rec.mostJobs == null || todayJobs > rec.mostJobs) rec.mostJobs = todayJobs;
+  savePersonalRecords(empId, rec);
+  if (newRecord) setTimeout(() => toast(newRecord, 4500), 1800);
+}
+window.checkPersonalRecords = checkPersonalRecords;
+
 /* -------------------- Payroll flagged hours (per week) -------------------- */
 async function getThisWeekFlag(){
   const ws = startOfWeekLocal(new Date());
@@ -8189,6 +8447,77 @@ window.initBulkDelete = initBulkDelete;
 window.initJobTypeBulkDelete = initJobTypeBulkDelete;
 window.initEntrySearch = initEntrySearch;
 
+// ═══════════════════════════════════════════════════════════════
+// OWE ME TRACKER
+// ═══════════════════════════════════════════════════════════════
+const LS_OWE_ME = "fr_owe_me_";
+
+function getOweMeItems(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_OWE_ME + empId) || "[]"); } catch { return []; }
+}
+function saveOweMeItems(empId, items) {
+  try { localStorage.setItem(LS_OWE_ME + empId, JSON.stringify(items)); } catch {}
+}
+
+function renderOweMeList() {
+  const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+  const list   = document.getElementById("oweMeList");
+  const badge  = document.getElementById("oweMeTotalBadge");
+  if (!list) return;
+  const items  = getOweMeItems(empId);
+  const total  = items.reduce((s, i) => s + (Number(i.amt) || 0), 0);
+  if (badge) {
+    if (total > 0) { badge.textContent = `$${total.toFixed(2)} owed`; badge.style.display = ""; }
+    else badge.style.display = "none";
+  }
+  if (!items.length) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--muted);padding:0 14px 12px;margin:0;">Nothing logged yet.</p>`;
+    return;
+  }
+  list.innerHTML = items.map((item, idx) => `
+    <div class="oweMeRow" data-idx="${idx}">
+      <div class="oweMeDesc">${escapeHtml?.(item.desc) || ""}</div>
+      <div class="oweMeRight">
+        <span class="oweMeAmt">$${Number(item.amt || 0).toFixed(2)}</span>
+        <span class="oweMeDate">${item.date || ""}</span>
+        <button class="iBtn iBtn--danger oweMeDelBtn" data-idx="${idx}" type="button">✕</button>
+      </div>
+    </div>
+  `).join("");
+  list.querySelectorAll(".oweMeDelBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.idx);
+      const items2 = getOweMeItems(empId);
+      items2.splice(i, 1);
+      saveOweMeItems(empId, items2);
+      renderOweMeList();
+      toast?.("Removed");
+    });
+  });
+}
+
+function initOweMe() {
+  const form    = document.getElementById("oweMeForm");
+  if (!form || form.dataset.wired) return;
+  form.dataset.wired = "1";
+  renderOweMeList();
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+    const desc   = (document.getElementById("oweMeDesc")?.value || "").trim();
+    const amt    = parseFloat(document.getElementById("oweMeAmt")?.value || "0") || 0;
+    if (!desc) { toast?.("Enter a description"); return; }
+    const items  = getOweMeItems(empId);
+    items.unshift({ desc, amt, date: new Date().toLocaleDateString() });
+    saveOweMeItems(empId, items);
+    document.getElementById("oweMeDesc").value = "";
+    document.getElementById("oweMeAmt").value  = "";
+    renderOweMeList();
+    toast?.(`Added · $${amt.toFixed(2)}`);
+  });
+}
+window.initOweMe = initOweMe;
+
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
   /* ── Job Types tab ─────────────────────── */
@@ -8747,6 +9076,9 @@ async function runOnce() {
 
     initPhotosUI();
     updateShortPayBadge?.();
+    initClockIn?.();
+    initRepeatChip?.();
+    initComboChip?.();
 
     // Draft auto-save
     ["hours", "typeText", "ref", "vin8"].forEach(id =>
@@ -8836,6 +9168,7 @@ async function runOnce() {
     initBulkDelete?.();
     initJobTypeBulkDelete?.();
     initEntrySearch?.();
+    initOweMe?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();
