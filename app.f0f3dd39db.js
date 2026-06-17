@@ -3295,6 +3295,33 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   checkPayMilestone(todayDollars);
   updateStreakBadge(computeStreak(allEntries || []));
   updateHeroRecords(allEntries || []);
+
+  // ── Behind-pace warning ───────────────────────────────────────
+  // If it's past noon, a goal is set, and you're under 50% of expected pace,
+  // show a nudge below the pace line.
+  const paceWarnEl = document.getElementById("heroPaceWarn");
+  if (paceWarnEl) {
+    const goalVal  = Number(localStorage.getItem("fr_goal_value") || 0);
+    const goalType = localStorage.getItem("fr_goal_type") || "hours";
+    const nowHr = new Date().getHours();
+    let behindPace = false;
+    if (goalVal > 0 && nowHr >= 12) {
+      if (goalType === "pay") {
+        const weekProg = Math.min(1, weekDollars / goalVal);
+        const dayOfWeek = new Date().getDay(); // 0=Sun … 6=Sat
+        const workDaysPassed = Math.max(1, Math.min(dayOfWeek, 5));
+        behindPace = weekProg < (workDaysPassed / 5) * 0.55;
+      } else {
+        const maxHrs = goalVal;
+        const weekProg = Math.min(1, weekHours / maxHrs);
+        const dayOfWeek = new Date().getDay();
+        const workDaysPassed = Math.max(1, Math.min(dayOfWeek, 5));
+        behindPace = weekProg < (workDaysPassed / 5) * 0.55;
+      }
+    }
+    paceWarnEl.style.display = behindPace ? "" : "none";
+    if (behindPace) paceWarnEl.textContent = "⚠ Behind pace — pick up the rate";
+  }
 }
 
 function renderHeroChart(entries, weekStart) {
@@ -3760,9 +3787,21 @@ async function saveEntry(entry, options = {}) {
   setEditingEntry(null);
   const earningsStr = formatMoney(entry.earnings || 0);
   const isEdit = options.__isEdit;
-  if (photoStatus === "fail") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr} (photo failed)`);
-  else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr} + Photo`);
-  else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}`);
+
+  // Build "N jobs · $X today" suffix for save toast
+  const todayKey2 = todayKeyLocal?.() || new Date().toISOString().slice(0, 10);
+  const todayEntries = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+    .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey2);
+  const todayJobCount = todayEntries.length + (isEdit ? 0 : 1);
+  const todayTotal = todayEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (isEdit ? 0 : (entry.earnings || 0));
+  const daySuffix = todayJobCount > 0
+    ? ` · ${todayJobCount} job${todayJobCount !== 1 ? "s" : ""} · ${formatMoney(round2(todayTotal))} today`
+    : "";
+
+  if (photoStatus === "fail") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} (photo failed)`);
+  else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} + Photo`);
+  else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix}`);
   handleClear(null, { preserveType, typeValue: preservedType });
   return _savedEntry;
 }
@@ -5152,7 +5191,7 @@ function renderList(entries, mode){
               <input type="checkbox" data-select-id="${entryId}" ${e.selected ? "checked" : ""} class="itemCheck" />
               ${typeBadgeHtml(escapeHtml(e.type || e.typeText || "—"))}
               ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
-              ${checkShortPay(e, entries) ? `<span class="shortPayFlag">⚠ LOW</span>` : ""}
+              ${checkShortPay(e, entries) ? `<span class="shortPayFlag" data-action="review-pay" title="Possible short pay — tap to review">⚠ LOW</span>` : ""}
               <span class="itemRef mono">${refLabel}: ${refVal}</span>
             </div>
             ${buildEntryMetaHtml(e)}
@@ -5168,6 +5207,7 @@ function renderList(entries, mode){
         <div class="itemActions">
           <button class="iBtn" data-action="edit">Edit</button>
           <button class="iBtn${e.isComeback ? " iBtn--active" : ""}" data-action="toggle-cb">${e.isComeback ? "CB ✓" : "CB"}</button>
+          ${(e.ref || e.ro) ? `<button class="iBtn iBtn--sameRO" data-action="same-ro" title="New job on same RO">+RO</button>` : ""}
           <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
           ${hasPhoto ? `<button class="iBtn" data-action="view-photo" data-id="${e.id}">Photo</button>` : ""}
         </div>
@@ -5190,6 +5230,28 @@ function renderList(entries, mode){
       navigator.clipboard?.writeText(val)
         .then(() => toast(`Copied ${val}`))
         .catch(() => {});
+    });
+
+    // ── ⚠ LOW badge → review pay stub ───────────────────────────
+    inner.querySelector('[data-action="review-pay"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      window.location.href = "./more.html?paystub=1";
+    });
+
+    // ── +RO: new job on same RO ──────────────────────────────────
+    inner.querySelector('[data-action="same-ro"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      handleClear(null, { preserveType: false });
+      const refEl  = document.getElementById("ref");
+      const typeEl = document.getElementById("typeText");
+      if (refEl) {
+        refEl.value = e.ref || e.ro || "";
+        setRefType?.(e.refType || "RO");
+      }
+      if (typeEl) typeEl.value = "";
+      document.getElementById("hours")?.focus();
+      document.querySelector(".fr26Wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast(`RO ${e.ref || e.ro} loaded — add next job`);
     });
 
     // ── Action buttons ───────────────────────────────────────────

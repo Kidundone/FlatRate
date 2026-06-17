@@ -442,6 +442,7 @@ main {
 }
 .iBtn:active { background: var(--surface3); transform: scale(.94); }
 .iBtn--danger { color: var(--danger); border-color: rgba(237,73,86,.25); background: rgba(237,73,86,.06); }
+.iBtn--sameRO { color: var(--primary); border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.08); font-weight: 600; }
 
 /* ── Week group header ───────────────────────────── */
 .weekGroupHdr {
@@ -2926,6 +2927,14 @@ body.compact .list    { gap: 1px; }
   color: var(--primary);
   margin-top: 3px;
   min-height: 14px;
+}
+.heroPaceWarn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-top: 2px;
+  min-height: 14px;
+  letter-spacing: .01em;
 }
 
 /* ── Hero chart card (unified range + chart + stats) ─ */
