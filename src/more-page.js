@@ -1886,48 +1886,48 @@ window.initEntrySearch = initEntrySearch;
 const MORE_TOUR_STEPS = [
   {
     el: null,
-    title: "Welcome to More",
-    body: "The More page has three tabs — Job Types, History, and Settings. Each tab is focused so nothing gets buried. Let's walk through the most important parts.",
+    title: "The More Page",
+    body: "Three tabs: Job Types, History, and Settings. Everything that isn't logging a job lives here.",
   },
   {
     el: "#moreTabBar",
-    title: "Three Tabs, Three Jobs",
-    body: "Job Types is where you manage your saved job templates. History shows your earnings chart and short-pay tracking. Settings holds your account, reminders, and pay stub tools.",
+    title: "Three Tabs",
+    body: "Job Types manages your saved job templates. History is your full entry list with search and bulk delete. Settings covers your rate, appearance, notifications, and account.",
   },
   {
     el: "#mPanel-jobs",
-    title: "Job Types — Your Templates",
-    body: "Every job type you've saved appears here. Tap the pencil to edit hours or rate. Tap the trash to delete. The + New Type button at the top adds a new one. These fill in automatically when you log jobs on the main page.",
+    title: "Job Types",
+    body: "Add a new type with the form at the top — name, hours, and rate. Your saved types appear in the list below. Tap the pencil to edit, the trash to delete. Tap Select to delete multiple at once.",
   },
   {
-    el: "#authForm",
-    title: "Sign In — Back Up Your Data",
-    body: "Go to Settings → Profile to sign in. Once signed in, every entry is encrypted and stored in the cloud. Switch devices or reinstall and nothing is lost.",
-  },
-  {
-    el: "#insightsCard",
-    title: "This Week at a Glance (History tab)",
-    body: "In the History tab, this card shows your effective hourly rate, average pay per day, comeback count, and projected weekly pay based on today's pace.",
+    el: "#entrySearchInput",
+    title: "Search Your History",
+    body: "In the History tab, type here to filter entries by job type, RO number, or any other text. The list updates instantly as you type.",
   },
   {
     el: "#bulkSelectToggle",
     title: "Bulk Delete Entries",
-    body: "Tap Select in the Recent Entries section to enter selection mode. Check the entries you want to remove, then tap Delete Selected. Great for cleaning up test entries or duplicates.",
+    body: "Tap Select to enter selection mode — tap any row to check it, tap All to grab everything, then Delete to remove. Use this to clean up test entries.",
   },
   {
     el: "#settingsDefaultRate",
-    title: "Default Hourly Rate (Settings tab)",
-    body: "Set your flat-rate wage here. The app uses this to calculate earnings for every job you log. You can override it per-entry using the rate field in Add Details.",
+    title: "Default Rate",
+    body: "Your flat-rate wage. Every job uses this to calculate earnings unless you override it per-entry in the More Details panel.",
   },
   {
     el: null,
     title: "Pay Stub — Catch Short Pay",
-    body: "In Settings → Pay Stub, enter your check amount each Friday. The app compares it to your logged hours and shows you immediately if you were short-paid.",
+    body: "In Settings → Pay Stub, enter your check amount each pay period. The app compares it against your logged hours and flags any difference immediately.",
   },
   {
     el: null,
-    title: "You Are All Set ✓",
-    body: "Sign in, log your first job, and check back after your first pay day. If anything feels off, come back to this tour anytime from Settings → Help → Take Tour.",
+    title: "Sign In for Cloud Backup",
+    body: "Go to Settings → Profile and sign in. Your data is encrypted and stored in the cloud — switch phones, reinstall, and nothing is lost.",
+  },
+  {
+    el: null,
+    title: "You're Set ✓",
+    body: "Log your first job, check back after payday. Restart this tour anytime from Settings → Help → Take Tour.",
     last: true,
   },
 ];
