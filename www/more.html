@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.73ae80dcc0.css">
+  <link rel="stylesheet" href="./app.8d57464709.css">
 </head>
 <body data-page="more">
 
@@ -39,27 +39,26 @@
     <div class="moreTabPanel active" id="mPanel-jobs" role="tabpanel">
 
       <section class="card moreCard" style="margin-top:12px;">
-        <details class="typeAddDetails">
-          <summary class="typeAddSummary">＋ New Type</summary>
-          <form id="savedTypeCreateForm" class="typeAddForm">
-            <div class="typeAddFields">
-              <label class="typeEditLabel typeNameField">
-                Name
-                <input id="savedTypeName" class="moreInput" type="text" placeholder="e.g. PDI" autocomplete="off" />
-              </label>
-              <label class="typeEditLabel">
-                Hrs
-                <input id="savedTypeHours" class="moreInput" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" />
-              </label>
-              <label class="typeEditLabel">
-                $/hr
-                <input id="savedTypeRate" class="moreInput" inputmode="decimal" type="number" step="0.01" min="0" value="15" />
-              </label>
-              <button class="btn primary" type="submit">Add</button>
-            </div>
-          </form>
-        </details>
+        <!-- Quick-add: always visible -->
+        <form id="savedTypeCreateForm" class="typeAddInline">
+          <input id="savedTypeName" class="moreInput typeAddNameInput" type="text" placeholder="New job type (e.g. PDI, Oil Change…)" autocomplete="off" spellcheck="false" />
+          <div class="typeAddRow2">
+            <label class="typeAddMiniLabel">Hrs<input id="savedTypeHours" class="moreInput moreInputNarrow" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" /></label>
+            <label class="typeAddMiniLabel">$/hr<input id="savedTypeRate" class="moreInput moreInputNarrow" inputmode="decimal" type="number" step="0.01" min="0" value="15" /></label>
+            <button class="btn primary typeAddSubmitBtn" type="submit">Add</button>
+          </div>
+        </form>
+        <!-- List header with bulk controls -->
+        <div class="moreCardHeader moreCardHeaderRow" style="border-top:1px solid var(--stroke);margin-top:0;">
+          <span id="typeListCount" class="muted" style="font-size:13px;"></span>
+          <button class="btn" id="typeSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
+        </div>
         <div id="savedTypesList"></div>
+        <div class="bulkDeleteBar" id="typeDeleteBar" style="display:none;">
+          <button class="btn" id="typeSelectAllBtn" type="button" style="font-size:12px;padding:5px 10px;">All</button>
+          <span class="muted" id="typeSelectedCount" style="font-size:13px;flex:1;text-align:center;"></span>
+          <button class="btn danger" id="typeDeleteBtn" type="button">Delete</button>
+        </div>
       </section>
 
     </div><!-- /mPanel-jobs -->
@@ -92,6 +91,9 @@
         <div class="moreCardHeader moreCardHeaderRow">
           <span>All Entries</span>
           <button class="btn" id="bulkSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
+        </div>
+        <div style="padding:8px 12px 4px;">
+          <input id="entrySearchInput" class="moreInput" type="search" placeholder="Search RO#, job type, date…" autocomplete="off" style="width:100%;box-sizing:border-box;" />
         </div>
         <div id="bulkEntryList"></div>
         <div class="bulkDeleteBar" id="bulkDeleteBar" style="display:none;">
@@ -143,9 +145,9 @@
         </div>
       </section>
 
-      <!-- Preferences -->
+      <!-- Rate & Display -->
       <section class="card moreCard">
-        <div class="moreCardHeader">Preferences</div>
+        <div class="moreCardHeader">Rate &amp; Display</div>
 
         <div class="moreRow">
           <div>
@@ -158,11 +160,14 @@
         <div class="moreDivider"></div>
 
         <div class="moreRow">
-          <div class="moreRowLabel">Accent Color</div>
-          <label class="accentPickerLabel" title="Choose accent color">
-            <input type="color" id="accentColorInput" />
-            <div id="accentColorPreview" class="accentColorPreview"></div>
-          </label>
+          <div>
+            <div class="moreRowLabel">Weekly Goal</div>
+            <div class="moreRowSub">Target hours — shows ring progress</div>
+          </div>
+          <div class="moreInputGroup">
+            <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
+            <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
+          </div>
         </div>
 
         <div class="moreDivider"></div>
@@ -182,6 +187,16 @@
         <div class="moreDivider"></div>
 
         <div class="moreRow">
+          <div class="moreRowLabel">Accent Color</div>
+          <label class="accentPickerLabel" title="Choose accent color">
+            <input type="color" id="accentColorInput" />
+            <div id="accentColorPreview" class="accentColorPreview"></div>
+          </label>
+        </div>
+
+        <div class="moreDivider"></div>
+
+        <div class="moreRow">
           <div>
             <div class="moreRowLabel">Compact List</div>
             <div class="moreRowSub">More entries on screen at once</div>
@@ -191,13 +206,16 @@
             <span class="moreToggleTrack"></span>
           </label>
         </div>
+      </section>
 
-        <div class="moreDivider"></div>
+      <!-- Notifications -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Notifications</div>
 
         <div class="moreRow">
           <div>
             <div class="moreRowLabel">Haptic Feedback</div>
-            <div class="moreRowSub">Vibrate on save (Android only)</div>
+            <div class="moreRowSub">Vibrate on save</div>
           </div>
           <label class="moreToggle">
             <input id="hapticEnabled" type="checkbox" checked />
@@ -210,7 +228,7 @@
         <div class="moreRow">
           <div>
             <div class="moreRowLabel">Shift Reminder</div>
-            <div class="moreRowSub">Notification to log at end of shift</div>
+            <div class="moreRowSub">Notification at end of shift</div>
           </div>
           <label class="moreToggle">
             <input id="reminderEnabled" type="checkbox" />
@@ -249,21 +267,6 @@
               <option value="0">Sun</option>
             </select>
             <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
-          </div>
-        </div>
-      </section>
-
-      <!-- Weekly Goal -->
-      <section class="card moreCard">
-        <div class="moreCardHeader">Weekly Goal</div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Target Hours</div>
-            <div class="moreRowSub">Shows progress bar on main page</div>
-          </div>
-          <div class="moreInputGroup">
-            <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
-            <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
           </div>
         </div>
       </section>
@@ -513,6 +516,6 @@
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
     };
   </script>
-  <script src="./app.9c79184695.js" defer></script>
+  <script src="./app.ab3b59d7a5.js" defer></script>
 </body>
 </html>

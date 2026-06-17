@@ -4599,6 +4599,7 @@ async function saveTypeFromMoreForm(){
   if (rateEl) rateEl.value = String(getDefaultRate());
 
   toast(`${name} ${existing ? "updated" : "added"}`);
+  window.initJobTypeBulkDelete?.();
 }
 
 async function maybeAutofillFromType(nameRaw){
@@ -4627,15 +4628,26 @@ async function renderTypesListInMore(){
     box.innerHTML = `<div class="muted small" style="padding:12px 16px;">No saved types yet. Add one above or create them automatically when you log entries.</div>`;
     return;
   }
+  // Update count label
+  const countEl = document.getElementById("typeListCount");
+  if (countEl) countEl.textContent = types.length > 0 ? `${types.length} saved` : "";
+
   for (const t of types) {
     const div = document.createElement("div");
     div.className = "typeRow";
     div.dataset.id = t.id;
+    const metaParts = [];
+    if (t.lastHours) metaParts.push(`${round1(t.lastHours)} hrs`);
+    if (t.lastRate) metaParts.push(`${formatMoney(t.lastRate)}/hr`);
+    if (t.useCount > 1) metaParts.push(`×${t.useCount} used`);
     div.innerHTML = `
       <div class="typeRowMain">
+        <label class="typeCheckWrap" style="display:none;flex-shrink:0;padding-right:4px;">
+          <input type="checkbox" class="typeCheck" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer;" />
+        </label>
         <div class="typeRowInfo">
           <div class="typeRowName">${escapeHtml(t.name)}</div>
-          <div class="typeRowMeta">${round1(t.lastHours||0)} hrs · ${formatMoney(t.lastRate||0)}/hr</div>
+          <div class="typeRowMeta">${metaParts.join(" · ") || "No defaults set"}</div>
         </div>
         <div class="typeRowActions">
           <button class="typeIconBtn typeEditBtn" type="button" aria-label="Edit ${escapeHtml(t.name)}">
@@ -4703,6 +4715,7 @@ async function renderTypesListInMore(){
       await del(STORES.types, t.id);
       await renderTypeDatalist();
       await renderTypesListInMore();
+      window.initJobTypeBulkDelete?.();
     });
 
     box.appendChild(div);
@@ -7915,9 +7928,116 @@ function initBulkDelete() {
   });
 }
 
+/* ── Job type bulk delete ─────────────────────────── */
+let _typeBulkSelectMode = false;
+
+function initJobTypeBulkDelete() {
+  const toggle     = document.getElementById("typeSelectToggle");
+  const delBtn     = document.getElementById("typeDeleteBtn");
+  const selectAll  = document.getElementById("typeSelectAllBtn");
+  const bar        = document.getElementById("typeDeleteBar");
+  const countEl    = document.getElementById("typeSelectedCount");
+  const list       = document.getElementById("savedTypesList");
+  if (!toggle) return;
+
+  const syncBar = () => {
+    const total   = list?.querySelectorAll(".typeCheck").length ?? 0;
+    const checked = list?.querySelectorAll(".typeCheck:checked").length ?? 0;
+    if (bar) bar.style.display = _typeBulkSelectMode ? "flex" : "none";
+    if (countEl) countEl.textContent = checked > 0 ? `${checked} of ${total}` : `${total} types`;
+    if (selectAll) selectAll.textContent = (checked === total && total > 0) ? "None" : "All";
+    if (delBtn) delBtn.disabled = checked === 0;
+    // update count in header
+    const countHeader = document.getElementById("typeListCount");
+    if (countHeader) countHeader.textContent = total > 0 ? `${total} saved` : "";
+  };
+
+  toggle.addEventListener("click", () => {
+    _typeBulkSelectMode = !_typeBulkSelectMode;
+    toggle.textContent = _typeBulkSelectMode ? "Done" : "Select";
+    toggle.classList.toggle("active", _typeBulkSelectMode);
+    list?.querySelectorAll(".typeCheckWrap").forEach(el => {
+      el.style.display = _typeBulkSelectMode ? "" : "none";
+    });
+    list?.querySelectorAll(".typeCheck").forEach(cb => { cb.checked = false; });
+    list?.querySelectorAll(".typeRow").forEach(r => r.classList.remove("is-selected"));
+    syncBar();
+  });
+
+  selectAll?.addEventListener("click", () => {
+    const cbs = [...(list?.querySelectorAll(".typeCheck") ?? [])];
+    const allChecked = cbs.every(cb => cb.checked);
+    cbs.forEach(cb => {
+      cb.checked = !allChecked;
+      cb.closest(".typeRow")?.classList.toggle("is-selected", !allChecked);
+    });
+    syncBar();
+  });
+
+  list?.addEventListener("change", (e) => {
+    if (e.target?.classList.contains("typeCheck")) {
+      e.target.closest(".typeRow")?.classList.toggle("is-selected", e.target.checked);
+      syncBar();
+    }
+  });
+
+  list?.addEventListener("click", (e) => {
+    if (!_typeBulkSelectMode) return;
+    const row = e.target.closest(".typeRow");
+    if (!row) return;
+    if (e.target.closest(".typeCheckWrap") || e.target.closest(".typeRowActions") || e.target.closest(".typeEditForm")) return;
+    const cb = row.querySelector(".typeCheck");
+    if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+  });
+
+  delBtn?.addEventListener("click", async () => {
+    const checked = [...(list?.querySelectorAll(".typeCheck:checked") ?? [])];
+    if (!checked.length) return;
+    const n = checked.length;
+    if (!confirm(`Delete ${n} job type${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
+
+    const ids = checked.map(cb => cb.closest(".typeRow")?.dataset.id).filter(Boolean);
+    for (const id of ids) {
+      await del(STORES.types, id).catch(console.warn);
+    }
+
+    toast?.(`Deleted ${ids.length} type${ids.length === 1 ? "" : "s"}`);
+    _typeBulkSelectMode = false;
+    if (toggle) { toggle.textContent = "Select"; toggle.classList.remove("active"); }
+    if (bar) bar.style.display = "none";
+    await renderTypesListInMore?.();
+    await renderTypeDatalist?.();
+    // re-init so event listeners attach to new rows
+    initJobTypeBulkDelete();
+  });
+
+  // Wire up syncBar for initial count
+  syncBar();
+}
+
+/* ── Entry search filter ──────────────────────────── */
+function initEntrySearch() {
+  const input = document.getElementById("entrySearchInput");
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const q = input.value.toLowerCase().trim();
+    document.querySelectorAll(".bulkEntryRow").forEach(row => {
+      if (!q) { row.hidden = false; return; }
+      const text = row.textContent.toLowerCase();
+      row.hidden = !text.includes(q);
+    });
+  });
+  // Clear on tab switch (reset search)
+  document.querySelectorAll(".moreTab").forEach(tab => {
+    tab.addEventListener("click", () => { input.value = ""; });
+  });
+}
+
 window.initMoreTabs = initMoreTabs;
 window.renderBulkEntryList = renderBulkEntryList;
 window.initBulkDelete = initBulkDelete;
+window.initJobTypeBulkDelete = initJobTypeBulkDelete;
+window.initEntrySearch = initEntrySearch;
 
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
@@ -8537,6 +8657,8 @@ async function runOnce() {
 
     initMoreTabs?.();
     initBulkDelete?.();
+    initJobTypeBulkDelete?.();
+    initEntrySearch?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();

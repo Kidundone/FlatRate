@@ -482,6 +482,8 @@ async function runOnce() {
 
     initMoreTabs?.();
     initBulkDelete?.();
+    initJobTypeBulkDelete?.();
+    initEntrySearch?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();

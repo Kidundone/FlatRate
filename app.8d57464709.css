@@ -2300,48 +2300,45 @@ body.compact .list    { gap: 1px; }
 }
 
 /* ── Job type list rows (More page) ──────────────── */
-.typeAddDetails { border-top: 1px solid var(--stroke); }
-.typeAddSummary {
+/* Quick-add form (always visible) */
+.typeAddInline {
+  padding: 12px 14px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 10px 16px;
-  padding: 9px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--primary);
-  background: rgba(34,197,94,.08);
-  border: 1.5px solid rgba(34,197,94,.25);
-  border-radius: 10px;
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-  transition: background 140ms, opacity 140ms;
-}
-.typeAddSummary:active { opacity: .7; }
-.typeAddSummary::-webkit-details-marker { display: none; }
-.typeAddDetails[open] .typeAddSummary {
-  color: var(--muted);
-  background: var(--surface2);
-  border-color: var(--stroke);
-}
-.typeAddForm {
-  padding: 0 16px 14px;
-  border-top: 1px solid var(--stroke);
-}
-.typeAddFields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  flex-direction: column;
   gap: 8px;
-  padding-top: 12px;
 }
-.typeAddFields .typeNameField {
-  grid-column: 1 / -1;
-}
-.typeAddFields .btn {
-  grid-column: 1 / -1;
+.typeAddNameInput {
   width: 100%;
+  box-sizing: border-box;
 }
+.typeAddRow2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.typeAddRow2 .moreInputNarrow {
+  width: 72px;
+  flex-shrink: 0;
+}
+.typeAddRow2 .typeAddSubmitBtn {
+  flex: 1;
+  min-height: 40px;
+}
+.typeAddMiniLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Keep old classes for backwards compat */
+.typeAddDetails { border-top: 1px solid var(--stroke); }
+.typeAddForm { padding: 0 16px 14px; border-top: 1px solid var(--stroke); }
+.typeAddFields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 12px; }
+.typeAddFields .typeNameField { grid-column: 1 / -1; }
+.typeAddFields .btn { grid-column: 1 / -1; width: 100%; }
 
 .typeRow {
   padding: 12px 16px;

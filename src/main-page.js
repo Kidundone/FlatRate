@@ -1742,6 +1742,7 @@ async function saveTypeFromMoreForm(){
   if (rateEl) rateEl.value = String(getDefaultRate());
 
   toast(`${name} ${existing ? "updated" : "added"}`);
+  window.initJobTypeBulkDelete?.();
 }
 
 async function maybeAutofillFromType(nameRaw){
@@ -1770,15 +1771,26 @@ async function renderTypesListInMore(){
     box.innerHTML = `<div class="muted small" style="padding:12px 16px;">No saved types yet. Add one above or create them automatically when you log entries.</div>`;
     return;
   }
+  // Update count label
+  const countEl = document.getElementById("typeListCount");
+  if (countEl) countEl.textContent = types.length > 0 ? `${types.length} saved` : "";
+
   for (const t of types) {
     const div = document.createElement("div");
     div.className = "typeRow";
     div.dataset.id = t.id;
+    const metaParts = [];
+    if (t.lastHours) metaParts.push(`${round1(t.lastHours)} hrs`);
+    if (t.lastRate) metaParts.push(`${formatMoney(t.lastRate)}/hr`);
+    if (t.useCount > 1) metaParts.push(`×${t.useCount} used`);
     div.innerHTML = `
       <div class="typeRowMain">
+        <label class="typeCheckWrap" style="display:none;flex-shrink:0;padding-right:4px;">
+          <input type="checkbox" class="typeCheck" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer;" />
+        </label>
         <div class="typeRowInfo">
           <div class="typeRowName">${escapeHtml(t.name)}</div>
-          <div class="typeRowMeta">${round1(t.lastHours||0)} hrs · ${formatMoney(t.lastRate||0)}/hr</div>
+          <div class="typeRowMeta">${metaParts.join(" · ") || "No defaults set"}</div>
         </div>
         <div class="typeRowActions">
           <button class="typeIconBtn typeEditBtn" type="button" aria-label="Edit ${escapeHtml(t.name)}">
@@ -1846,6 +1858,7 @@ async function renderTypesListInMore(){
       await del(STORES.types, t.id);
       await renderTypeDatalist();
       await renderTypesListInMore();
+      window.initJobTypeBulkDelete?.();
     });
 
     box.appendChild(div);
