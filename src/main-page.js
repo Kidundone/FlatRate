@@ -1554,6 +1554,30 @@ async function loadTypesSorted(empId){
   return types;
 }
 
+/* ── Deleted-type blocklist ─────────────────────────────────── */
+// Tracks names the user explicitly deleted so syncTypesFromEntries
+// doesn't re-add them from historical entries on next data load.
+const LS_DELETED_TYPES = "fr_deleted_types_";
+
+function getDeletedTypeNames(empId) {
+  try {
+    const raw = localStorage.getItem(LS_DELETED_TYPES + empId);
+    return new Set(JSON.parse(raw) || []);
+  } catch { return new Set(); }
+}
+
+function addDeletedTypeNames(empId, nameLowers) {
+  if (!nameLowers?.length) return;
+  try {
+    const existing = getDeletedTypeNames(empId);
+    nameLowers.forEach(n => existing.add(n));
+    localStorage.setItem(LS_DELETED_TYPES + empId, JSON.stringify([...existing]));
+  } catch {}
+}
+
+window.getDeletedTypeNames = getDeletedTypeNames;
+window.addDeletedTypeNames = addDeletedTypeNames;
+
 async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
   const empId = cleanEmpId(empIdRaw);
   if (!empId) return 0;
@@ -1565,12 +1589,13 @@ async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
 
   const existing = await loadTypesSorted(empId);
   const existingNames = new Set(existing.map((t) => normalizeTypeLower(t.name)));
+  const deletedNames = getDeletedTypeNames(empId);
   let added = 0;
 
   for (const entry of entries) {
     const name = normalizeTypeName(entry.type || entry.typeText);
     const nameLower = normalizeTypeLower(name);
-    if (!name || existingNames.has(nameLower)) continue;
+    if (!name || existingNames.has(nameLower) || deletedNames.has(nameLower)) continue;
 
     const hours = round1(Number(entry.hours ?? entry.flat_hours ?? 0) || 0.5);
     const pay = Number(entry.earnings ?? entry.cash_amount ?? 0);
@@ -1779,6 +1804,7 @@ async function renderTypesListInMore(){
     const div = document.createElement("div");
     div.className = "typeRow";
     div.dataset.id = t.id;
+    div.dataset.name = (t.nameLower || t.name || "").toLowerCase();
     const metaParts = [];
     if (t.lastHours) metaParts.push(`${round1(t.lastHours)} hrs`);
     if (t.lastRate) metaParts.push(`${formatMoney(t.lastRate)}/hr`);
@@ -1855,6 +1881,7 @@ async function renderTypesListInMore(){
     delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Delete type "${t.name}"?`)) return;
+      addDeletedTypeNames(getEmpId(), [normalizeTypeLower(t.name)]);
       await del(STORES.types, t.id);
       await renderTypeDatalist();
       await renderTypesListInMore();

@@ -1836,7 +1836,10 @@ function initJobTypeBulkDelete() {
     const n = checked.length;
     if (!confirm(`Delete ${n} job type${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
 
-    const ids = checked.map(cb => cb.closest(".typeRow")?.dataset.id).filter(Boolean);
+    const rows = checked.map(cb => cb.closest(".typeRow")).filter(Boolean);
+    const ids = rows.map(r => r.dataset.id).filter(Boolean);
+    const names = rows.map(r => (r.dataset.name || r.querySelector(".typeRowName")?.textContent || "").toLowerCase().trim()).filter(Boolean);
+    window.addDeletedTypeNames?.(getEmpId?.() || localStorage.getItem("fr_emp_id") || "", names);
     for (const id of ids) {
       await del(STORES.types, id).catch(console.warn);
     }

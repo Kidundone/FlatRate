@@ -2073,17 +2073,18 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 /* ── Light theme — forced dark (app is always dark) ── */
 [data-theme="light"] {
-  --bg: #eef0f4;
+  /* iOS system light — standard, accessible, universal */
+  --bg: #f2f2f7;
   --surface: #ffffff;
-  --surface2: #f3f4f7;
-  --surface3: #e8eaee;
+  --surface2: #e5e5ea;
+  --surface3: #d1d1d6;
   --stroke: rgba(0,0,0,.12);
-  --stroke2: rgba(0,0,0,.20);
-  --text: #0f172a;
-  --text1: #0f172a;
-  --text2: rgba(15,23,42,.78);
-  --muted: #374151;
-  --muted2: #6b7280;
+  --stroke2: rgba(0,0,0,.18);
+  --text: #000000;
+  --text1: #000000;
+  --text2: rgba(0,0,0,.60);
+  --muted: #3c3c43;
+  --muted2: rgba(60,60,67,.60);
   --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
   --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
@@ -2116,7 +2117,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 /* Light theme — hero & chart fixes */
-[data-theme="light"] .heroSection { background: linear-gradient(to bottom, rgba(34,197,94,.06) 0%, transparent 100%); }
+[data-theme="light"] .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
 [data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(34,197,94,.3); }
 [data-theme="light"] .heroGoalPctText { color: var(--text); }
 [data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
