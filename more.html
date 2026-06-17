@@ -72,18 +72,24 @@
       </section>
 
       <section class="card moreCard">
-        <div class="moreCardHeader">Short-Pay History</div>
-        <div id="payTrendCard"></div>
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Short-Pay History</summary>
+          <div id="payTrendCard"></div>
+        </details>
       </section>
 
       <section class="card moreCard">
-        <div class="moreCardHeader">8-Week Earnings</div>
-        <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">8-Week Earnings</summary>
+          <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
+        </details>
       </section>
 
       <section class="card moreCard">
-        <div class="moreCardHeader">Comeback Impact</div>
-        <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Comeback Impact</summary>
+          <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
+        </details>
       </section>
 
       <!-- Entries with bulk delete -->
@@ -232,7 +238,8 @@
 
       <!-- Notifications -->
       <section class="card moreCard">
-        <div class="moreCardHeader">Notifications</div>
+        <details class="moreSectionDetails">
+        <summary class="moreCardHeader moreSectionSummary">Notifications</summary>
 
         <div class="moreRow">
           <div>
@@ -291,6 +298,7 @@
             <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
           </div>
         </div>
+        </details>
       </section>
 
       <!-- Pay Stub -->
@@ -352,8 +360,9 @@
 
       <!-- Export & Tools -->
       <section class="card moreCard">
-        <div class="moreCardHeader">Export &amp; Tools</div>
-        <div class="exportGrid">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Export &amp; Tools</summary>
+          <div class="exportGrid">
           <button class="exportBtn" type="button" id="exportCsvBtn">
             <div class="exportBtnIcon">CSV</div>
             <div class="exportBtnLabel">Export CSV</div>
@@ -370,7 +379,8 @@
             <div class="exportBtnIcon">Fix</div>
             <div class="exportBtnLabel">Repair Data</div>
           </button>
-        </div>
+          </div>
+        </details>
       </section>
 
       <!-- Feedback -->
@@ -397,24 +407,26 @@
 
       <!-- Help -->
       <section class="card moreCard">
-        <div class="moreCardHeader">Help</div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">App Tour</div>
-            <div class="moreRowSub">Replay the getting-started walkthrough</div>
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Help</summary>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">App Tour</div>
+              <div class="moreRowSub">Replay the getting-started walkthrough</div>
+            </div>
+            <button class="btn" id="retakeTourBtn" type="button">Take Tour</button>
           </div>
-          <button class="btn" id="retakeTourBtn" type="button">Take Tour</button>
-        </div>
 
-        <div class="moreDivider"></div>
+          <div class="moreDivider"></div>
 
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">App Update</div>
-            <div class="moreRowSub">Force-check for the latest version</div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">App Update</div>
+              <div class="moreRowSub">Force-check for the latest version</div>
+            </div>
+            <button class="btn" id="checkUpdateBtn" type="button" onclick="window.__FR?.checkForAppUpdate?.()">Check</button>
           </div>
-          <button class="btn" id="checkUpdateBtn" type="button" onclick="window.__FR?.checkForAppUpdate?.()">Check</button>
-        </div>
+        </details>
       </section>
 
     </div><!-- /mPanel-settings -->
