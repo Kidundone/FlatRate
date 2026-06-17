@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.4677e282d1.css">
+  <link rel="stylesheet" href="./app.73ae80dcc0.css">
 </head>
 <body data-page="main">
 
@@ -121,6 +121,20 @@
           </label>
         </div>
 
+        <!-- RO / Stock # always visible -->
+        <div class="fr26Row fr26RowRef">
+          <div class="fr26LabelRow">
+            <label class="fr26Label" for="ref">RO / STK #</label>
+            <div class="seg fr26RefTypeSeg" role="tablist" aria-label="Reference type">
+              <button id="refTypeRO" type="button" class="segBtn active">RO</button>
+              <button id="refTypeSTK" type="button" class="segBtn">STK</button>
+            </div>
+          </div>
+          <input id="ref" name="ref" placeholder="Optional"
+                 inputmode="text" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" class="fr26Input" />
+        </div>
+
         <div class="fr26PrimaryAction">
           <div id="earningsPreview" aria-live="polite"></div>
           <div id="dupWarnGlobal" aria-live="polite"></div>
@@ -152,31 +166,16 @@
       </details>
 
       <div class="fr26QuickTools">
-        <button id="toggleDetailsBtn" class="fr26Chip" type="button">Add Details</button>
         <button id="comebackChipBtn" class="fr26Chip fr26ChipComeback" type="button">Comeback</button>
         <button id="repeatLastBtn" class="fr26Chip" type="button">Repeat Last</button>
+        <button id="toggleDetailsBtn" class="fr26Chip" type="button">More</button>
         <button id="clearBtn" class="fr26Chip fr26ChipGhost" type="button">Clear</button>
         <button id="cancelEditBtn" class="fr26Chip fr26ChipGhost" type="button" style="display:none;">Cancel Edit</button>
       </div>
 
       <section id="detailsPanel" class="fr26Details" style="display:none;">
         <div class="fr26Group">
-          <div class="fr26GroupHeader">Details</div>
-
-          <div class="fr26TopRow">
-            <span class="fr26Sub">Reference type</span>
-            <div class="seg" role="tablist" aria-label="Reference type">
-              <button id="refTypeRO" type="button" class="segBtn active">RO</button>
-              <button id="refTypeSTK" type="button" class="segBtn">Stock</button>
-            </div>
-          </div>
-
-          <div class="fr26Row">
-            <label class="fr26Label" for="ref">RO / Stock #</label>
-            <input id="ref" name="ref" placeholder="Fill now or later"
-                   inputmode="text" autocomplete="off"
-                   autocapitalize="characters" spellcheck="false" class="fr26Input" />
-          </div>
+          <div class="fr26GroupHeader">More Details</div>
 
           <div class="fr26Row">
             <label class="fr26Label" for="vin8">VIN (last 8)</label>
@@ -494,6 +493,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./app.02cf3b2491.js" defer></script>
+<script src="./app.9c79184695.js" defer></script>
 </body>
 </html>

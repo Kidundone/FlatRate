@@ -1666,59 +1666,84 @@ async function renderBulkEntryList() {
   const all = await getAll(STORES.entries);
   const entries = filterEntriesByEmp(all, empId);
   entries.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  const recent = entries.slice(0, 60);
 
-  if (!recent.length) {
+  if (!entries.length) {
     container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No entries yet.</div>`;
     return;
   }
 
   container.innerHTML = "";
-  for (const e of recent) {
+  for (const e of entries) {
     const row = document.createElement("div");
     row.className = "bulkEntryRow";
     row.dataset.id = String(e.id ?? "");
-    const checkDisplay = _bulkSelectMode ? "" : "none";
+    const ref = e.ro || e.ref || "";
+    const refDisplay = ref ? escapeHtml(ref) : "<span class='bulkEntryNoRef'>no RO#</span>";
     row.innerHTML = `
-      <label class="bulkEntryCheck" style="display:${checkDisplay};">
+      <label class="bulkEntryCheck" style="${_bulkSelectMode ? "" : "display:none;"}">
         <input type="checkbox" class="bulkCheck" />
       </label>
       <div class="bulkEntryInfo">
-        <div class="bulkEntryRef">${escapeHtml(e.ro || e.ref || "—")} <span class="bulkEntryType">(${escapeHtml(e.type || e.typeText || "—")})</span></div>
+        <div class="bulkEntryRef">${refDisplay} <span class="bulkEntryType">${escapeHtml(e.type || e.typeText || "—")}</span></div>
         <div class="bulkEntryMeta">${formatMoney(Number(e.earnings ?? e.dollars ?? 0))} · ${round1(Number(e.hours || 0))} hrs · ${e.dayKey || ""}</div>
       </div>
     `;
+    // Tap entire row to toggle checkbox in select mode
+    row.addEventListener("click", (ev) => {
+      if (!_bulkSelectMode) return;
+      const cb = row.querySelector(".bulkCheck");
+      if (ev.target === cb || ev.target.closest("label")) return; // let label handle it natively
+      if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
     container.appendChild(row);
   }
 }
 
 function initBulkDelete() {
-  const toggle  = document.getElementById("bulkSelectToggle");
-  const delBtn  = document.getElementById("bulkDeleteBtn");
-  const bar     = document.getElementById("bulkDeleteBar");
-  const countEl = document.getElementById("bulkSelectedCount");
-  const list    = document.getElementById("bulkEntryList");
+  const toggle     = document.getElementById("bulkSelectToggle");
+  const delBtn     = document.getElementById("bulkDeleteBtn");
+  const selectAll  = document.getElementById("bulkSelectAllBtn");
+  const bar        = document.getElementById("bulkDeleteBar");
+  const countEl    = document.getElementById("bulkSelectedCount");
+  const list       = document.getElementById("bulkEntryList");
   if (!toggle) return;
 
   const syncBar = () => {
+    const total   = list?.querySelectorAll(".bulkCheck").length ?? 0;
     const checked = list?.querySelectorAll(".bulkCheck:checked").length ?? 0;
-    if (bar) bar.style.display = (_bulkSelectMode && checked > 0) ? "flex" : "none";
-    if (countEl) countEl.textContent = `${checked} selected`;
+    if (bar) bar.style.display = _bulkSelectMode ? "flex" : "none";
+    if (countEl) countEl.textContent = checked > 0 ? `${checked} of ${total}` : `${total} entries`;
+    if (selectAll) selectAll.textContent = (checked === total && total > 0) ? "None" : "All";
+    if (delBtn) delBtn.disabled = checked === 0;
   };
 
   toggle.addEventListener("click", () => {
     _bulkSelectMode = !_bulkSelectMode;
-    toggle.textContent = _bulkSelectMode ? "Cancel" : "Select";
+    toggle.textContent = _bulkSelectMode ? "Done" : "Select";
     toggle.classList.toggle("active", _bulkSelectMode);
     list?.querySelectorAll(".bulkEntryCheck").forEach(el => {
       el.style.display = _bulkSelectMode ? "" : "none";
     });
     list?.querySelectorAll(".bulkCheck").forEach(cb => { cb.checked = false; });
+    list?.querySelectorAll(".bulkEntryRow").forEach(r => r.classList.remove("is-selected"));
+    syncBar();
+  });
+
+  selectAll?.addEventListener("click", () => {
+    const cbs = [...(list?.querySelectorAll(".bulkCheck") ?? [])];
+    const allChecked = cbs.every(cb => cb.checked);
+    cbs.forEach(cb => {
+      cb.checked = !allChecked;
+      cb.closest(".bulkEntryRow")?.classList.toggle("is-selected", !allChecked);
+    });
     syncBar();
   });
 
   list?.addEventListener("change", (e) => {
-    if (e.target?.classList.contains("bulkCheck")) syncBar();
+    if (e.target?.classList.contains("bulkCheck")) {
+      e.target.closest(".bulkEntryRow")?.classList.toggle("is-selected", e.target.checked);
+      syncBar();
+    }
   });
 
   delBtn?.addEventListener("click", async () => {

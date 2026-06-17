@@ -2073,19 +2073,20 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 
 /* ── Light theme — forced dark (app is always dark) ── */
 [data-theme="light"] {
-  --bg: #f0f2f5;
+  --bg: #eef0f4;
   --surface: #ffffff;
-  --surface2: #f6f7f9;
-  --surface3: #eceef2;
-  --stroke: rgba(0,0,0,.07);
-  --stroke2: rgba(0,0,0,.13);
-  --text: #111827;
-  --text2: rgba(17,24,39,.72);
-  --muted: #6b7280;
-  --muted2: #9ca3af;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.14);
+  --surface2: #f3f4f7;
+  --surface3: #e8eaee;
+  --stroke: rgba(0,0,0,.12);
+  --stroke2: rgba(0,0,0,.20);
+  --text: #0f172a;
+  --text1: #0f172a;
+  --text2: rgba(15,23,42,.78);
+  --muted: #374151;
+  --muted2: #6b7280;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
 }
 
 [data-theme="light"] header {
@@ -2132,13 +2133,18 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 [data-theme="light"] .hcEntryMore { border-top-color: var(--stroke2); }
 
 /* Light theme — form & input visibility */
-[data-theme="light"] .fr26Input { background: var(--surface2); color: var(--text); border-color: var(--stroke2); }
-[data-theme="light"] .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: var(--stroke); }
+[data-theme="light"] .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+[data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8; }
+[data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
+[data-theme="light"] .fr26HourBtn { background: #fff; color: var(--text); border-color: rgba(0,0,0,.18); }
 [data-theme="light"] .fr26HourBtn:hover { background: var(--surface3); }
-[data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text2); border-color: var(--stroke); }
-[data-theme="light"] .segBtn { background: transparent; color: var(--text2); }
-[data-theme="light"] .segBtn.active { background: var(--primary); color: #fff; }
-[data-theme="light"] .pill { background: var(--surface2); }
+[data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
+[data-theme="light"] .fr26Check span { color: var(--text); }
+[data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
+[data-theme="light"] .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+[data-theme="light"] .pill { background: var(--surface2); color: var(--text); }
 [data-theme="light"] .statsCard { background: var(--surface); }
 [data-theme="light"] .statsStrip { background: var(--surface); border-top-color: var(--stroke); border-bottom-color: var(--stroke); }
 [data-theme="light"] #statsStrip { background: var(--surface); border-color: var(--stroke); }
@@ -2146,7 +2152,32 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 [data-theme="light"] .tabItem--active { color: var(--primary); }
 [data-theme="light"] .goalBar { background: var(--surface3); }
 [data-theme="light"] .entryListHeader { color: var(--text); }
-[data-theme="light"] select { background: var(--surface2); color: var(--text); border-color: var(--stroke2); }
+[data-theme="light"] select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+/* More page light mode */
+[data-theme="light"] .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-theme="light"] .moreRowLabel { color: var(--text); font-weight: 600; }
+[data-theme="light"] .moreRowSub { color: var(--muted2); }
+[data-theme="light"] .moreCardHeader { color: var(--text); }
+[data-theme="light"] .moreTab { color: var(--muted); }
+[data-theme="light"] .moreTab.active { color: var(--primary); border-bottom-color: var(--primary); }
+/* Type chips light mode */
+[data-theme="light"] .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
+[data-theme="light"] .typeSuggestChip:active { background: var(--surface2); }
+[data-theme="light"] .tscMeta { color: var(--muted2); }
+/* Bulk list light mode */
+[data-theme="light"] .bulkEntryRef { color: var(--text); }
+[data-theme="light"] .bulkEntryType { color: var(--muted); }
+[data-theme="light"] .bulkEntryMeta { color: var(--muted); }
+[data-theme="light"] .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
+/* Entry items light mode */
+[data-theme="light"] .itemRef { color: var(--text); }
+[data-theme="light"] .itemType { color: var(--muted); }
+[data-theme="light"] .itemNotes { color: var(--muted); }
+/* Misc */
+[data-theme="light"] .hcRangeLabel { color: var(--text); }
+[data-theme="light"] .hcStatVal { color: var(--text); }
+[data-theme="light"] .hcStatLabel { color: var(--muted); }
+[data-theme="light"] .k { color: var(--muted); }
 
 /* ── Short-pay trend ─────────────────────────────── */
 .ptSummary {
@@ -2457,23 +2488,34 @@ body.compact .list    { gap: 1px; }
   padding: 11px 16px;
   border-top: 1px solid var(--stroke);
   transition: background 120ms;
+  cursor: default;
 }
 .bulkEntryRow:first-child { border-top: none; }
+.bulkEntryRow.is-selected { background: rgba(34,197,94,.08); }
 .bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; }
-.bulkEntryCheck input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.bulkEntryCheck input { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
 .bulkEntryInfo { flex: 1; min-width: 0; }
 .bulkEntryRef { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bulkEntryType { font-weight: 400; color: var(--muted); }
+.bulkEntryType { font-weight: 400; color: var(--muted); font-size: 13px; }
+.bulkEntryNoRef { color: var(--muted); font-weight: 400; font-style: italic; }
 .bulkEntryMeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
 .bulkDeleteBar {
+  position: sticky;
+  bottom: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   border-top: 1px solid var(--stroke);
-  background: var(--surface2);
+  background: var(--surface);
+  z-index: 10;
 }
+
+/* RO# always-visible row */
+.fr26RowRef .fr26LabelRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.fr26RefTypeSeg { font-size: 11px; }
+.fr26RefTypeSeg .segBtn { padding: 2px 9px; font-size: 11px; }
 
 .moreCardHeaderRow {
   display: flex;
