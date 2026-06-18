@@ -183,7 +183,7 @@ function wireAuthUI() {
   const submitOnEnter = (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    runSignIn().catch(console.error);
+    runSignIn().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[runSignIn]", e); });
   };
 
   emailEl?.addEventListener("keydown", submitOnEnter);

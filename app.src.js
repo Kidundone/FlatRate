@@ -473,7 +473,7 @@ function wireAuthUI() {
   const submitOnEnter = (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    runSignIn().catch(console.error);
+    runSignIn().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[runSignIn]", e); });
   };
 
   emailEl?.addEventListener("keydown", submitOnEnter);
@@ -1364,7 +1364,7 @@ function scheduleRefreshUI(entries) {
     _rafFrame = null;
     const arg = _rafArg;
     _rafArg = null;
-    refreshUI(arg).catch(console.error);
+    refreshUI(arg).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[refreshUI]", e); });
   });
 }
 
@@ -1469,7 +1469,7 @@ function setRangeMode(m, opts = {}) {
   if (PAGE === "main" && !opts.skipRefresh) {
     if (m === "all" && !_fullHistoryLoaded) {
       refreshUI(CURRENT_ENTRIES); // show what we have now
-      safeLoadEntries({ fullHistory: true }).catch(console.error); // fill in older entries
+      safeLoadEntries({ fullHistory: true }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[loadHistory]", e); }); // fill in older entries
     } else {
       scheduleRefreshUI(CURRENT_ENTRIES);
     }
@@ -3946,7 +3946,7 @@ async function handleSave(ev) {
     }
     refreshUI(CURRENT_ENTRIES);
     if (!isEditing) animateFirstEntry();
-    safeLoadEntries().catch(console.error);
+    safeLoadEntries().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[safeLoad]", e); });
     document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSelectedPhotoFile(null);
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
@@ -8139,7 +8139,7 @@ function schedulePaydayReminder() {
           schedule: { at: d },
           smallIcon: "ic_stat_icon",
         }],
-      }).catch(console.error);
+      }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[LN.schedule]", e); });
     });
     return;
   }
@@ -8192,7 +8192,7 @@ function scheduleShiftReminder() {
           sound: null,
           smallIcon: "ic_stat_icon",
         }],
-      }).catch(console.error);
+      }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[LN.schedule2]", e); });
     });
     return;
   }
@@ -8732,6 +8732,16 @@ function startMoreTour() {
 window.__FR = window.__FR || {};
 window.__FR.startMoreTour = startMoreTour;
 
+// Suppress empty-object errors thrown by Supabase/Capacitor during boot
+// (e.g. {} from WKWebView before network is ready) — log real errors only.
+function logErr(label) {
+  return (e) => {
+    if (!e) return;
+    const empty = typeof e === "object" && !(e instanceof Error) && !Object.keys(e).length;
+    if (!empty) console.error(`[${label}]`, e);
+  };
+}
+
 window.BUILD = "20260316-weekend-stable";
 const BUILD_TAG = "weekend-stable";
 const FEATURE_FREEZE = Object.freeze({
@@ -8804,7 +8814,7 @@ async function runOnce() {
     console.warn("App already booted.");
   } else {
     window.__APP_BOOTED__ = true;
-    await bootAuth().catch(console.error);
+    await bootAuth().catch(logErr("bootAuth"));
   }
 
   await ensureDefaultTypes();
@@ -8915,7 +8925,7 @@ async function runOnce() {
           if (window.__saving) return;
           window.__saving = true;
           Promise.resolve(handleSave(e))
-            .catch(console.error)
+            .catch(logErr("handleSave"))
             .finally(() => (window.__saving = false));
         });
       }
@@ -9288,8 +9298,8 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    runOnce().catch(console.error);
+    runOnce().catch(logErr("runOnce"));
   });
 } else {
-  runOnce().catch(console.error);
+  runOnce().catch(logErr("runOnce"));
 }

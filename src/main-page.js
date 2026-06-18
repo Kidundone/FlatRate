@@ -1086,7 +1086,7 @@ async function handleSave(ev) {
     }
     refreshUI(CURRENT_ENTRIES);
     if (!isEditing) animateFirstEntry();
-    safeLoadEntries().catch(console.error);
+    safeLoadEntries().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[safeLoad]", e); });
     document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSelectedPhotoFile(null);
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");

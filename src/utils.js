@@ -74,7 +74,7 @@ function scheduleRefreshUI(entries) {
     _rafFrame = null;
     const arg = _rafArg;
     _rafArg = null;
-    refreshUI(arg).catch(console.error);
+    refreshUI(arg).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[refreshUI]", e); });
   });
 }
 
@@ -179,7 +179,7 @@ function setRangeMode(m, opts = {}) {
   if (PAGE === "main" && !opts.skipRefresh) {
     if (m === "all" && !_fullHistoryLoaded) {
       refreshUI(CURRENT_ENTRIES); // show what we have now
-      safeLoadEntries({ fullHistory: true }).catch(console.error); // fill in older entries
+      safeLoadEntries({ fullHistory: true }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[loadHistory]", e); }); // fill in older entries
     } else {
       scheduleRefreshUI(CURRENT_ENTRIES);
     }

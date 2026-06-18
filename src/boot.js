@@ -1,3 +1,13 @@
+// Suppress empty-object errors thrown by Supabase/Capacitor during boot
+// (e.g. {} from WKWebView before network is ready) — log real errors only.
+function logErr(label) {
+  return (e) => {
+    if (!e) return;
+    const empty = typeof e === "object" && !(e instanceof Error) && !Object.keys(e).length;
+    if (!empty) console.error(`[${label}]`, e);
+  };
+}
+
 window.BUILD = "20260316-weekend-stable";
 const BUILD_TAG = "weekend-stable";
 const FEATURE_FREEZE = Object.freeze({
@@ -70,7 +80,7 @@ async function runOnce() {
     console.warn("App already booted.");
   } else {
     window.__APP_BOOTED__ = true;
-    await bootAuth().catch(console.error);
+    await bootAuth().catch(logErr("bootAuth"));
   }
 
   await ensureDefaultTypes();
@@ -181,7 +191,7 @@ async function runOnce() {
           if (window.__saving) return;
           window.__saving = true;
           Promise.resolve(handleSave(e))
-            .catch(console.error)
+            .catch(logErr("handleSave"))
             .finally(() => (window.__saving = false));
         });
       }
@@ -554,8 +564,8 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    runOnce().catch(console.error);
+    runOnce().catch(logErr("runOnce"));
   });
 } else {
-  runOnce().catch(console.error);
+  runOnce().catch(logErr("runOnce"));
 }

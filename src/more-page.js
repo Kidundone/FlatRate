@@ -1582,7 +1582,7 @@ function schedulePaydayReminder() {
           schedule: { at: d },
           smallIcon: "ic_stat_icon",
         }],
-      }).catch(console.error);
+      }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[LN.schedule]", e); });
     });
     return;
   }
@@ -1635,7 +1635,7 @@ function scheduleShiftReminder() {
           sound: null,
           smallIcon: "ic_stat_icon",
         }],
-      }).catch(console.error);
+      }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[LN.schedule2]", e); });
     });
     return;
   }
