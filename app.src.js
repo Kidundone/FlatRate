@@ -9042,7 +9042,11 @@ async function runOnce() {
     document.getElementById("typeText")?.addEventListener("blur", () => {
       if (typeStrip) typeStrip.hidden = true;
     });
-    document.getElementById("typeText")?.addEventListener("input", filterTypeChips);
+    let _filterT = null;
+    document.getElementById("typeText")?.addEventListener("input", () => {
+      clearTimeout(_filterT);
+      _filterT = setTimeout(filterTypeChips, 100);
+    });
 
     syncClearTypeBtn();
     updateSaveEnabled();
