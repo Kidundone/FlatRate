@@ -1538,6 +1538,12 @@ window.__FR = window.__FR || {};
 window.__FR.sendNotification = sendNotification;
 
 async function requestNotifPermission() {
+  // Native iOS/Android — use Capacitor Local Notifications
+  if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {
+    const { display } = await window.Capacitor.Plugins.LocalNotifications.requestPermissions().catch(() => ({ display: "denied" }));
+    return display === "granted" ? "granted" : "denied";
+  }
+  // Web fallback
   if (!("Notification" in window)) return "unsupported";
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
@@ -1548,7 +1554,6 @@ function schedulePaydayReminder() {
   clearTimeout(window.__FR_PAYDAY__);
   const s = getPaydaySettings();
   if (!s.enabled) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const [h, m] = String(s.time || "09:00").split(":").map(Number);
   const targetDay = Number(s.day ?? 5);
@@ -1557,13 +1562,33 @@ function schedulePaydayReminder() {
 
   let daysUntil = ((targetDay - d.getDay()) + 7) % 7;
   if (daysUntil === 0) {
-    // It's payday today — fire now if time hasn't passed, else next week
     const todayTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
     if (todayTarget <= now) daysUntil = 7;
   }
   d.setDate(d.getDate() + daysUntil);
   d.setHours(h, m, 0, 0);
 
+  // Native iOS/Android — schedule via Capacitor Local Notifications
+  if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {
+    const LN = window.Capacitor.Plugins.LocalNotifications;
+    LN.requestPermissions().then(({ display }) => {
+      if (display !== "granted") return;
+      LN.cancel({ notifications: [{ id: 1002 }] }).catch(() => {});
+      LN.schedule({
+        notifications: [{
+          id: 1002,
+          title: "Flat-Rate — Payday",
+          body: "Tap to enter your check amount and verify you weren't short-paid.",
+          schedule: { at: d },
+          smallIcon: "ic_stat_icon",
+        }],
+      }).catch(console.error);
+    });
+    return;
+  }
+
+  // Web fallback: setTimeout + Web Notification API
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_PAYDAY__ = setTimeout(() => {
     sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
     schedulePaydayReminder();

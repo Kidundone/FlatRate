@@ -1,86 +1,87 @@
-# iOS Launch Checklist — Flat-Rate Tracker
+# Flat-Rate Tracker — iOS Launch Checklist
 
 ## Prerequisites
-- Xcode 15+ installed (free from App Store)
-- Apple Developer account ($99/yr — https://developer.apple.com/account)
-- Homebrew + Node 18+ installed
+- Mac with Xcode 15+ installed
+- Apple Developer account ($99/yr) at developer.apple.com
+- Node.js installed (`node -v` to confirm)
 
 ---
 
-## Step 1 — Install Capacitor (run once)
-
+## 1. Install dependencies (one time)
 ```bash
 cd ~/flat-rate-log
-npm install @capacitor/core @capacitor/cli @capacitor/ios \
-            @capacitor/haptics @capacitor/local-notifications \
-            @capacitor/push-notifications
+npm install
 ```
 
-## Step 2 — Initialize Capacitor (run once)
-
+## 2. Build and sync to iOS
 ```bash
-npx cap init "Flat-Rate Tracker" "dev.nellylabs.flatrate" --web-dir www
+npm run cap:ios
 ```
-> If it asks to overwrite capacitor.config.json — say **No** (your config is already there).
-
-## Step 3 — Build the web app + add iOS platform (run once)
-
-```bash
-node build.mjs
-npx cap add ios
-```
-
-This creates an `ios/` folder with a full Xcode project.
-
-## Step 4 — Open in Xcode
-
-```bash
-npx cap open ios
-```
-
-Or use the shortcut: `npm run cap:ios`
-
-## Step 5 — In Xcode
-
-1. Select the **App** target → **Signing & Capabilities**
-2. Set **Team** to your Apple Developer account
-3. Confirm **Bundle Identifier** = `dev.nellylabs.flatrate`
-4. Add **Push Notifications** capability (+ Capability button)
-5. Add **Background Modes** → check **Remote notifications**
-
-## Step 6 — Test on your phone
-
-1. Plug in your iPhone via USB
-2. Select your device in the Xcode device picker
-3. Press **▶ Run** (Cmd+R)
-4. Trust the developer cert on the phone: Settings → General → VPN & Device Management
-
-## Step 7 — Every time you update the web app
-
-```bash
-npm run cap:sync
-```
-
-This rebuilds + syncs changes to the Xcode project without reopening Xcode.
+This runs `node build.mjs`, syncs web assets to the `ios/` folder, and opens Xcode.
 
 ---
 
-## App Store submission (when ready)
+## 3. In Xcode
 
-1. Xcode → Product → Archive
-2. Distribute App → App Store Connect → Upload
-3. Go to https://appstoreconnect.apple.com → fill out metadata, screenshots
-4. Submit for review (~24–48hrs)
+### Signing
+1. Click the top-level **App** project in the left sidebar
+2. Select the **App** target → **Signing & Capabilities** tab
+3. Check **Automatically manage signing**
+4. Set **Team** to your Apple Developer account
+5. Bundle Identifier: `dev.nellylabs.flatrate` (already set)
+
+### App icons
+- Open `ios/App/App/Assets.xcassets/AppIcon.appiconset`
+- Replace placeholder icons with your actual icon at required sizes
+- Minimum: 1024×1024 PNG for App Store, plus 180×180 for iPhone
+
+### Permissions (verify in Info.plist)
+Xcode should add these automatically, but confirm they exist:
+- `NSCameraUsageDescription` → "Used to scan pay stubs"
+- `NSPhotoLibraryUsageDescription` → "Used to scan pay stubs from your photo library"
 
 ---
 
-## Notes on Haptics
+## 4. Test on a real device
+1. Connect iPhone via USB
+2. Select your device in the Xcode toolbar (top left dropdown)
+3. Press ▶ Run
+4. On first run: iPhone → Settings → General → VPN & Device Management → trust your developer certificate
 
-- On native iOS, the app uses `UIImpactFeedbackGenerator` via `@capacitor/haptics` — real taptic engine feedback, no `navigator.vibrate` needed.
-- On the web, `navigator.vibrate` is used as fallback (works on Android Chrome, not Safari).
+---
 
-## Notes on Notifications
+## 5. Archive for App Store
+1. Xcode menu → **Product → Archive**
+2. When complete, **Distribute App → App Store Connect**
+3. Follow the upload wizard
 
-- On native iOS, the app uses `@capacitor/local-notifications` to schedule the shift reminder at the exact time you set in Settings.
-- The first time the app runs, it will prompt for notification permission.
-- No backend/APNs setup needed for local notifications — they're entirely on-device.
+---
+
+## 6. App Store Connect (appstoreconnect.apple.com)
+1. **My Apps → +** → New App
+   - Platform: iOS
+   - Name: Flat-Rate Tracker
+   - Bundle ID: `dev.nellylabs.flatrate`
+   - SKU: `flatrate-tracker-1`
+2. Category: **Productivity**
+3. Add screenshots (minimum: iPhone 6.5" and 5.5")
+4. Description tip: "Log flat-rate hours job by job, track your weekly earnings, and catch short pay before payday. Works offline on the shop floor."
+5. Set price, submit for review (Apple takes 1–3 days)
+
+---
+
+## 7. After every code update
+```bash
+cd ~/flat-rate-log
+npm run cap:ios   # build + sync + open Xcode
+```
+Then archive and upload the new version.
+
+---
+
+## Quick reference
+| Command | What it does |
+|---|---|
+| `node build.mjs` | Build JS/CSS for GitHub Pages only |
+| `npm run cap:sync` | Build + sync to iOS (no Xcode) |
+| `npm run cap:ios` | Build + sync + open Xcode |
