@@ -8,6 +8,9 @@
     "cap:sync": "node build.mjs && npx cap sync",
     "cap:ios": "node build.mjs && npx cap sync ios && npx cap open ios"
   },
+  "devDependencies": {
+    "esbuild": "^0.21.0"
+  },
   "dependencies": {
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",

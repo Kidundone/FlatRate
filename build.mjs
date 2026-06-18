@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { transform } from "esbuild";
 
 const SRC_JS = "app.src.js";
 const SOURCE_PARTS = [
@@ -43,7 +44,13 @@ if (!existsSync(SRC_JS)) {
   process.exit(1);
 }
 
-const jsBuf = Buffer.from(bundledSource);
+// Minify with esbuild for faster mobile parsing
+const { code: minified } = await transform(bundledSource, {
+  minify: true,
+  target: "es2017",
+  logLevel: "silent",
+});
+const jsBuf = Buffer.from(minified);
 const jsHash = hashOf(jsBuf);
 const outJs = `app.${jsHash}.js`;
 writeFileSync(outJs, jsBuf);
