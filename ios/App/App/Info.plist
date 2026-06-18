@@ -47,5 +47,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo of your repair order or payroll stub to auto-fill job details.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo of your repair order or payroll stub to auto-fill job details.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save proof photos to your photo library.</string>
 </dict>
 </plist>

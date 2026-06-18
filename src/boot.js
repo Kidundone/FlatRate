@@ -445,6 +445,7 @@ async function runOnce() {
 
     document.getElementById("retakeTourBtn")?.addEventListener("click", () => {
       localStorage.removeItem("fr_tour_done");
+      sessionStorage.setItem("fr_force_tour", "1");
       window.location.href = "./index.html";
     });
 

@@ -3346,6 +3346,12 @@ document.addEventListener("click", ev => {
 });
 
 function maybeStartTour() {
+  const forced = sessionStorage.getItem("fr_force_tour");
+  if (forced) {
+    sessionStorage.removeItem("fr_force_tour");
+    startTour(true);
+    return;
+  }
   if (localStorage.getItem("fr_tour_done")) return;
   // If the setup modal is still open, the tour will fire from the Get Started click handler
   const modal = document.getElementById("onboardingModal");
@@ -3353,8 +3359,8 @@ function maybeStartTour() {
   startTour();
 }
 
-function startTour() {
-  if (localStorage.getItem("fr_tour_done")) return;
+function startTour(force = false) {
+  if (!force && localStorage.getItem("fr_tour_done")) return;
   const overlay  = document.getElementById("tourOverlay");
   const nextBtn  = document.getElementById("tourNextBtn");
   const skipBtn  = document.getElementById("tourSkipBtn");
