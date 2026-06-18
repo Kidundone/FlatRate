@@ -34,6 +34,20 @@
 [hidden] { display: none !important; }
 html { height: 100%; overflow-x: hidden; }
 
+/* ── WKWebView tap & gesture performance ─────────────────────────────────────
+   touch-action:manipulation tells iOS "no double-tap zoom, no wait" — eliminates
+   the 300ms tap delay and the 22-second gesture-recognizer blocking seen in Capacitor. */
+a, button, input, textarea, select, label,
+[role="button"], [tabindex], .btn, .card, .moreRow,
+.segBtn, .fr26HourBtn, .fr26Chip, .tabItem, .moreTab,
+.typeIconBtn, .clockInBtn, .repeatChip, .comboSuggestChip,
+summary, details { touch-action: manipulation; }
+
+/* Prevent iOS text-selection callout on UI chrome (not on text inputs) */
+header, nav, .tabBar, .moreTabBar, .fr26QuickHours,
+.fr26QuickTools, .heroGoalRingWrap, .heroChartCard,
+button, [role="button"] { -webkit-user-select: none; user-select: none; }
+
 body {
   margin: 0;
   height: 100%;
@@ -2488,6 +2502,8 @@ body.compact .list    { gap: 1px; }
   border-top: 1px solid var(--stroke);
   transition: background 120ms;
   cursor: default;
+  /* pan-y: iOS handles vertical scroll natively; we own horizontal for swipe-to-delete */
+  touch-action: pan-y;
 }
 .bulkEntryRow:first-child { border-top: none; }
 .bulkEntryRow.is-selected { background: rgba(34,197,94,.08); }

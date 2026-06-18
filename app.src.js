@@ -4624,8 +4624,9 @@ async function renderTypeDatalist(){
         typeEl.dispatchEvent(new Event("change", { bubbles: true }));
         strip.hidden = true;
       };
-      chip.addEventListener("mousedown", applyChip);
-      chip.addEventListener("touchstart", applyChip, { passive: false });
+      // pointerdown fires before blur (same as touchstart) but doesn't block
+      // the WKWebView gesture pipeline the way passive:false touchstart does.
+      chip.addEventListener("pointerdown", applyChip);
       strip.appendChild(chip);
     }
   }
