@@ -8734,7 +8734,7 @@ const FEATURE_FREEZE = Object.freeze({
 });
 const ACTIVE_DATA_PATH = FEATURE_FREEZE.entriesDataPath;
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !window.Capacitor?.isNativePlatform?.()) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
   // When a new SW takes control show a persistent banner — never auto-reload,
   // as that can interrupt an active sign-in or form submission.

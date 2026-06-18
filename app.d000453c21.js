@@ -1283,6 +1283,9 @@ function updatePendingBadge() {
       badge.style.display = "none";
     }
   }
+
+  // Keep 3-state sync dot in sync
+  window.syncOfflineDot?.();
 }
 
 /* ── Settings ────────────────────────────────────────────────────────────── */
@@ -3128,6 +3131,8 @@ function handleClear(ev, options = {}) {
   if (dw) { dw.style.display = "none"; dw.dataset.level = ""; }
   const ep = document.getElementById("earningsPreview");
   if (ep) { ep.textContent = ""; ep.classList.remove("hasValue"); }
+  // Show repeat chip if a last job is stored
+  setTimeout(() => updateRepeatChip?.(), 50);
 }
 
 function focusHoursInput() {
@@ -3212,10 +3217,10 @@ function updateEarningsPreview() {
   const hours = parseFloat(document.getElementById("hours")?.value) || 0;
   const rate = parseFloat(document.querySelector('input[name="rate"]')?.value) || getDefaultRate();
   if (hours > 0 && rate > 0) {
-    el.textContent = `= ${formatMoney(round2(hours * rate))}`;
+    el.innerHTML = `= ${formatMoney(round2(hours * rate))} <span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
     el.classList.add("hasValue");
   } else {
-    el.textContent = "";
+    el.innerHTML = "";
     el.classList.remove("hasValue");
   }
 }
@@ -3292,6 +3297,44 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   checkPayMilestone(todayDollars);
   updateStreakBadge(computeStreak(allEntries || []));
   updateHeroRecords(allEntries || []);
+
+  // ── Behind-pace warning ───────────────────────────────────────
+  // If it's past noon, a goal is set, and you're under 50% of expected pace,
+  // show a nudge below the pace line.
+  const paceWarnEl = document.getElementById("heroPaceWarn");
+  if (paceWarnEl) {
+    const goalVal  = Number(localStorage.getItem("fr_goal_value") || 0);
+    const goalType = localStorage.getItem("fr_goal_type") || "hours";
+    const nowHr = new Date().getHours();
+    let behindPace = false;
+    if (goalVal > 0 && nowHr >= 12) {
+      if (goalType === "pay") {
+        const weekProg = Math.min(1, weekDollars / goalVal);
+        const dayOfWeek = new Date().getDay(); // 0=Sun … 6=Sat
+        const workDaysPassed = Math.max(1, Math.min(dayOfWeek, 5));
+        behindPace = weekProg < (workDaysPassed / 5) * 0.55;
+      } else {
+        const maxHrs = goalVal;
+        const weekProg = Math.min(1, weekHours / maxHrs);
+        const dayOfWeek = new Date().getDay();
+        const workDaysPassed = Math.max(1, Math.min(dayOfWeek, 5));
+        behindPace = weekProg < (workDaysPassed / 5) * 0.55;
+      }
+    }
+    paceWarnEl.style.display = behindPace ? "" : "none";
+    if (behindPace) {
+      const dayOfWeekNow = new Date().getDay();
+      const daysLeft = Math.max(1, 5 - Math.min(dayOfWeekNow, 5));
+      if (goalType === "pay") {
+        const needPerDay = round2(Math.max(0, goalVal - weekDollars) / daysLeft);
+        paceWarnEl.textContent = `⚠ Need ${formatMoney(needPerDay)}/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      } else {
+        const needPerDay = round1(Math.max(0, goalVal - weekHours) / daysLeft);
+        paceWarnEl.textContent = `⚠ Need ${needPerDay.toFixed(1)} hrs/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      }
+    }
+  }
+  updateClockInDisplay?.();
 }
 
 function renderHeroChart(entries, weekStart) {
@@ -3645,6 +3688,7 @@ async function deleteSelectedEntries() {
 
 window.__FR = window.__FR || {};
 window.__FR.updateEarningsPreview = updateEarningsPreview;
+window.syncOfflineDot = syncOfflineDot;
 window.__FR.repeatLastEntry = repeatLastEntry;
 window.__FR.deleteSelectedEntries = deleteSelectedEntries;
 window.__FR.checkDuplicates = checkDuplicates;
@@ -3756,9 +3800,34 @@ async function saveEntry(entry, options = {}) {
   setEditingEntry(null);
   const earningsStr = formatMoney(entry.earnings || 0);
   const isEdit = options.__isEdit;
-  if (photoStatus === "fail") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr} (photo failed)`);
-  else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr} + Photo`);
-  else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}`);
+
+  // Build "N jobs · $X today" suffix for save toast
+  const todayKey2 = todayKeyLocal?.() || new Date().toISOString().slice(0, 10);
+  const todayEntries = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+    .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey2);
+  const todayJobCount = todayEntries.length + (isEdit ? 0 : 1);
+  const todayTotal = todayEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (isEdit ? 0 : (entry.earnings || 0));
+  const daySuffix = todayJobCount > 0
+    ? ` · ${todayJobCount} job${todayJobCount !== 1 ? "s" : ""} · ${formatMoney(round2(todayTotal))} today`
+    : "";
+
+  if (photoStatus === "fail") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} (photo failed)`);
+  else if (photoStatus === "ok") toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix} + Photo`);
+  else toast(`${isEdit ? "Updated" : "Saved"} · ${earningsStr}${daySuffix}`);
+
+  if (!isEdit) {
+    const _empId = getEmpId();
+    // Store for repeat-chip
+    storeLastJob?.(_empId, entry);
+    // Personal records check
+    checkPersonalRecords?.(CURRENT_ENTRIES, entry);
+    // Combo suggestion (show after tiny delay so save toast is first)
+    setTimeout(() => showComboSuggestion?.(entry.type || entry.typeText || "", CURRENT_ENTRIES), 2200);
+    // Show repeat chip on next clear
+    setTimeout(() => updateRepeatChip?.(), 400);
+  }
+
   handleClear(null, { preserveType, typeValue: preservedType });
   return _savedEntry;
 }
@@ -4196,8 +4265,24 @@ function maybeShowOnboarding() {
 
 function syncOfflineDot() {
   const dot = document.getElementById("offlineDot");
-  if (dot) dot.style.display = !navigator.onLine ? "" : "none";
   updatePendingBadge?.();
+  if (!dot) return;
+  const online = navigator.onLine;
+  const pending = (getPendingQueue?.() || []).length;
+  dot.classList.remove("offlineDot--offline", "offlineDot--pending", "offlineDot--synced");
+  if (!online) {
+    dot.className = "offlineDot offlineDot--offline";
+    dot.title = "Offline — entries saved locally";
+    dot.style.display = "";
+  } else if (pending > 0) {
+    dot.className = "offlineDot offlineDot--pending";
+    dot.title = `${pending} entr${pending === 1 ? "y" : "ies"} syncing…`;
+    dot.style.display = "";
+  } else {
+    dot.className = "offlineDot offlineDot--synced";
+    dot.title = "All synced";
+    dot.style.display = "";
+  }
 }
 
 // ── Referral share ──────────────────────────────────────────────
@@ -4411,6 +4496,30 @@ async function loadTypesSorted(empId){
   return types;
 }
 
+/* ── Deleted-type blocklist ─────────────────────────────────── */
+// Tracks names the user explicitly deleted so syncTypesFromEntries
+// doesn't re-add them from historical entries on next data load.
+const LS_DELETED_TYPES = "fr_deleted_types_";
+
+function getDeletedTypeNames(empId) {
+  try {
+    const raw = localStorage.getItem(LS_DELETED_TYPES + empId);
+    return new Set(JSON.parse(raw) || []);
+  } catch { return new Set(); }
+}
+
+function addDeletedTypeNames(empId, nameLowers) {
+  if (!nameLowers?.length) return;
+  try {
+    const existing = getDeletedTypeNames(empId);
+    nameLowers.forEach(n => existing.add(n));
+    localStorage.setItem(LS_DELETED_TYPES + empId, JSON.stringify([...existing]));
+  } catch {}
+}
+
+window.getDeletedTypeNames = getDeletedTypeNames;
+window.addDeletedTypeNames = addDeletedTypeNames;
+
 async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
   const empId = cleanEmpId(empIdRaw);
   if (!empId) return 0;
@@ -4422,12 +4531,13 @@ async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
 
   const existing = await loadTypesSorted(empId);
   const existingNames = new Set(existing.map((t) => normalizeTypeLower(t.name)));
+  const deletedNames = getDeletedTypeNames(empId);
   let added = 0;
 
   for (const entry of entries) {
     const name = normalizeTypeName(entry.type || entry.typeText);
     const nameLower = normalizeTypeLower(name);
-    if (!name || existingNames.has(nameLower)) continue;
+    if (!name || existingNames.has(nameLower) || deletedNames.has(nameLower)) continue;
 
     const hours = round1(Number(entry.hours ?? entry.flat_hours ?? 0) || 0.5);
     const pay = Number(entry.earnings ?? entry.cash_amount ?? 0);
@@ -4482,28 +4592,37 @@ async function renderTypeDatalist(){
   }
 
   if (strip) {
-    const shown = types.slice(0, 8);
+    const shown = types.slice(0, 14);
     strip.innerHTML = "";
     if (shown.length === 0) {
-      strip.hidden = false;
       strip.innerHTML = `<span class="typeSuggestHint">Type anything — saved types appear here after you log entries</span>`;
+      // Don't set hidden — focus handler controls visibility
       return;
     }
-    strip.hidden = false;
+    // Don't set hidden here — focus handler controls visibility
     for (const t of shown) {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "typeSuggestChip";
-      chip.textContent = t.name;
+      chip.dataset.name = t.name.toLowerCase();
+      // Meta line: show hours and use count if available
+      const metaParts = [];
+      if (t.lastHours) metaParts.push(`${t.lastHours}h`);
+      if (t.useCount > 1) metaParts.push(`×${t.useCount}`);
+      chip.innerHTML = `<span class="tscName">${escapeHtml(t.name)}</span>${metaParts.length ? `<span class="tscMeta">${metaParts.join(" · ")}</span>` : ""}`;
       const applyChip = (e) => {
         e.preventDefault();
         const typeEl = $("typeText");
         if (!typeEl) return;
+        // No-op if already the same value
+        if (typeEl.value.toLowerCase() === t.name.toLowerCase()) {
+          strip.hidden = true;
+          return;
+        }
         typeEl.value = t.name;
         typeEl.dispatchEvent(new Event("input", { bubbles: true }));
         typeEl.dispatchEvent(new Event("change", { bubbles: true }));
         strip.hidden = true;
-        typeEl.focus();
       };
       chip.addEventListener("mousedown", applyChip);
       chip.addEventListener("touchstart", applyChip, { passive: false });
@@ -4540,6 +4659,7 @@ async function upsertTypeDefaults(nameRaw, hours, rate){
     nameLower,
     lastHours: Number(hours),
     lastRate: Number(rate),
+    useCount: (existing?.useCount || 0) + 1,
     updatedAt: nowISO()
   };
   await put(STORES.types, payload);
@@ -4589,6 +4709,7 @@ async function saveTypeFromMoreForm(){
   if (rateEl) rateEl.value = String(getDefaultRate());
 
   toast(`${name} ${existing ? "updated" : "added"}`);
+  window.initJobTypeBulkDelete?.();
 }
 
 async function maybeAutofillFromType(nameRaw){
@@ -4617,15 +4738,27 @@ async function renderTypesListInMore(){
     box.innerHTML = `<div class="muted small" style="padding:12px 16px;">No saved types yet. Add one above or create them automatically when you log entries.</div>`;
     return;
   }
+  // Update count label
+  const countEl = document.getElementById("typeListCount");
+  if (countEl) countEl.textContent = types.length > 0 ? `${types.length} saved` : "";
+
   for (const t of types) {
     const div = document.createElement("div");
     div.className = "typeRow";
     div.dataset.id = t.id;
+    div.dataset.name = (t.nameLower || t.name || "").toLowerCase();
+    const metaParts = [];
+    if (t.lastHours) metaParts.push(`${round1(t.lastHours)} hrs`);
+    if (t.lastRate) metaParts.push(`${formatMoney(t.lastRate)}/hr`);
+    if (t.useCount > 1) metaParts.push(`×${t.useCount} used`);
     div.innerHTML = `
       <div class="typeRowMain">
+        <label class="typeCheckWrap" style="display:none;flex-shrink:0;padding-right:4px;">
+          <input type="checkbox" class="typeCheck" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer;" />
+        </label>
         <div class="typeRowInfo">
           <div class="typeRowName">${escapeHtml(t.name)}</div>
-          <div class="typeRowMeta">${round1(t.lastHours||0)} hrs · ${formatMoney(t.lastRate||0)}/hr</div>
+          <div class="typeRowMeta">${metaParts.join(" · ") || "No defaults set"}</div>
         </div>
         <div class="typeRowActions">
           <button class="typeIconBtn typeEditBtn" type="button" aria-label="Edit ${escapeHtml(t.name)}">
@@ -4690,9 +4823,11 @@ async function renderTypesListInMore(){
     delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Delete type "${t.name}"?`)) return;
+      addDeletedTypeNames(getEmpId(), [normalizeTypeLower(t.name)]);
       await del(STORES.types, t.id);
       await renderTypeDatalist();
       await renderTypesListInMore();
+      window.initJobTypeBulkDelete?.();
     });
 
     box.appendChild(div);
@@ -5082,7 +5217,7 @@ function renderList(entries, mode){
               <input type="checkbox" data-select-id="${entryId}" ${e.selected ? "checked" : ""} class="itemCheck" />
               ${typeBadgeHtml(escapeHtml(e.type || e.typeText || "—"))}
               ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
-              ${checkShortPay(e, entries) ? `<span class="shortPayFlag">⚠ LOW</span>` : ""}
+              ${checkShortPay(e, entries) ? `<span class="shortPayFlag" data-action="review-pay" title="Possible short pay — tap to review">⚠ LOW</span>` : ""}
               <span class="itemRef mono">${refLabel}: ${refVal}</span>
             </div>
             ${buildEntryMetaHtml(e)}
@@ -5098,6 +5233,7 @@ function renderList(entries, mode){
         <div class="itemActions">
           <button class="iBtn" data-action="edit">Edit</button>
           <button class="iBtn${e.isComeback ? " iBtn--active" : ""}" data-action="toggle-cb">${e.isComeback ? "CB ✓" : "CB"}</button>
+          ${(e.ref || e.ro) ? `<button class="iBtn iBtn--sameRO" data-action="same-ro" title="New job on same RO">+RO</button>` : ""}
           <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
           ${hasPhoto ? `<button class="iBtn" data-action="view-photo" data-id="${e.id}">Photo</button>` : ""}
         </div>
@@ -5120,6 +5256,28 @@ function renderList(entries, mode){
       navigator.clipboard?.writeText(val)
         .then(() => toast(`Copied ${val}`))
         .catch(() => {});
+    });
+
+    // ── ⚠ LOW badge → review pay stub ───────────────────────────
+    inner.querySelector('[data-action="review-pay"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      window.location.href = "./more.html?paystub=1";
+    });
+
+    // ── +RO: new job on same RO ──────────────────────────────────
+    inner.querySelector('[data-action="same-ro"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      handleClear(null, { preserveType: false });
+      const refEl  = document.getElementById("ref");
+      const typeEl = document.getElementById("typeText");
+      if (refEl) {
+        refEl.value = e.ref || e.ro || "";
+        setRefType?.(e.refType || "RO");
+      }
+      if (typeEl) typeEl.value = "";
+      document.getElementById("hours")?.focus();
+      document.querySelector(".fr26Wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast(`RO ${e.ref || e.ro} loaded — add next job`);
     });
 
     // ── Action buttons ───────────────────────────────────────────
@@ -5523,52 +5681,68 @@ const TOUR_STEPS = [
   {
     el: null,
     title: "Welcome to Flat-Rate Tracker",
-    body: "Log every job, track your hours and earnings, spot short pay, and keep proof photos — all offline-first. Tap Next for a quick walkthrough.",
+    body: "Log every job, track your flat hours and earnings, and catch short pay — all offline-first, right on the shop floor. Here's a quick tour of everything.",
   },
   {
-    el: ".heroSection",
-    title: "Your Pay Dashboard",
-    body: "The big number is today's pay. The green ring tracks your weekly hour goal — or shows your week total if no goal is set.",
+    el: "#clockInBtn",
+    title: "Clock In / Clock Out",
+    body: "Tap Clock In when your shift starts and Clock Out when you leave. The app tracks your shift length and shows your efficiency ratio — flat hours earned vs. hours actually worked.",
   },
   {
-    el: "#empId",
-    title: "Employee Number",
-    body: "Enter your employee number here. Every entry is tied to it so your data stays yours even on a shared device. It saves automatically — you only need to do this once.",
+    el: ".heroGoalRingWrap",
+    title: "Weekly Goal Ring",
+    body: "This ring shows your progress toward your weekly goal. Tap it to set a target — either total hours or total pay for the week. The ring fills as you hit it.",
   },
   {
-    el: ".fr26QuickHours",
-    title: "Log Hours — Quick Buttons",
-    body: "Tap a quick button for the hours the job paid — 0.5, 1.0, 1.5, up to 5.0. Or type any value in the Hours field. Flat-rate doesn't care what the clock said, only what the job paid.",
-  },
-  {
-    el: "#typeText",
-    title: "Describe the Work",
-    body: "Type what you did — 'Front brakes', 'Oil change', 'PDI', 'Engine mount'. The app remembers your job types and suggests them as you type, so logging gets faster every shift.",
-  },
-  {
-    el: ".fr26QuickTools",
-    title: "Add Details — RO, VIN, Photo",
-    body: "Tap 'Add Details' for extra fields: RO number, stock number, last 8 of VIN, a per-job rate override, notes, and a proof photo. Optional but essential if you ever need to dispute short pay.",
-  },
-  {
-    el: "#saveBtn",
-    title: "Save the Entry",
-    body: "Hit Save and the job is recorded instantly — even with no signal on the shop floor. Entries queue up offline and sync to the cloud automatically when you reconnect.",
+    el: ".heroAmt",
+    title: "Today's Pay",
+    body: "Your total earnings for today based on logged flat hours and your rate. Updates the instant you save a job.",
   },
   {
     el: ".heroChartCard",
-    title: "Stats & Chart — All in One",
-    body: "Tap any bar to see that day's hours, jobs, and pay inline. Switch Day / Week / Month / All with the tabs at the top. If you set a weekly hour goal, a progress bar appears at the bottom.",
+    title: "Week at a Glance",
+    body: "Each bar is one day this week. Tap a bar to see that day's hours, jobs, and pay. Use the Day / Week / Month / Year tabs to zoom in or out.",
   },
   {
-    el: "#historyBtn",
-    title: "History & Search",
-    body: "Tap History to pull up all past entries. Search by RO number, stock number, VIN, or job type across any time range — fast way to find a specific job if you need to reference it.",
+    el: ".fr26QuickHours",
+    title: "Log Hours — Quick Tap",
+    body: "Tap the flat-rate time the job pays — 0.5, 1.0, 1.5, up to 6.0. Or type any amount directly in the Hours field. The wall clock doesn't matter, only what the job pays.",
+  },
+  {
+    el: "#typeText",
+    title: "Work Done",
+    body: "Type the job name here. Your saved job types appear as chips the moment you start typing — tap one to fill it in instantly. The more you log, the smarter the suggestions get.",
+  },
+  {
+    el: "#repeatLastBtn",
+    title: "Repeat Last Job",
+    body: "Tap 'Repeat Last' to instantly pre-fill the same job type and hours from your previous entry. Useful for back-to-back identical jobs without re-typing.",
+  },
+  {
+    el: "#ref",
+    title: "RO / STK Number",
+    body: "Enter the repair order or stock number here. Toggle between RO and STK with the buttons on the right. Optional, but makes any job easy to look up later.",
+  },
+  {
+    el: ".fr26QuickTools",
+    title: "Extra Details",
+    body: "Tap 'Add Details' to reveal extra fields — last 8 of VIN, a per-job rate override, notes, and a comeback flag. Fill these in for any job that might end up in a pay dispute.",
+    action: "open-details",
+  },
+  {
+    el: "#vin8",
+    title: "VIN, Rate Override & Notes",
+    body: "Last 8 of the VIN links the job to a specific vehicle. Override the rate for jobs paid differently. The comeback checkbox flags return visits — tracked separately in your stats.",
+  },
+  {
+    el: "#saveBtn",
+    title: "Save — You're Done",
+    body: "Tap Save and the job is logged instantly, even with no signal. Everything queues locally and syncs to the cloud the moment you're back online.",
   },
   {
     el: ".tabItem:last-child",
-    title: "Sign In for Cloud Backup →",
-    body: "Last step: sign in so your data is backed up and syncs across all your devices. Tap Next and we'll go to the More tab to set that up.",
+    title: "More Tab",
+    body: "The More tab is your control center — Job Types, full History, Owe Me tracker, and all Settings. Tap Next and we'll walk through it.",
     action: "goto-more",
   },
 ];
@@ -6120,11 +6294,19 @@ function startTour() {
   nextBtn.onclick = () => {
     const current = TOUR_STEPS[step];
     if (current?.action === "goto-more") {
-      // Mark tour as mid-flight so the More page continues it
       localStorage.setItem("fr_tour_more", "1");
       endTour();
       window.location.href = "./more.html";
       return;
+    }
+    if (current?.action === "open-details") {
+      // Open the details panel so the next step can highlight fields inside it
+      const panel = document.getElementById("detailsPanel");
+      const btn   = document.getElementById("toggleDetailsBtn");
+      if (panel && panel.style.display === "none") {
+        panel.style.display = "block";
+        if (btn) btn.textContent = "Less";
+      }
     }
     step++;
     if (step >= TOUR_STEPS.length) endTour();
@@ -6134,6 +6316,238 @@ function startTour() {
 
   show(0);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SHIFT EFFICIENCY RATIO
+// ═══════════════════════════════════════════════════════════════
+const LS_CLOCKIN = "fr_clockin_";
+
+function getClockInMs(empId) {
+  try { return Number(localStorage.getItem(LS_CLOCKIN + empId) || 0) || 0; } catch { return 0; }
+}
+function setClockInMs(empId, ms) {
+  try { localStorage.setItem(LS_CLOCKIN + empId, String(ms)); } catch {}
+}
+function clearClockIn(empId) {
+  try { localStorage.removeItem(LS_CLOCKIN + empId); } catch {}
+}
+
+function updateClockInDisplay() {
+  const btn   = document.getElementById("clockInBtn");
+  const effEl = document.getElementById("heroEfficiency");
+  if (!btn) return;
+  const empId = getEmpId();
+  const ms    = getClockInMs(empId);
+  if (ms > 0) {
+    btn.textContent = "Clock Out";
+    btn.classList.add("clockInBtn--active");
+    const shiftHrs = (Date.now() - ms) / 3600000;
+    const todayKey = todayKeyLocal?.();
+    const flatHrs  = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+      .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey)
+      .reduce((s, e) => s + (Number(e.hours) || 0), 0);
+    const ratio = shiftHrs > 0.05 ? flatHrs / shiftHrs : 0;
+    if (effEl) {
+      const color = ratio >= 1 ? "var(--primary)" : ratio >= 0.7 ? "#f59e0b" : "var(--danger)";
+      effEl.style.display = "";
+      effEl.innerHTML = `<span style="color:${color};font-weight:700;">${ratio.toFixed(2)}×</span><span class="effLabel"> eff · ${flatHrs.toFixed(1)}f / ${shiftHrs.toFixed(1)}h shift</span>`;
+    }
+  } else {
+    btn.textContent = "Clock In";
+    btn.classList.remove("clockInBtn--active");
+    if (effEl) effEl.style.display = "none";
+  }
+}
+
+function initClockIn() {
+  const btn = document.getElementById("clockInBtn");
+  if (!btn) return;
+  updateClockInDisplay();
+  setInterval(() => { if (getClockInMs(getEmpId()) > 0) updateClockInDisplay(); }, 60000);
+  btn.addEventListener("click", () => {
+    const empId = getEmpId();
+    const ms    = getClockInMs(empId);
+    if (ms > 0) {
+      const shiftHrs = round2((Date.now() - ms) / 3600000);
+      const todayKey = todayKeyLocal?.();
+      const flatHrs  = round2((Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+        .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey)
+        .reduce((s, e) => s + (Number(e.hours) || 0), 0));
+      const ratio = shiftHrs > 0 ? round2(flatHrs / shiftHrs) : 0;
+      clearClockIn(empId);
+      toast(`Shift ended · ${shiftHrs.toFixed(1)} hrs · ${flatHrs.toFixed(1)} flat · Eff ${ratio.toFixed(2)}×`, 5000);
+    } else {
+      setClockInMs(empId, Date.now());
+      toast("Clocked in ✓");
+    }
+    updateClockInDisplay();
+  });
+}
+window.updateClockInDisplay = updateClockInDisplay;
+window.initClockIn = initClockIn;
+
+// ═══════════════════════════════════════════════════════════════
+// TAP-TO-REPEAT LAST JOB
+// ═══════════════════════════════════════════════════════════════
+const LS_LAST_JOB = "fr_last_job_";
+
+function storeLastJob(empId, entry) {
+  try {
+    localStorage.setItem(LS_LAST_JOB + empId, JSON.stringify({
+      type:  entry.type || entry.typeText || "",
+      hours: entry.hours || 0,
+      rate:  entry.rate  || 0,
+    }));
+  } catch {}
+}
+
+function getLastJob(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_LAST_JOB + empId) || "null"); } catch { return null; }
+}
+
+function updateRepeatChip() {
+  const chip = document.getElementById("repeatChip");
+  if (!chip) return;
+  const empId = getEmpId();
+  const last  = getLastJob(empId);
+  const formEmpty = !document.getElementById("hours")?.value && !document.getElementById("typeText")?.value;
+  if (!last?.type || !formEmpty || EDITING_ID) { chip.style.display = "none"; return; }
+  chip.style.display = "";
+  chip.textContent = `↺ ${last.type} · ${formatHours(last.hours)} hrs`;
+}
+
+function initRepeatChip() {
+  const chip = document.getElementById("repeatChip");
+  if (!chip) return;
+  updateRepeatChip();
+  chip.addEventListener("click", () => {
+    const empId = getEmpId();
+    const last  = getLastJob(empId);
+    if (!last) return;
+    const typeEl  = document.getElementById("typeText");
+    const hoursEl = document.getElementById("hours");
+    const rateEl  = document.querySelector('input[name="rate"]');
+    if (typeEl)  typeEl.value  = last.type;
+    if (hoursEl) { hoursEl.value = String(last.hours); hoursEl.dataset.touched = "1"; }
+    if (rateEl && last.rate) { rateEl.value = String(last.rate); rateEl.dataset.touched = "1"; }
+    updateEarningsPreview?.();
+    ["hours", "typeText"].forEach(id =>
+      document.getElementById(id)?.dispatchEvent(new Event("input", { bubbles: true }))
+    );
+    chip.style.display = "none";
+    document.getElementById("ref")?.focus();
+    toast(`${last.type} loaded — add RO and save`);
+  });
+}
+window.updateRepeatChip = updateRepeatChip;
+window.initRepeatChip = initRepeatChip;
+window.storeLastJob = storeLastJob;
+
+// ═══════════════════════════════════════════════════════════════
+// COMBO SUGGESTIONS
+// ═══════════════════════════════════════════════════════════════
+function buildComboMap(entries) {
+  const byDay = {};
+  for (const e of entries) {
+    const dk = e.dayKey || dayKeyFromISO?.(e.createdAt) || "";
+    if (!byDay[dk]) byDay[dk] = [];
+    byDay[dk].push(e);
+  }
+  const map = {};
+  for (const day of Object.values(byDay)) {
+    day.sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+    for (let i = 0; i < day.length - 1; i++) {
+      const a = (day[i].type || day[i].typeText || "").toLowerCase().trim();
+      const b = (day[i+1].type || day[i+1].typeText || "").toLowerCase().trim();
+      if (!a || !b || a === b) continue;
+      if (!map[a]) map[a] = {};
+      map[a][b] = (map[a][b] || 0) + 1;
+    }
+  }
+  return map;
+}
+
+function showComboSuggestion(savedType, entries) {
+  if (!savedType || !entries?.length) return;
+  const map  = buildComboMap(entries);
+  const key  = savedType.toLowerCase().trim();
+  const combos = map[key];
+  if (!combos) return;
+  const total = Object.values(combos).reduce((s, n) => s + n, 0);
+  const [topType, topCount] = Object.entries(combos).sort((a, b) => b[1] - a[1])[0] || [];
+  if (!topType || !topCount || total < 3 || topCount / total < 0.5) return;
+  const chip = document.getElementById("comboSuggestChip");
+  if (!chip) return;
+  const label = topType.charAt(0).toUpperCase() + topType.slice(1);
+  chip.textContent = `Often paired: ${label} →`;
+  chip.dataset.suggest = label;
+  chip.style.display = "";
+  clearTimeout(window.__comboHideT__);
+  window.__comboHideT__ = setTimeout(() => { chip.style.display = "none"; }, 14000);
+}
+
+function initComboChip() {
+  const chip = document.getElementById("comboSuggestChip");
+  if (!chip) return;
+  chip.addEventListener("click", () => {
+    const suggest = chip.dataset.suggest;
+    if (!suggest) return;
+    const typeEl = document.getElementById("typeText");
+    if (typeEl) {
+      typeEl.value = suggest;
+      typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      typeEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    chip.style.display = "none";
+    document.getElementById("hours")?.focus();
+    toast(`${suggest} prefilled — add hours & RO`);
+  });
+}
+window.showComboSuggestion = showComboSuggestion;
+window.initComboChip = initComboChip;
+
+// ═══════════════════════════════════════════════════════════════
+// PERSONAL RECORDS
+// ═══════════════════════════════════════════════════════════════
+const LS_RECORDS = "fr_personal_records_";
+
+function getPersonalRecords(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_RECORDS + empId) || "{}"); } catch { return {}; }
+}
+function savePersonalRecords(empId, rec) {
+  try { localStorage.setItem(LS_RECORDS + empId, JSON.stringify(rec)); } catch {}
+}
+
+function checkPersonalRecords(allEntries, newEntry) {
+  if (!newEntry) return;
+  const empId = getEmpId();
+  const rec   = getPersonalRecords(empId);
+  const todayKey2 = todayKeyLocal?.();
+  const weekStart = dateKey?.(startOfWeekLocal?.(new Date())) || "";
+
+  const todayAll = (Array.isArray(allEntries) ? allEntries : [])
+    .filter(e => (e.dayKey || dayKeyFromISO?.(e.createdAt)) === todayKey2);
+  const todayPay  = todayAll.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (Number(newEntry.earnings) || 0);
+  const todayJobs = todayAll.length + 1;
+
+  const weekPay = (Array.isArray(allEntries) ? allEntries : [])
+    .filter(e => { const dk = e.dayKey || dayKeyFromISO?.(e.createdAt) || ""; return dk >= weekStart; })
+    .reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0)
+    + (Number(newEntry.earnings) || 0);
+
+  let newRecord = null;
+  if (rec.bestDay  != null && todayPay  > rec.bestDay)  newRecord = `🏆 New best day! ${formatMoney(todayPay)}`;
+  if (rec.bestWeek != null && weekPay   > rec.bestWeek) newRecord = `🏆 New best week! ${formatMoney(weekPay)}`;
+  if (rec.mostJobs != null && todayJobs > rec.mostJobs) newRecord = `🏆 Most jobs in a day! ${todayJobs}`;
+  // Update regardless (first save initialises the records)
+  if (rec.bestDay  == null || todayPay  > rec.bestDay)  rec.bestDay  = todayPay;
+  if (rec.bestWeek == null || weekPay   > rec.bestWeek) rec.bestWeek = weekPay;
+  if (rec.mostJobs == null || todayJobs > rec.mostJobs) rec.mostJobs = todayJobs;
+  savePersonalRecords(empId, rec);
+  if (newRecord) setTimeout(() => toast(newRecord, 4500), 1800);
+}
+window.checkPersonalRecords = checkPersonalRecords;
 
 /* -------------------- Payroll flagged hours (per week) -------------------- */
 async function getThisWeekFlag(){
@@ -7652,11 +8066,10 @@ function savePaydaySettings(patch) {
 }
 
 /* ── Shared notification helper ──────────────────── */
-async function sendNotification(title, body, tag = "fr-note") {
+async function sendNotification(title, body, tag = "fr-note", extra = {}) {
   if (!("Notification" in window)) return false;
   if (Notification.permission !== "granted") return false;
   try {
-    // Use SW registration.showNotification — works backgrounded on Android/desktop
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
       body,
@@ -7664,6 +8077,7 @@ async function sendNotification(title, body, tag = "fr-note") {
       badge: "./icon-192.png",
       tag,
       renotify: true,
+      data: extra.data || {},
     });
     return true;
   } catch {
@@ -7675,6 +8089,12 @@ window.__FR = window.__FR || {};
 window.__FR.sendNotification = sendNotification;
 
 async function requestNotifPermission() {
+  // Native iOS/Android — use Capacitor Local Notifications
+  if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {
+    const { display } = await window.Capacitor.Plugins.LocalNotifications.requestPermissions().catch(() => ({ display: "denied" }));
+    return display === "granted" ? "granted" : "denied";
+  }
+  // Web fallback
   if (!("Notification" in window)) return "unsupported";
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
@@ -7685,7 +8105,6 @@ function schedulePaydayReminder() {
   clearTimeout(window.__FR_PAYDAY__);
   const s = getPaydaySettings();
   if (!s.enabled) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const [h, m] = String(s.time || "09:00").split(":").map(Number);
   const targetDay = Number(s.day ?? 5);
@@ -7694,15 +8113,35 @@ function schedulePaydayReminder() {
 
   let daysUntil = ((targetDay - d.getDay()) + 7) % 7;
   if (daysUntil === 0) {
-    // It's payday today — fire now if time hasn't passed, else next week
     const todayTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
     if (todayTarget <= now) daysUntil = 7;
   }
   d.setDate(d.getDate() + daysUntil);
   d.setHours(h, m, 0, 0);
 
+  // Native iOS/Android — schedule via Capacitor Local Notifications
+  if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {
+    const LN = window.Capacitor.Plugins.LocalNotifications;
+    LN.requestPermissions().then(({ display }) => {
+      if (display !== "granted") return;
+      LN.cancel({ notifications: [{ id: 1002 }] }).catch(() => {});
+      LN.schedule({
+        notifications: [{
+          id: 1002,
+          title: "Flat-Rate — Payday",
+          body: "Tap to enter your check amount and verify you weren't short-paid.",
+          schedule: { at: d },
+          smallIcon: "ic_stat_icon",
+        }],
+      }).catch(console.error);
+    });
+    return;
+  }
+
+  // Web fallback: setTimeout + Web Notification API
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday! Remember to log your pay stub.", "payday-reminder");
+    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -7803,59 +8242,108 @@ async function renderBulkEntryList() {
   const all = await getAll(STORES.entries);
   const entries = filterEntriesByEmp(all, empId);
   entries.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  const recent = entries.slice(0, 60);
 
-  if (!recent.length) {
+  if (!entries.length) {
     container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No entries yet.</div>`;
+    const bar = document.getElementById("histWeekSummary");
+    if (bar) bar.style.display = "none";
     return;
   }
 
+  // ── Week summary bar ───────────────────────────
+  const nowKey = new Date().toISOString().slice(0, 10);
+  const weekStart = (() => {
+    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+  })();
+  const weekEntries = entries.filter(e => (e.dayKey || "") >= weekStart);
+  const wkJobs = weekEntries.length;
+  const wkHours = weekEntries.reduce((s, e) => s + (Number(e.hours) || 0), 0);
+  const wkPay   = weekEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
+  const bar = document.getElementById("histWeekSummary");
+  if (bar && wkJobs > 0) {
+    bar.style.display = "flex";
+    const jEl = document.getElementById("histWeekJobs");
+    const hEl = document.getElementById("histWeekHours");
+    const pEl = document.getElementById("histWeekPay");
+    if (jEl) jEl.textContent = `${wkJobs} job${wkJobs !== 1 ? "s" : ""}`;
+    if (hEl) hEl.textContent = `${Math.round(wkHours * 10) / 10} hrs`;
+    if (pEl) pEl.textContent = `$${wkPay.toFixed(2)}`;
+  } else if (bar) {
+    bar.style.display = "none";
+  }
+
   container.innerHTML = "";
-  for (const e of recent) {
+  for (const e of entries) {
     const row = document.createElement("div");
     row.className = "bulkEntryRow";
     row.dataset.id = String(e.id ?? "");
-    const checkDisplay = _bulkSelectMode ? "" : "none";
+    const ref = e.ro || e.ref || "";
+    const refDisplay = ref ? escapeHtml(ref) : "<span class='bulkEntryNoRef'>no RO#</span>";
     row.innerHTML = `
-      <label class="bulkEntryCheck" style="display:${checkDisplay};">
+      <label class="bulkEntryCheck" style="${_bulkSelectMode ? "" : "display:none;"}">
         <input type="checkbox" class="bulkCheck" />
       </label>
       <div class="bulkEntryInfo">
-        <div class="bulkEntryRef">${escapeHtml(e.ro || e.ref || "—")} <span class="bulkEntryType">(${escapeHtml(e.type || e.typeText || "—")})</span></div>
+        <div class="bulkEntryRef">${refDisplay} <span class="bulkEntryType">${escapeHtml(e.type || e.typeText || "—")}</span></div>
         <div class="bulkEntryMeta">${formatMoney(Number(e.earnings ?? e.dollars ?? 0))} · ${round1(Number(e.hours || 0))} hrs · ${e.dayKey || ""}</div>
       </div>
     `;
+    // Tap entire row to toggle checkbox in select mode
+    row.addEventListener("click", (ev) => {
+      if (!_bulkSelectMode) return;
+      const cb = row.querySelector(".bulkCheck");
+      if (ev.target === cb || ev.target.closest("label")) return; // let label handle it natively
+      if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
     container.appendChild(row);
   }
 }
 
 function initBulkDelete() {
-  const toggle  = document.getElementById("bulkSelectToggle");
-  const delBtn  = document.getElementById("bulkDeleteBtn");
-  const bar     = document.getElementById("bulkDeleteBar");
-  const countEl = document.getElementById("bulkSelectedCount");
-  const list    = document.getElementById("bulkEntryList");
+  const toggle     = document.getElementById("bulkSelectToggle");
+  const delBtn     = document.getElementById("bulkDeleteBtn");
+  const selectAll  = document.getElementById("bulkSelectAllBtn");
+  const bar        = document.getElementById("bulkDeleteBar");
+  const countEl    = document.getElementById("bulkSelectedCount");
+  const list       = document.getElementById("bulkEntryList");
   if (!toggle) return;
 
   const syncBar = () => {
+    const total   = list?.querySelectorAll(".bulkCheck").length ?? 0;
     const checked = list?.querySelectorAll(".bulkCheck:checked").length ?? 0;
-    if (bar) bar.style.display = (_bulkSelectMode && checked > 0) ? "flex" : "none";
-    if (countEl) countEl.textContent = `${checked} selected`;
+    if (bar) bar.style.display = _bulkSelectMode ? "flex" : "none";
+    if (countEl) countEl.textContent = checked > 0 ? `${checked} of ${total}` : `${total} entries`;
+    if (selectAll) selectAll.textContent = (checked === total && total > 0) ? "None" : "All";
+    if (delBtn) delBtn.disabled = checked === 0;
   };
 
   toggle.addEventListener("click", () => {
     _bulkSelectMode = !_bulkSelectMode;
-    toggle.textContent = _bulkSelectMode ? "Cancel" : "Select";
+    toggle.textContent = _bulkSelectMode ? "Done" : "Select";
     toggle.classList.toggle("active", _bulkSelectMode);
     list?.querySelectorAll(".bulkEntryCheck").forEach(el => {
       el.style.display = _bulkSelectMode ? "" : "none";
     });
     list?.querySelectorAll(".bulkCheck").forEach(cb => { cb.checked = false; });
+    list?.querySelectorAll(".bulkEntryRow").forEach(r => r.classList.remove("is-selected"));
+    syncBar();
+  });
+
+  selectAll?.addEventListener("click", () => {
+    const cbs = [...(list?.querySelectorAll(".bulkCheck") ?? [])];
+    const allChecked = cbs.every(cb => cb.checked);
+    cbs.forEach(cb => {
+      cb.checked = !allChecked;
+      cb.closest(".bulkEntryRow")?.classList.toggle("is-selected", !allChecked);
+    });
     syncBar();
   });
 
   list?.addEventListener("change", (e) => {
-    if (e.target?.classList.contains("bulkCheck")) syncBar();
+    if (e.target?.classList.contains("bulkCheck")) {
+      e.target.closest(".bulkEntryRow")?.classList.toggle("is-selected", e.target.checked);
+      syncBar();
+    }
   });
 
   delBtn?.addEventListener("click", async () => {
@@ -7880,56 +8368,260 @@ function initBulkDelete() {
   });
 }
 
+/* ── Job type bulk delete ─────────────────────────── */
+let _typeBulkSelectMode = false;
+
+function initJobTypeBulkDelete() {
+  const toggle     = document.getElementById("typeSelectToggle");
+  const delBtn     = document.getElementById("typeDeleteBtn");
+  const selectAll  = document.getElementById("typeSelectAllBtn");
+  const bar        = document.getElementById("typeDeleteBar");
+  const countEl    = document.getElementById("typeSelectedCount");
+  const list       = document.getElementById("savedTypesList");
+  if (!toggle) return;
+
+  const syncBar = () => {
+    const total   = list?.querySelectorAll(".typeCheck").length ?? 0;
+    const checked = list?.querySelectorAll(".typeCheck:checked").length ?? 0;
+    if (bar) bar.style.display = _typeBulkSelectMode ? "flex" : "none";
+    if (countEl) countEl.textContent = checked > 0 ? `${checked} of ${total}` : `${total} types`;
+    if (selectAll) selectAll.textContent = (checked === total && total > 0) ? "None" : "All";
+    if (delBtn) delBtn.disabled = checked === 0;
+    // update count in header
+    const countHeader = document.getElementById("typeListCount");
+    if (countHeader) countHeader.textContent = total > 0 ? `${total} saved` : "";
+  };
+
+  toggle.addEventListener("click", () => {
+    _typeBulkSelectMode = !_typeBulkSelectMode;
+    toggle.textContent = _typeBulkSelectMode ? "Done" : "Select";
+    toggle.classList.toggle("active", _typeBulkSelectMode);
+    list?.querySelectorAll(".typeCheckWrap").forEach(el => {
+      el.style.display = _typeBulkSelectMode ? "" : "none";
+    });
+    list?.querySelectorAll(".typeCheck").forEach(cb => { cb.checked = false; });
+    list?.querySelectorAll(".typeRow").forEach(r => r.classList.remove("is-selected"));
+    syncBar();
+  });
+
+  selectAll?.addEventListener("click", () => {
+    const cbs = [...(list?.querySelectorAll(".typeCheck") ?? [])];
+    const allChecked = cbs.every(cb => cb.checked);
+    cbs.forEach(cb => {
+      cb.checked = !allChecked;
+      cb.closest(".typeRow")?.classList.toggle("is-selected", !allChecked);
+    });
+    syncBar();
+  });
+
+  list?.addEventListener("change", (e) => {
+    if (e.target?.classList.contains("typeCheck")) {
+      e.target.closest(".typeRow")?.classList.toggle("is-selected", e.target.checked);
+      syncBar();
+    }
+  });
+
+  list?.addEventListener("click", (e) => {
+    if (!_typeBulkSelectMode) return;
+    const row = e.target.closest(".typeRow");
+    if (!row) return;
+    if (e.target.closest(".typeCheckWrap") || e.target.closest(".typeRowActions") || e.target.closest(".typeEditForm")) return;
+    const cb = row.querySelector(".typeCheck");
+    if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+  });
+
+  delBtn?.addEventListener("click", async () => {
+    const checked = [...(list?.querySelectorAll(".typeCheck:checked") ?? [])];
+    if (!checked.length) return;
+    const n = checked.length;
+    if (!confirm(`Delete ${n} job type${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
+
+    const rows = checked.map(cb => cb.closest(".typeRow")).filter(Boolean);
+    const ids = rows.map(r => r.dataset.id).filter(Boolean);
+    const names = rows.map(r => (r.dataset.name || r.querySelector(".typeRowName")?.textContent || "").toLowerCase().trim()).filter(Boolean);
+    window.addDeletedTypeNames?.(getEmpId?.() || localStorage.getItem("fr_emp_id") || "", names);
+    for (const id of ids) {
+      await del(STORES.types, id).catch(console.warn);
+    }
+
+    toast?.(`Deleted ${ids.length} type${ids.length === 1 ? "" : "s"}`);
+    _typeBulkSelectMode = false;
+    if (toggle) { toggle.textContent = "Select"; toggle.classList.remove("active"); }
+    if (bar) bar.style.display = "none";
+    await renderTypesListInMore?.();
+    await renderTypeDatalist?.();
+    // re-init so event listeners attach to new rows
+    initJobTypeBulkDelete();
+  });
+
+  // Wire up syncBar for initial count
+  syncBar();
+}
+
+/* ── Entry search filter ──────────────────────────── */
+function initEntrySearch() {
+  const input = document.getElementById("entrySearchInput");
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const q = input.value.toLowerCase().trim();
+    document.querySelectorAll(".bulkEntryRow").forEach(row => {
+      if (!q) { row.hidden = false; return; }
+      const text = row.textContent.toLowerCase();
+      row.hidden = !text.includes(q);
+    });
+  });
+  // Clear on tab switch (reset search)
+  document.querySelectorAll(".moreTab").forEach(tab => {
+    tab.addEventListener("click", () => { input.value = ""; });
+  });
+}
+
 window.initMoreTabs = initMoreTabs;
 window.renderBulkEntryList = renderBulkEntryList;
 window.initBulkDelete = initBulkDelete;
+window.initJobTypeBulkDelete = initJobTypeBulkDelete;
+window.initEntrySearch = initEntrySearch;
+
+// ═══════════════════════════════════════════════════════════════
+// OWE ME TRACKER
+// ═══════════════════════════════════════════════════════════════
+const LS_OWE_ME = "fr_owe_me_";
+
+function getOweMeItems(empId) {
+  try { return JSON.parse(localStorage.getItem(LS_OWE_ME + empId) || "[]"); } catch { return []; }
+}
+function saveOweMeItems(empId, items) {
+  try { localStorage.setItem(LS_OWE_ME + empId, JSON.stringify(items)); } catch {}
+}
+
+function renderOweMeList() {
+  const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+  const list   = document.getElementById("oweMeList");
+  const badge  = document.getElementById("oweMeTotalBadge");
+  if (!list) return;
+  const items  = getOweMeItems(empId);
+  const total  = items.reduce((s, i) => s + (Number(i.amt) || 0), 0);
+  if (badge) {
+    if (total > 0) { badge.textContent = `$${total.toFixed(2)} owed`; badge.style.display = ""; }
+    else badge.style.display = "none";
+  }
+  if (!items.length) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--muted);padding:0 14px 12px;margin:0;">Nothing logged yet.</p>`;
+    return;
+  }
+  list.innerHTML = items.map((item, idx) => `
+    <div class="oweMeRow" data-idx="${idx}">
+      <div class="oweMeDesc">${escapeHtml?.(item.desc) || ""}</div>
+      <div class="oweMeRight">
+        <span class="oweMeAmt">$${Number(item.amt || 0).toFixed(2)}</span>
+        <span class="oweMeDate">${item.date || ""}</span>
+        <button class="iBtn iBtn--danger oweMeDelBtn" data-idx="${idx}" type="button">✕</button>
+      </div>
+    </div>
+  `).join("");
+  list.querySelectorAll(".oweMeDelBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.idx);
+      const items2 = getOweMeItems(empId);
+      items2.splice(i, 1);
+      saveOweMeItems(empId, items2);
+      renderOweMeList();
+      toast?.("Removed");
+    });
+  });
+}
+
+function initOweMe() {
+  const form    = document.getElementById("oweMeForm");
+  if (!form || form.dataset.wired) return;
+  form.dataset.wired = "1";
+  renderOweMeList();
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const empId  = getEmpId?.() || localStorage.getItem("fr_emp_id") || "";
+    const desc   = (document.getElementById("oweMeDesc")?.value || "").trim();
+    const amt    = parseFloat(document.getElementById("oweMeAmt")?.value || "0") || 0;
+    if (!desc) { toast?.("Enter a description"); return; }
+    const items  = getOweMeItems(empId);
+    items.unshift({ desc, amt, date: new Date().toLocaleDateString() });
+    saveOweMeItems(empId, items);
+    document.getElementById("oweMeDesc").value = "";
+    document.getElementById("oweMeAmt").value  = "";
+    renderOweMeList();
+    toast?.(`Added · $${amt.toFixed(2)}`);
+  });
+}
+window.initOweMe = initOweMe;
 
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
-  {
-    el: null,
-    title: "Welcome to More",
-    body: "The More page has three tabs — Job Types, History, and Settings. Each tab is focused so nothing gets buried. Let's walk through the most important parts.",
-  },
+  /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
-    title: "Three Tabs, Three Jobs",
-    body: "Job Types is where you manage your saved job templates. History shows your earnings chart and short-pay tracking. Settings holds your account, reminders, and pay stub tools.",
+    title: "Three Tabs",
+    body: "Job Types stores your saved job templates. History shows your full entry list with weekly stats. Settings holds your rate, pay stub, notifications, and account. Let's go through each.",
+    action: "switch-tab:jobs",
   },
   {
-    el: "#mPanel-jobs",
-    title: "Job Types — Your Templates",
-    body: "Every job type you've saved appears here. Tap the pencil to edit hours or rate. Tap the trash to delete. The + New Type button at the top adds a new one. These fill in automatically when you log jobs on the main page.",
+    el: "#savedTypeCreateForm",
+    title: "Add a Job Type",
+    body: "Enter a job name, the flat-rate hours it typically pays, and your rate per hour, then tap Add. That template is now available as an instant chip every time you log on the main page.",
+    action: "switch-tab:jobs",
   },
   {
-    el: "#authForm",
-    title: "Sign In — Back Up Your Data",
-    body: "Go to Settings → Profile to sign in. Once signed in, every entry is encrypted and stored in the cloud. Switch devices or reinstall and nothing is lost.",
+    el: "#savedTypesList",
+    title: "Your Saved Types",
+    body: "All your templates live here. Tap the pencil icon to edit hours or rate. Tap the trash icon to delete. Use the Select button to pick multiple and delete them in one shot.",
+    action: "switch-tab:jobs",
   },
+  /* ── History tab ───────────────────────── */
   {
     el: "#insightsCard",
-    title: "This Week at a Glance (History tab)",
-    body: "In the History tab, this card shows your effective hourly rate, average pay per day, comeback count, and projected weekly pay based on today's pace.",
+    title: "This Week's Stats",
+    body: "At a glance — your effective $/hr, average daily pay, comeback count, and weekly pace. All calculated automatically from your logged entries.",
+    action: "switch-tab:history",
+  },
+  {
+    el: "#entrySearchInput",
+    title: "Search Your History",
+    body: "Type any job name, RO number, or date to filter your full entry list in real time. Every job you've ever logged is searchable here.",
+    action: "switch-tab:history",
   },
   {
     el: "#bulkSelectToggle",
-    title: "Bulk Delete Entries",
-    body: "Tap Select in the Recent Entries section to enter selection mode. Check the entries you want to remove, then tap Delete Selected. Great for cleaning up test entries or duplicates.",
+    title: "Bulk Delete",
+    body: "Tap Select to enter selection mode. Check individual rows or tap All to grab everything. Then hit Delete. Useful for clearing test entries.",
+    action: "switch-tab:history",
   },
+  {
+    el: "#oweMeForm",
+    title: "Owe Me Tracker",
+    body: "Log anything the shop owes you — warranty callbacks, goodwill jobs, parts delays. Enter a description and dollar amount. The running total shows as a badge on the section header.",
+    action: "switch-tab:history",
+  },
+  /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Default Hourly Rate (Settings tab)",
-    body: "Set your flat-rate wage here. The app uses this to calculate earnings for every job you log. You can override it per-entry using the rate field in Add Details.",
+    title: "Default Hourly Rate",
+    body: "Every job you log uses this rate to calculate earnings. You can override it per job using the Rate field in Add Details when logging.",
+    action: "switch-tab:settings",
   },
   {
-    el: null,
+    el: "#authForm",
+    title: "Cloud Backup",
+    body: "Sign in to back up everything to the cloud. Switch phones or reinstall and your full history comes back instantly. Your data is tied to your account, not your device.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#payStubDetails",
     title: "Pay Stub — Catch Short Pay",
-    body: "In Settings → Pay Stub, enter your check amount each Friday. The app compares it to your logged hours and shows you immediately if you were short-paid.",
+    body: "Enter your check amount each pay period and the app compares it against your logged hours. Any gap between what you logged and what you were paid is flagged automatically.",
+    action: "open-paystub",
   },
   {
     el: null,
-    title: "You Are All Set ✓",
-    body: "Sign in, log your first job, and check back after your first pay day. If anything feels off, come back to this tour anytime from Settings → Help → Take Tour.",
+    title: "You're All Set ✓",
+    body: "Start logging jobs and check back after payday. Replay this tour any time from Settings → Help → Take Tour.",
     last: true,
   },
 ];
@@ -7979,8 +8671,23 @@ function startMoreTour() {
     }, 300);
   }
 
+  function runAction(action) {
+    if (!action) return;
+    if (action.startsWith("switch-tab:")) {
+      const tabName = action.split(":")[1];
+      document.querySelector(`.moreTab[data-tab="${tabName}"]`)?.click();
+    }
+    if (action === "open-paystub") {
+      document.querySelector('.moreTab[data-tab="settings"]')?.click();
+      const det = document.getElementById("payStubDetails");
+      if (det && !det.open) det.open = true;
+    }
+  }
+
   function show(idx) {
     const s = MORE_TOUR_STEPS[idx];
+    // Run the action BEFORE spotlighting so the tab panel / element is visible
+    runAction(s.action);
     const stepLabel = document.getElementById("tourStep");
     const titleEl   = document.getElementById("tourTitle");
     const bodyEl    = document.getElementById("tourBody");
@@ -7991,7 +8698,8 @@ function startMoreTour() {
     nextBtn.textContent = s.last ? "Finish ✓" : "Next →";
     overlay.style.display = "block";
     buildDots();
-    positionSpotlight(s.el);
+    // Small delay so tab panel has rendered before we measure spotlight position
+    setTimeout(() => positionSpotlight(s.el), 120);
     if (tooltip) {
       tooltip.classList.remove("step-enter");
       void tooltip.offsetWidth;
@@ -8026,7 +8734,7 @@ const FEATURE_FREEZE = Object.freeze({
 });
 const ACTIVE_DATA_PATH = FEATURE_FREEZE.entriesDataPath;
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !window.Capacitor?.isNativePlatform?.()) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
   // When a new SW takes control show a persistent banner — never auto-reload,
   // as that can interrupt an active sign-in or form submission.
@@ -8294,14 +9002,31 @@ async function runOnce() {
     document.getElementById("typeText")?.addEventListener("input", syncClearTypeBtn);
     document.getElementById("typeText")?.addEventListener("change", syncClearTypeBtn);
 
-    // Strip is rendered once after load; focus/blur only toggle visibility
+    // Strip is rendered once after load; focus/blur toggle visibility + filter out dupes
     const typeStrip = document.getElementById("typeSuggestStrip");
+    function filterTypeChips() {
+      if (!typeStrip) return;
+      const q = (document.getElementById("typeText")?.value || "").toLowerCase().trim();
+      let anyVisible = false;
+      typeStrip.querySelectorAll(".typeSuggestChip").forEach(c => {
+        const name = (c.dataset.name || "");
+        // Hide if exact match (already selected) OR if typed 2+ chars and chip doesn't contain query
+        const isExact = name === q;
+        const noMatch = q.length >= 2 && !name.includes(q);
+        c.hidden = isExact || noMatch;
+        if (!c.hidden) anyVisible = true;
+      });
+      // Show/hide the hint element if all chips hidden
+      const hint = typeStrip.querySelector(".typeSuggestHint");
+      if (hint) hint.hidden = anyVisible;
+    }
     document.getElementById("typeText")?.addEventListener("focus", () => {
-      if (typeStrip) typeStrip.hidden = false;
+      if (typeStrip) { typeStrip.hidden = false; filterTypeChips(); }
     });
     document.getElementById("typeText")?.addEventListener("blur", () => {
       if (typeStrip) typeStrip.hidden = true;
     });
+    document.getElementById("typeText")?.addEventListener("input", filterTypeChips);
 
     syncClearTypeBtn();
     updateSaveEnabled();
@@ -8398,6 +9123,9 @@ async function runOnce() {
 
     initPhotosUI();
     updateShortPayBadge?.();
+    initClockIn?.();
+    initRepeatChip?.();
+    initComboChip?.();
 
     // Draft auto-save
     ["hours", "typeText", "ref", "vin8"].forEach(id =>
@@ -8485,6 +9213,9 @@ async function runOnce() {
 
     initMoreTabs?.();
     initBulkDelete?.();
+    initJobTypeBulkDelete?.();
+    initEntrySearch?.();
+    initOweMe?.();
     initSettingsUI?.();
     initFeedbackUI?.();
     startMoreTour?.();
@@ -8503,6 +9234,15 @@ async function runOnce() {
       await loadSubscription?.();
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
+    }
+    // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
+    if (new URLSearchParams(location.search).get("paystub") === "1") {
+      history.replaceState({}, "", location.pathname);
+      setTimeout(() => {
+        document.querySelector('.moreTab[data-tab="settings"]')?.click();
+        const det = document.getElementById("payStubDetails");
+        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }, 600);
     }
     initPayStubUI();
     await safeLoadEntries({ fullHistory: true });

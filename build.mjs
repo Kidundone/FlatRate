@@ -204,6 +204,13 @@ self.addEventListener("fetch", e => {
 });
 `);
 
+// Clean up stale hashed files in www/ before copying
+if (existsSync("www")) {
+  for (const f of readdirSync("www").filter(n => /^app\.[a-f0-9]{10}\.(js|css)$/.test(n))) {
+    if (f !== outJs && f !== outCss) unlinkSync(`www/${f}`);
+  }
+}
+
 // Copy built assets to www/ for Capacitor
 const WWW_ASSETS = [
   "index.html", "more.html", "auth-callback.html", "dashboard.html",
