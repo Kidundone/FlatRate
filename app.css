@@ -2549,9 +2549,12 @@ body.compact .list    { gap: 1px; }
   transition: background 400ms;
 }
 /* 3 states: offline (red pulse), pending (orange pulse), synced (green dim) */
+/* will-change isolates this element to its own compositor layer so the pulse
+   doesn't trigger full-page repaints on WKWebView */
+.offlineDot { will-change: transform, opacity; }
 .offlineDot--offline  { background: var(--danger); animation: pulseDot 1.4s ease-in-out infinite; }
 .offlineDot--pending  { background: #f59e0b; animation: pulseDot 1s ease-in-out infinite; }
-.offlineDot--synced   { background: var(--primary); opacity: .55; animation: none; }
+.offlineDot--synced   { background: var(--primary); opacity: .55; animation: none; will-change: auto; }
 
 @keyframes pulseDot {
   0%, 100% { opacity: 1; transform: scale(1); }
