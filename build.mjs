@@ -12,7 +12,8 @@ const SOURCE_PARTS = [
   "src/more-page.js",
   "src/boot.js",
 ];
-const HTML_FILES = ["index.html", "more.html", "auth-callback.html", "dashboard.html"];
+// more.html is now a redirect stub — no hashed assets to update in it
+const HTML_FILES = ["index.html", "auth-callback.html", "dashboard.html"];
 
 function hashOf(buf) {
   return createHash("sha1").update(buf).digest("hex").slice(0, 10);

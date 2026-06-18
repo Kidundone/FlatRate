@@ -17,6 +17,14 @@
 </head>
 <body data-page="main">
 
+<!-- Shared: SW update banner -->
+<div id="swUpdateBanner" style="display:none;background:var(--primary);color:#fff;text-align:center;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;" onclick="window.location.reload()">App updated — tap to reload ↺</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN PAGE SECTION
+═══════════════════════════════════════════ -->
+<div id="spa-main">
+
 <header>
   <h1>Flat-Rate</h1>
   <div class="u-row" style="gap:10px;align-items:center;">
@@ -26,7 +34,7 @@
   </div>
 </header>
 
-<!-- ── Hero section ── -->
+<!-- Hero section -->
 <div class="heroSection">
   <div class="heroGoalRingWrap">
     <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="102" height="102">
@@ -53,7 +61,7 @@
   <button id="clockInBtn" class="clockInBtn" type="button" aria-label="Clock in / Clock out">Clock In</button>
 </div>
 
-<!-- ── Goal setter popover (tap ring to open) ── -->
+<!-- Goal setter popover -->
 <div id="goalPopover" class="goalPopover" style="display:none;" role="dialog" aria-label="Set weekly goal">
   <div class="goalPopoverInner card">
     <div class="goalPopoverTitle">Weekly Goal</div>
@@ -70,7 +78,7 @@
   </div>
 </div>
 
-<!-- ── Entry form (first — log your job immediately) ── -->
+<!-- Entry form -->
 <div class="fr26Wrap">
   <section class="card fr26">
     <form id="logForm" class="fr26Form">
@@ -124,7 +132,6 @@
           </label>
         </div>
 
-        <!-- RO / Stock # always visible -->
         <div class="fr26Row fr26RowRef">
           <div class="fr26LabelRow">
             <label class="fr26Label" for="ref">RO / STK #</label>
@@ -181,26 +188,22 @@
       <section id="detailsPanel" class="fr26Details" style="display:none;">
         <div class="fr26Group">
           <div class="fr26GroupHeader">More Details</div>
-
           <div class="fr26Row">
             <label class="fr26Label" for="vin8">VIN (last 8)</label>
             <input id="vin8" name="vin8" placeholder="1A2B3C4D" maxlength="8"
                    inputmode="text" autocomplete="off"
                    autocapitalize="characters" spellcheck="false" class="fr26Input" />
           </div>
-
           <div class="fr26Row">
             <label class="fr26Label" for="rateInput">Rate ($/hr)</label>
             <input id="rateInput" name="rate" type="number" inputmode="decimal"
                    min="0" step="0.01" value="15" class="fr26Input" />
           </div>
-
           <div class="fr26Row">
             <label class="fr26Label" for="notesBox">Notes</label>
             <textarea id="notesBox" name="notes"
                       placeholder="Anything that will matter later…" class="fr26Textarea"></textarea>
           </div>
-
           <div class="fr26Row">
             <label class="fr26Check">
               <input id="isComeback" type="checkbox" />
@@ -214,13 +217,13 @@
   </section>
 </div>
 
-<!-- ── Short-pay alert (shown by JS when short pay detected) ── -->
+<!-- Short-pay alert (button instead of link to prevent page reload) -->
 <div id="shortPayAlert" class="shortPayAlert" hidden>
   <span>⚠️ Possible short-pay detected</span>
-  <a href="./more.html" id="shortPayAlertLink">Review →</a>
+  <button class="btn" id="shortPayAlertLink" type="button">Review →</button>
 </div>
 
-<!-- ── Records card ── -->
+<!-- Records card -->
 <div class="heroChartCard">
   <div class="heroChartInner">
     <div class="hcRangeTabs">
@@ -235,27 +238,13 @@
       </div>
     </div>
     <div class="hcStatsRow" id="heroChartStats">
-      <div class="hcStat">
-        <div class="hcStatVal" id="hcsHours">—</div>
-        <div class="hcStatLbl">hrs</div>
-      </div>
-      <div class="hcStat">
-        <div class="hcStatVal" id="hcsJobs">—</div>
-        <div class="hcStatLbl">jobs</div>
-      </div>
-      <div class="hcStat hcStat--pay">
-        <div class="hcStatVal" id="hcsPay">—</div>
-        <div class="hcStatLbl">pay</div>
-      </div>
-      <div class="hcStat">
-        <div class="hcStatVal" id="hcsAvg">—</div>
-        <div class="hcStatLbl">avg/job</div>
-      </div>
+      <div class="hcStat"><div class="hcStatVal" id="hcsHours">—</div><div class="hcStatLbl">hrs</div></div>
+      <div class="hcStat"><div class="hcStatVal" id="hcsJobs">—</div><div class="hcStatLbl">jobs</div></div>
+      <div class="hcStat hcStat--pay"><div class="hcStatVal" id="hcsPay">—</div><div class="hcStatLbl">pay</div></div>
+      <div class="hcStat"><div class="hcStatVal" id="hcsAvg">—</div><div class="hcStatLbl">avg/job</div></div>
     </div>
-    <!-- Week sparkline — skeleton renders immediately, JS fills data -->
     <div class="hcChartArea" id="hcChartArea">
       <svg id="heroChartSvg" class="heroChartSvg" viewBox="0 0 300 44" preserveAspectRatio="none">
-        <!-- skeleton bars shown before JS loads -->
         <rect x="3"   y="28" width="30" height="13" rx="3" class="hcBarSkel"/>
         <rect x="46"  y="18" width="30" height="23" rx="3" class="hcBarSkel"/>
         <rect x="89"  y="32" width="30" height="9"  rx="3" class="hcBarSkel"/>
@@ -266,7 +255,6 @@
       </svg>
       <div class="heroChartLabelsRow" id="heroChartLabels"></div>
     </div>
-    <!-- Inline entries for current range -->
     <div class="hcEntriesList" id="hcEntriesList"></div>
   </div>
 </div>
@@ -274,9 +262,8 @@
 <div id="statusMsg" class="statusMsg muted small"></div>
 <div id="dataWarning" class="warningBanner" style="display:none;max-width:680px;margin:8px auto 0;"></div>
 <div id="offlineBanner" class="offlineBanner" style="display:none;">You're offline — entries may not save</div>
-<div id="swUpdateBanner" style="display:none;background:var(--primary);color:#fff;text-align:center;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;" onclick="window.location.reload()">App updated — tap to reload ↺</div>
 
-<!-- ── Onboarding modal ── -->
+<!-- Onboarding modal -->
 <div id="onboardingModal" class="modalShell" style="display:none;">
   <div class="onboardCard card">
     <div class="onboardTitle">Welcome to Flat-Rate</div>
@@ -292,10 +279,13 @@
     <button id="onboardDoneBtn" class="btn primary" type="button" style="width:100%;margin-top:8px;">Get Started</button>
   </div>
 </div>
+
+<!-- Cloud nudge (button instead of link to prevent page reload) -->
 <div id="cloudNudge" class="cloudNudge" style="display:none;">
   <span>Sign in for cloud backup &amp; sync across devices</span>
-  <a class="btn" href="./more.html">Sign In</a>
+  <button class="btn" id="cloudNudgeSignInBtn" type="button">Sign In</button>
 </div>
+
 <div id="installBanner" class="installBanner" style="display:none;">
   <span>Add to Home Screen for quick access</span>
   <div class="u-row" style="gap:8px;">
@@ -304,7 +294,7 @@
   </div>
 </div>
 
-<!-- statsStrip elements kept hidden for JS compatibility -->
+<!-- JS compat stubs (hidden) -->
 <span id="stripTodayHours" style="display:none"></span>
 <span id="stripTodayCount" style="display:none"></span>
 <span id="stripTodayDollars" style="display:none"></span>
@@ -312,8 +302,6 @@
 <span id="stripComebackHint" style="display:none"></span>
 
 <main>
-
-  <!-- JS compat stubs (stats panel removed — merged into chart card above) -->
   <div class="js-compat" id="weekGoalCard"><div id="weekGoalSub"></div><div id="paceLine"></div></div>
   <div class="js-compat" id="weekChartCard"><div id="weekChart"></div></div>
   <div class="js-compat" id="weekBreakdownCard"><div id="weekBreakdownList"></div></div>
@@ -343,13 +331,13 @@
   <span id="weekDelta" style="display:none"></span>
   <span id="weekDeltaHint" style="display:none"></span>
 
-  <!-- ── Entry list ── -->
-  <!-- filterSelect kept hidden for JS compat — filtering handled by records card tabs -->
+  <!-- filterSelect kept hidden for JS compat -->
   <select id="filterSelect" style="display:none;">
     <option value="today">Today</option>
     <option value="week">This Week</option>
     <option value="all">All</option>
   </select>
+
   <section class="card">
     <div class="searchRow" style="margin-top:0;">
       <div class="fr26InlineField" style="flex:1;">
@@ -357,7 +345,6 @@
         <button class="btn fr26InlineClearBtn" type="button" id="clearSearchBtn" aria-label="Clear search" hidden>✕</button>
       </div>
     </div>
-
     <div class="entryActions">
       <button class="btn" id="historyBtn" type="button">Full History</button>
       <button class="btn" id="shareTodayBtn" type="button">Share Day</button>
@@ -370,15 +357,13 @@
       <button class="btn" id="exportSelectedBtn" type="button">Export</button>
       <button class="btn danger-ghost" id="deleteSelectedBtn" type="button">Delete</button>
     </div>
-
     <div class="muted small" id="filterStatus" style="margin-top:8px;"></div>
     <div class="list" id="entryList" style="margin-top:10px;"></div>
   </section>
 
-  <!-- ── History panel ── -->
+  <!-- History panel -->
   <div id="historyPanel" class="historyOverlay" aria-hidden="true">
     <div class="historySheet">
-
       <div class="historyHeader">
         <div>
           <div class="historyTitle">Work History</div>
@@ -386,7 +371,6 @@
         </div>
         <button class="histCloseBtn" id="closeHistoryBtn" type="button" aria-label="Close">&#x2715;</button>
       </div>
-
       <div class="historyControls">
         <input id="historySearchInput" placeholder="Search RO #, STK, VIN, job type, notes…" class="fr26Input" autocomplete="off" />
         <div class="seg histRangeSeg" role="tablist" aria-label="History range">
@@ -396,51 +380,475 @@
           <button type="button" class="segBtn" data-hist-range="all">All</button>
         </div>
       </div>
-
       <div class="historySummary">
-        <div class="histSumCell">
-          <div class="stripLabel">Jobs</div>
-          <div class="stripValue" id="histSumCount">—</div>
-        </div>
-        <div class="histSumCell">
-          <div class="stripLabel">Hours</div>
-          <div class="stripValue" id="histSumHours">—</div>
-        </div>
-        <div class="histSumCell">
-          <div class="stripLabel">Pay</div>
-          <div class="stripValue stripValue--accent" id="histSumDollars">—</div>
-        </div>
-        <div class="histSumCell">
-          <div class="stripLabel">Avg/Job</div>
-          <div class="stripValue" id="histSumAvg">—</div>
-        </div>
+        <div class="histSumCell"><div class="stripLabel">Jobs</div><div class="stripValue" id="histSumCount">—</div></div>
+        <div class="histSumCell"><div class="stripLabel">Hours</div><div class="stripValue" id="histSumHours">—</div></div>
+        <div class="histSumCell"><div class="stripLabel">Pay</div><div class="stripValue stripValue--accent" id="histSumDollars">—</div></div>
+        <div class="histSumCell"><div class="stripLabel">Avg/Job</div><div class="stripValue" id="histSumAvg">—</div></div>
       </div>
-
       <div id="historyList" class="historyList"></div>
-
     </div>
   </div>
 
 </main>
 
-<nav class="tabBar" role="navigation" aria-label="Main navigation">
-  <a class="tabItem tabItem--active" href="./index.html" aria-current="page">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/></svg>
-    <span>Log</span>
-  </a>
-  <a class="tabItem" href="./more.html">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
-    <span>More<span id="shortPayBadge" class="shortPayBadge tabBadge" style="display:none;"></span></span>
-  </a>
-</nav>
-
 <div id="detailsSaveBar" class="detailsSaveBar" style="display:none;">
   <button class="btn primary detailsSaveFloatBtn" type="button" id="detailsSaveFloatBtn">Save</button>
 </div>
 
+<div id="bulkBar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:9998;">
+  <div class="card u-row" style="justify-content:space-between;padding:12px 14px;gap:8px;flex-wrap:wrap;">
+    <div class="muted" id="bulkCount">0 selected</div>
+    <div class="u-row" style="gap:8px;align-items:center;flex-wrap:wrap;">
+      <input id="bulkRateInput" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Rate $/hr" class="moreInput moreInputNarrow" style="width:90px;" />
+      <button class="btn primary" id="bulkApplyBtn" type="button">Apply Rate</button>
+      <button class="btn" id="bulkCancelBtn" type="button">Clear</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /#spa-main -->
+
+
+<!-- ═══════════════════════════════════════════
+     MORE PAGE SECTION
+═══════════════════════════════════════════ -->
+<div id="spa-more" style="display:none;">
+
+  <header class="top">
+    <div class="topRow">
+      <div class="topTitle">More</div>
+    </div>
+  </header>
+
+  <nav class="moreTabBar" id="moreTabBar" role="tablist">
+    <button class="moreTab active" data-tab="jobs" role="tab" aria-selected="true" type="button">Job Types</button>
+    <button class="moreTab" data-tab="history" role="tab" aria-selected="false" type="button">History</button>
+    <button class="moreTab" data-tab="settings" role="tab" aria-selected="false" type="button">Settings</button>
+  </nav>
+
+  <main class="wrap">
+
+    <!-- JOB TYPES TAB -->
+    <div class="moreTabPanel active" id="mPanel-jobs" role="tabpanel">
+      <section class="card moreCard" style="margin-top:12px;">
+        <form id="savedTypeCreateForm" class="typeAddInline">
+          <input id="savedTypeName" class="moreInput typeAddNameInput" type="text" placeholder="New job type (e.g. PDI, Oil Change…)" autocomplete="off" spellcheck="false" />
+          <div class="typeAddRow2">
+            <label class="typeAddMiniLabel">Hrs<input id="savedTypeHours" class="moreInput moreInputNarrow" inputmode="decimal" type="number" step="0.1" min="0" value="0.5" /></label>
+            <label class="typeAddMiniLabel">$/hr<input id="savedTypeRate" class="moreInput moreInputNarrow" inputmode="decimal" type="number" step="0.01" min="0" value="15" /></label>
+            <button class="btn primary typeAddSubmitBtn" type="submit">Add</button>
+          </div>
+        </form>
+        <div class="moreCardHeader moreCardHeaderRow" style="border-top:1px solid var(--stroke);margin-top:0;">
+          <span id="typeListCount" class="muted" style="font-size:13px;"></span>
+          <button class="btn" id="typeSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
+        </div>
+        <div id="savedTypesList"></div>
+        <div class="bulkDeleteBar" id="typeDeleteBar" style="display:none;">
+          <button class="btn" id="typeSelectAllBtn" type="button" style="font-size:12px;padding:5px 10px;">All</button>
+          <span class="muted" id="typeSelectedCount" style="font-size:13px;flex:1;text-align:center;"></span>
+          <button class="btn danger" id="typeDeleteBtn" type="button">Delete</button>
+        </div>
+      </section>
+    </div><!-- /mPanel-jobs -->
+
+    <!-- HISTORY TAB -->
+    <div class="moreTabPanel" id="mPanel-history" role="tabpanel">
+      <section class="card moreCard" style="margin-top:12px;">
+        <div class="moreCardHeader">This Week</div>
+        <div id="insightsCard" style="padding:4px 16px 14px;"></div>
+      </section>
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Short-Pay History</summary>
+          <div id="payTrendCard"></div>
+        </details>
+      </section>
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">8-Week Earnings</summary>
+          <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
+        </details>
+      </section>
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Comeback Impact</summary>
+          <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
+        </details>
+      </section>
+      <section class="card moreCard">
+        <div class="moreCardHeader moreCardHeaderRow">
+          <span>All Entries</span>
+          <button class="btn" id="bulkSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
+        </div>
+        <div style="padding:8px 12px 4px;">
+          <input id="entrySearchInput" class="moreInput" type="search" placeholder="Search RO#, job type, date…" autocomplete="off" style="width:100%;box-sizing:border-box;" />
+        </div>
+        <div id="histWeekSummary" class="histWeekBar" style="display:none;">
+          <span class="histWeekLabel">This week</span>
+          <span class="histWeekStat" id="histWeekJobs">—</span>
+          <span class="histWeekStat" id="histWeekHours">—</span>
+          <span class="histWeekStat histWeekPay" id="histWeekPay">—</span>
+        </div>
+        <div id="bulkEntryList"></div>
+        <div class="bulkDeleteBar" id="bulkDeleteBar" style="display:none;">
+          <button class="btn" id="bulkSelectAllBtn" type="button" style="font-size:12px;padding:5px 10px;">All</button>
+          <span class="muted" id="bulkSelectedCount" style="font-size:13px;flex:1;text-align:center;">0 selected</span>
+          <button class="btn danger" id="bulkDeleteBtn" type="button">Delete</button>
+        </div>
+      </section>
+      <!-- Owe Me tracker -->
+      <section class="card moreCard" style="margin-top:10px;">
+        <div class="moreCardHeader" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Owe Me</span>
+          <span id="oweMeTotalBadge" class="oweMeTotalBadge" style="display:none;"></span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);padding:0 14px 6px;margin:0;">Log what the shop owes you — comebacks, warranty, goodwill, parts delays.</p>
+        <form id="oweMeForm" style="display:flex;gap:8px;padding:0 14px 10px;flex-wrap:wrap;">
+          <input id="oweMeDesc" class="moreInput" type="text" placeholder="e.g. Warranty callback – Brakes" style="flex:1;min-width:140px;" autocomplete="off" />
+          <input id="oweMeAmt"  class="moreInput" type="number" inputmode="decimal" step="0.01" placeholder="$0.00" style="width:90px;" />
+          <button type="submit" class="btn" style="white-space:nowrap;">Add</button>
+        </form>
+        <div id="oweMeList"></div>
+      </section>
+    </div><!-- /mPanel-history -->
+
+    <!-- SETTINGS TAB -->
+    <div class="moreTabPanel" id="mPanel-settings" role="tabpanel">
+
+      <!-- Profile -->
+      <section class="card moreCard" style="margin-top:12px;">
+        <div class="moreCardHeader">Profile</div>
+        <div class="moreRow">
+          <div class="moreRowLabel">Employee #</div>
+          <!-- settingsEmpId: separate from main-page empId to avoid duplicate-ID conflict in SPA -->
+          <input id="settingsEmpId" inputmode="numeric" placeholder="12345" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div id="authForm">
+          <div class="authFields">
+            <input id="authEmail" type="email" placeholder="Email" class="moreInput" />
+            <input id="authPassword" type="password" placeholder="Password" class="moreInput" style="margin-top:8px;" />
+          </div>
+          <div class="moreAuthActions">
+            <button id="authSignIn" class="btn primary" type="button" style="flex:1;">Sign In</button>
+            <button id="authSignUp" class="btn" type="button" style="flex:1;">Sign Up</button>
+          </div>
+          <div class="moreAuthSecondary">
+            <button id="authReset" class="btn moreTextBtn" type="button">Forgot Password</button>
+          </div>
+          <div id="authMsg" class="muted small" style="padding-top:10px;display:none;"></div>
+        </div>
+        <div id="authSignedIn" style="display:none;">
+          <div class="moreRow">
+            <div class="moreRowLabel">Account</div>
+            <div id="authStatus" class="muted" style="font-size:13px;"></div>
+          </div>
+          <div class="moreRow" style="padding-top:4px;padding-bottom:14px;">
+            <button id="authSignOut" class="btn danger-ghost" style="display:none;">Sign Out</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Rate & Display -->
+      <section class="card moreCard">
+        <div class="moreCardHeader">Rate &amp; Display</div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Default Rate ($/hr)</div>
+            <div class="moreRowSub">Applied to all new entries</div>
+          </div>
+          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="15.00" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Weekly Goal</div>
+            <div class="moreRowSub">Target hours — shows ring progress</div>
+          </div>
+          <div class="moreInputGroup">
+            <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
+            <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
+          </div>
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Appearance</div>
+            <div class="moreRowSub">Auto follows system setting</div>
+          </div>
+          <div class="seg">
+            <button class="segBtn" id="dmAuto" type="button">Auto</button>
+            <button class="segBtn" id="dmLight" type="button">Light</button>
+            <button class="segBtn" id="dmDark" type="button">Dark</button>
+          </div>
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div class="moreRowLabel">Accent Color</div>
+          <label class="accentPickerLabel" title="Choose accent color">
+            <input type="color" id="accentColorInput" />
+            <div id="accentColorPreview" class="accentColorPreview"></div>
+          </label>
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Compact List</div>
+            <div class="moreRowSub">More entries on screen at once</div>
+          </div>
+          <label class="moreToggle">
+            <input id="settingsCompactList" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Notifications -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+        <summary class="moreCardHeader moreSectionSummary">Notifications</summary>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Haptic Feedback</div>
+            <div class="moreRowSub">Vibrate on save</div>
+          </div>
+          <label class="moreToggle">
+            <input id="hapticEnabled" type="checkbox" checked />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Shift Reminder</div>
+            <div class="moreRowSub">Notification at end of shift</div>
+          </div>
+          <label class="moreToggle">
+            <input id="reminderEnabled" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+        <div id="reminderTimeRow" class="moreRow" style="display:none;">
+          <div class="moreRowLabel">Reminder Time</div>
+          <input id="reminderTime" type="time" class="moreInput moreInputNarrow" value="16:30" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Payday Reminder</div>
+            <div class="moreRowSub">Reminds you to log your pay stub</div>
+          </div>
+          <label class="moreToggle">
+            <input id="paydayReminderEnabled" type="checkbox" />
+            <span class="moreToggleTrack"></span>
+          </label>
+        </div>
+        <div id="paydayReminderRow" class="moreRow" style="display:none;">
+          <div class="moreRowLabel">Payday</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="paydayDay" class="moreInput moreInputNarrow">
+              <option value="1">Mon</option>
+              <option value="2">Tue</option>
+              <option value="3">Wed</option>
+              <option value="4">Thu</option>
+              <option value="5" selected>Fri</option>
+              <option value="6">Sat</option>
+              <option value="0">Sun</option>
+            </select>
+            <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
+          </div>
+        </div>
+        </details>
+      </section>
+
+      <!-- Pay Stub -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="payStubDetails">
+          <summary class="moreCardHeader moreSectionSummary">Pay Stub</summary>
+          <div class="moreRow">
+            <div class="moreRowLabel">Pay Period</div>
+            <div class="seg">
+              <button class="segBtn active" id="payPeriodWeekly" type="button">Weekly</button>
+              <button class="segBtn" id="payPeriodBiweekly" type="button">Biweekly</button>
+            </div>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div class="moreRowLabel">Week of</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button class="btn" id="payStubPrevWeekBtn" type="button" style="padding:6px 10px;">‹</button>
+              <input id="payStubWeekEnding" type="date" class="moreInput moreInputNarrow" />
+              <button class="btn" id="payStubNextWeekBtn" type="button" style="padding:6px 10px;">›</button>
+            </div>
+          </div>
+          <div id="payStubWeek2Row" class="moreRow" style="display:none;">
+            <div class="moreRowLabel" style="color:var(--muted);font-size:12px;">+ Week 2</div>
+            <div id="payStubWeek2Label" class="muted small" style="text-align:right;"></div>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Check Amount</div>
+              <div class="moreRowSub">Gross pay — covers both weeks if biweekly</div>
+            </div>
+            <input id="payStubAmountPaid" inputmode="decimal" type="number" step="0.01" min="0" placeholder="0.00" class="moreInput moreInputNarrow" />
+          </div>
+          <input id="checkStubPicker" type="file" accept="image/*" style="display:none" />
+          <input id="checkStubCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+          <div class="moreSaveRow">
+            <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
+            <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
+          </div>
+          <div class="moreSaveRow" style="padding-top:0;">
+            <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
+            <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
+          </div>
+          <div id="payStubSummary" class="moreResultText"></div>
+          <div id="payStubExpected" class="moreResultMono"></div>
+          <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
+          <div id="missingWorkList" style="padding:0 16px 8px;"></div>
+        </details>
+      </section>
+
+      <!-- Export & Tools -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Export &amp; Tools</summary>
+          <div class="exportGrid">
+            <button class="exportBtn" type="button" id="exportCsvBtn"><div class="exportBtnIcon">CSV</div><div class="exportBtnLabel">Export CSV</div></button>
+            <button class="exportBtn" type="button" id="exportJsonBtn"><div class="exportBtnIcon">JSON</div><div class="exportBtnLabel">Export JSON</div></button>
+            <button class="exportBtn" type="button" id="exportAuditBtn"><div class="exportBtnIcon">PDF</div><div class="exportBtnLabel">Audit Report</div></button>
+            <button class="exportBtn" type="button" id="repairBtn"><div class="exportBtnIcon">Fix</div><div class="exportBtnLabel">Repair Data</div></button>
+          </div>
+        </details>
+      </section>
+
+      <!-- Feedback -->
+      <section class="card moreCard" id="feedbackCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Send Feedback</summary>
+          <div style="padding:0 16px 16px;">
+            <div class="moreRow" style="padding-left:0;padding-right:0;padding-top:12px;">
+              <div class="moreRowLabel">Category</div>
+              <select id="feedbackCategory" class="moreInput moreInputNarrow">
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="usability">Usability</option>
+                <option value="performance">Performance</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <textarea id="feedbackMessage" class="moreInput" placeholder="Describe the bug, idea, or anything on your mind…" style="margin-top:10px;min-height:96px;resize:vertical;display:block;width:100%;box-sizing:border-box;"></textarea>
+            <button class="btn primary" id="submitFeedbackBtn" type="button" style="width:100%;margin-top:10px;min-height:48px;">Submit</button>
+            <div id="feedbackStatus" class="muted small" style="text-align:center;margin-top:8px;display:none;"></div>
+          </div>
+        </details>
+      </section>
+
+      <!-- Help -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Help</summary>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">App Tour</div>
+              <div class="moreRowSub">Replay the getting-started walkthrough</div>
+            </div>
+            <button class="btn" id="retakeTourBtn" type="button">Take Tour</button>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">App Update</div>
+              <div class="moreRowSub">Force-check for the latest version</div>
+            </div>
+            <button class="btn" id="checkUpdateBtn" type="button" onclick="window.__FR?.checkForAppUpdate?.()">Check</button>
+          </div>
+        </details>
+      </section>
+
+    </div><!-- /mPanel-settings -->
+
+    <!-- Hidden stubs needed by JS -->
+    <div style="display:none;">
+      <select id="reviewRange"><option value="all">All</option></select>
+      <select id="reviewFocus"><option value="all">All</option></select>
+      <select id="reviewGroup"><option value="day">Day</option></select>
+      <button id="reviewRefreshBtn" type="button">Refresh</button>
+      <input id="reviewSearch" />
+      <div id="reviewMeta"></div>
+      <div id="reviewList"></div>
+      <div id="photoGallery"></div>
+    </div>
+
+  </main>
+
+  <!-- Photo viewer modal (more page only — different from main photoModal) -->
+  <div id="photoViewer" class="modalShell" style="display:none;">
+    <div class="modalContent" style="max-width:560px;margin:20px auto;padding:0 12px;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div class="muted small" id="photoViewerMeta"></div>
+          <button class="btn" id="closePhotoViewerBtn" type="button">Close</button>
+        </div>
+        <img id="photoFull" style="width:100%;border-radius:14px;margin-top:12px;display:block;" />
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <a class="btn" id="downloadPhotoBtn" download="proof.jpg">Download</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade modal -->
+  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Upgrade to Pro">
+    <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:26px;">⚡</span>
+        <h2 style="margin:0;font-size:22px;font-weight:800;">Go Pro</h2>
+      </div>
+      <p style="margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.5;">Built for techs who take their money seriously. Stop leaving cash on the table.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> — know if your check is light before you cash it</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> — your data on every device, always backed up</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Weekly PDF reports</strong> — email to yourself, your advisor, or HR</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Unlimited photo storage</strong> — proof of every job, searchable by RO</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV/JSON export</strong> — for disputes, taxes, or job applications</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+        <button id="upgradeYearlyBtn" class="btn primary" type="button" style="font-size:16px;padding:15px;font-weight:800;position:relative;">
+          $59 / year
+          <span style="position:absolute;top:-10px;right:12px;background:#f59e0b;color:#000;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;">BEST VALUE</span>
+        </button>
+        <button id="upgradeMonthlyBtn" class="btn" type="button" style="font-size:15px;padding:13px;border-color:var(--stroke2);">$6.99 / month</button>
+      </div>
+      <button id="upgradeCloseBtn" class="btn" type="button" style="width:100%;background:transparent;color:var(--muted);border-color:transparent;font-size:13px;">Maybe later</button>
+    </div>
+  </div>
+
+</div><!-- /#spa-more -->
+
+
+<!-- ═══════════════════════════════════════════
+     SHARED / GLOBAL OVERLAYS
+═══════════════════════════════════════════ -->
+
+<!-- Single bottom nav — JS-driven, no page reloads -->
+<nav class="tabBar" role="navigation" aria-label="Main navigation">
+  <button class="tabItem tabItem--active" data-spa-page="main" type="button">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/></svg>
+    <span>Log</span>
+  </button>
+  <button class="tabItem" data-spa-page="more" type="button">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
+    <span>More<span id="shortPayBadge" class="shortPayBadge tabBadge" style="display:none;"></span></span>
+  </button>
+</nav>
+
 <div id="toast" class="toast" aria-live="polite"></div>
 
-<!-- ── Onboarding tour ── -->
+<!-- Shared tour overlay (single instance for both main + more tour steps) -->
 <div id="tourOverlay" style="display:none;" aria-modal="true" role="dialog" aria-label="App tour">
   <div id="tourSpotlight"></div>
   <div id="tourTooltip" class="tourTooltip">
@@ -457,6 +865,7 @@
   </div>
 </div>
 
+<!-- Shared photo modal (main page proof viewer) -->
 <div id="photoModal" class="modalShell">
   <div style="width:100%;max-width:560px;">
     <div class="card">
@@ -469,17 +878,7 @@
   </div>
 </div>
 
-<div id="bulkBar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:9998;">
-  <div class="card u-row" style="justify-content:space-between;padding:12px 14px;gap:8px;flex-wrap:wrap;">
-    <div class="muted" id="bulkCount">0 selected</div>
-    <div class="u-row" style="gap:8px;align-items:center;flex-wrap:wrap;">
-      <input id="bulkRateInput" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Rate $/hr" class="moreInput moreInputNarrow" style="width:90px;" />
-      <button class="btn primary" id="bulkApplyBtn" type="button">Apply Rate</button>
-      <button class="btn" id="bulkCancelBtn" type="button">Clear</button>
-    </div>
-  </div>
-</div>
-
+<!-- Shared undo bar (position:fixed) -->
 <div id="undoBar" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;">
   <div class="card u-row" style="justify-content:space-between;padding:12px 14px;">
     <div class="muted" id="undoText">Deleted.</div>
@@ -498,6 +897,6 @@
 </script>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.0497bf6a64.js" defer></script>
+<script src="./app.211af38e93.js" defer></script>
 </body>
 </html>

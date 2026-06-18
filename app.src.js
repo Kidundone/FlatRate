@@ -2572,7 +2572,7 @@ async function renderPhotoGrid(allowAll = false, opts = {}){
 
 async function openPhotoViewer(e){
   const shell = document.getElementById("photoViewer");
-  const meta = document.getElementById("photoMeta");
+  const meta = document.getElementById("photoViewerMeta");
   const dl = document.getElementById("downloadPhotoBtn");
   const card = shell?.querySelector(".card");
   const downloadRow = dl?.closest?.(".row");
@@ -8798,6 +8798,62 @@ window.__FR.activeDataPath = ACTIVE_DATA_PATH;
 window.__FR.sb = sb();
 window.__FR.supabase = window.supabase;
 
+/* ─── SPA page switcher ─────────────────────────────────────────────────────
+   Switches between #spa-main and #spa-more without any page reload.
+   Called by tab-bar buttons (data-spa-page attribute) and from JS (showSpaPage).
+────────────────────────────────────────────────────────────────────────────── */
+function showSpaPage(name) {
+  const main = document.getElementById("spa-main");
+  const more = document.getElementById("spa-more");
+  if (main) main.style.display = name === "main" ? "" : "none";
+  if (more) more.style.display = name === "more" ? "" : "none";
+  document.body.dataset.page = name;
+  window.__PAGE__ = name;
+  document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
+    const active = t.dataset.spaPage === name;
+    t.classList.toggle("tabItem--active", active);
+    if (active) t.setAttribute("aria-current", "page");
+    else t.removeAttribute("aria-current");
+  });
+  // Scroll the new section to top
+  window.scrollTo(0, 0);
+}
+window.__FR.showSpaPage = showSpaPage;
+
+// Wire tab bar buttons
+document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
+  btn.addEventListener("click", () => showSpaPage(btn.dataset.spaPage));
+});
+
+// Wire shortPayAlertLink → switch to more page
+document.getElementById("shortPayAlertLink")?.addEventListener("click", () => showSpaPage("more"));
+// Wire cloudNudge sign-in button → switch to more page
+document.getElementById("cloudNudgeSignInBtn")?.addEventListener("click", () => showSpaPage("more"));
+
+// Sync settingsEmpId with main empId on focus/blur
+(function wireSettingsEmpId() {
+  const settingsEl = document.getElementById("settingsEmpId");
+  if (!settingsEl) return;
+  // Populate from localStorage on first render
+  const saved = (localStorage.getItem("fr_emp_id") || "").trim();
+  if (saved) settingsEl.value = saved;
+  // Save back to localStorage and sync main input on change
+  const syncUp = () => {
+    const digits = (settingsEl.value || "").trim().replace(/\D/g, "");
+    if (digits.length >= 5) {
+      localStorage.setItem("fr_emp_id", digits);
+      const mainEl = document.getElementById("empId");
+      if (mainEl) mainEl.value = digits;
+    }
+  };
+  settingsEl.addEventListener("blur", syncUp);
+  settingsEl.addEventListener("change", syncUp);
+  settingsEl.addEventListener("input", () => {
+    const digits = (settingsEl.value || "").trim().replace(/\D/g, "");
+    if (digits.length === 5) syncUp();
+  });
+})();
+
 /* -------------------- Boot -------------------- */
 applySettings();
 
@@ -8820,11 +8876,9 @@ async function runOnce() {
 
   await ensureDefaultTypes();
 
-  // ================= MAIN PAGE ONLY =================
-  if (window.__PAGE__ === "main") {
-    if (typeof handleSave !== "function") {
-      return;
-    }
+  // ================= MAIN PAGE INIT =================
+  // Runs unconditionally in SPA — both sections are in the DOM at all times.
+  if (typeof handleSave === "function") {
 
     await renderTypeDatalist();
     await renderTypesListInMore();
@@ -8918,7 +8972,7 @@ async function runOnce() {
     });
 
     const logForm = document.getElementById("logForm");
-    if (window.__PAGE__ === "main" && logForm && typeof handleSave === "function") {
+    if (logForm && typeof handleSave === "function") {
       if (!logForm.dataset.saveWired) {
         logForm.dataset.saveWired = "1";
         logForm.addEventListener("submit", (e) => {
@@ -9156,11 +9210,11 @@ async function runOnce() {
     document.querySelector('textarea[name="notes"]')?.addEventListener("input", () => debouncedSaveDraft?.());
     document.getElementById("isComeback")?.addEventListener("change", () => debouncedSaveDraft?.());
     restoreDraft?.();
-    return;
   }
 
-  // ================= MORE PAGE ONLY =================
-  if (window.__PAGE__ === "more") {
+  // ================= MORE PAGE INIT =================
+  // Runs unconditionally in SPA — more section is always in the DOM.
+  {
     const hasReviewUi = !!document.getElementById("reviewList");
     const hasGalleryUi = !!document.getElementById("photoGallery");
 
@@ -9195,7 +9249,8 @@ async function runOnce() {
     document.getElementById("retakeTourBtn")?.addEventListener("click", () => {
       localStorage.removeItem("fr_tour_done");
       sessionStorage.setItem("fr_force_tour", "1");
-      window.location.href = "./index.html";
+      showSpaPage("main");
+      setTimeout(() => maybeStartTour?.(), 100);
     });
 
     document.getElementById("repairBtn")?.addEventListener("click", async () => {
@@ -9260,6 +9315,7 @@ async function runOnce() {
     // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {
       history.replaceState({}, "", location.pathname);
+      showSpaPage("more");
       setTimeout(() => {
         document.querySelector('.moreTab[data-tab="settings"]')?.click();
         const det = document.getElementById("payStubDetails");

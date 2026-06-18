@@ -409,7 +409,7 @@ async function renderPhotoGrid(allowAll = false, opts = {}){
 
 async function openPhotoViewer(e){
   const shell = document.getElementById("photoViewer");
-  const meta = document.getElementById("photoMeta");
+  const meta = document.getElementById("photoViewerMeta");
   const dl = document.getElementById("downloadPhotoBtn");
   const card = shell?.querySelector(".card");
   const downloadRow = dl?.closest?.(".row");
