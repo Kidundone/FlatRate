@@ -8845,6 +8845,13 @@ document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => showSpaPage(btn.dataset.spaPage));
 });
 
+// Legacy deep-link: old app navigated to more.html which now redirects here with ?goto=more
+// Runs at script-load time (defer — DOM already parsed) so no try/catch can swallow it.
+if (new URLSearchParams(location.search).get("goto") === "more") {
+  history.replaceState({}, "", location.pathname);
+  showSpaPage("more");
+}
+
 // Wire shortPayAlertLink → switch to more page
 document.getElementById("shortPayAlertLink")?.addEventListener("click", () => showSpaPage("more"));
 // Wire cloudNudge sign-in button → switch to more page
@@ -9330,11 +9337,6 @@ async function runOnce() {
       await loadSubscription?.().catch(logErr("loadSubscription"));
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
-    }
-    // Legacy nav: old app navigated to more.html which now redirects here with ?goto=more
-    if (new URLSearchParams(location.search).get("goto") === "more") {
-      history.replaceState({}, "", location.pathname);
-      showSpaPage("more");
     }
     // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {
