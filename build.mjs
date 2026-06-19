@@ -1,6 +1,15 @@
 import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { transform } from "esbuild";
+
+// esbuild is optional — falls back to unminified if binary is wrong arch (e.g. sandbox CI)
+let transform;
+try {
+  ({ transform } = await import("esbuild"));
+  // Quick smoke-test: if the binary is the wrong arch this will throw
+  await transform("1+1", { minify: true });
+} catch {
+  transform = null;
+}
 
 const SRC_JS = "app.src.js";
 const SOURCE_PARTS = [
@@ -45,13 +54,20 @@ if (!existsSync(SRC_JS)) {
   process.exit(1);
 }
 
-// Minify with esbuild for faster mobile parsing
-const { code: minified } = await transform(bundledSource, {
-  minify: true,
-  target: "es2017",
-  logLevel: "silent",
-});
-const jsBuf = Buffer.from(minified);
+// Minify with esbuild when available; fall back to unminified for CI/sandbox
+let jsBuf;
+if (transform) {
+  const { code: minified } = await transform(bundledSource, {
+    minify: true,
+    target: "es2017",
+    logLevel: "silent",
+  });
+  jsBuf = Buffer.from(minified);
+  console.log("Minified with esbuild.");
+} else {
+  console.warn("esbuild unavailable — outputting unminified JS (deploy on Mac for production builds).");
+  jsBuf = Buffer.from(bundledSource);
+}
 const jsHash = hashOf(jsBuf);
 const outJs = `app.${jsHash}.js`;
 writeFileSync(outJs, jsBuf);
@@ -71,11 +87,11 @@ for (const f of HTML_FILES) {
 
 // Clean up old hashed JS files
 const jsFiles = readdirSync(".").filter(n => /^app\.[a-f0-9]{10}\.js$/.test(n));
-for (const f of jsFiles) { if (f !== outJs) unlinkSync(f); }
+for (const f of jsFiles) { if (f !== outJs) try { unlinkSync(f); } catch {} }
 
 // Clean up old hashed CSS files
 const cssFiles = readdirSync(".").filter(n => /^app\.[a-f0-9]{10}\.css$/.test(n));
-for (const f of cssFiles) { if (f !== outCss) unlinkSync(f); }
+for (const f of cssFiles) { if (f !== outCss) try { unlinkSync(f); } catch {} }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SW STRATEGY (industry standard — same model as production web apps):
@@ -216,7 +232,7 @@ self.addEventListener("fetch", e => {
 // Clean up stale hashed files in www/ before copying
 if (existsSync("www")) {
   for (const f of readdirSync("www").filter(n => /^app\.[a-f0-9]{10}\.(js|css)$/.test(n))) {
-    if (f !== outJs && f !== outCss) unlinkSync(`www/${f}`);
+    if (f !== outJs && f !== outCss) try { unlinkSync(`www/${f}`); } catch {}
   }
 }
 
