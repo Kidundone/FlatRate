@@ -5262,7 +5262,12 @@ function renderList(entries, mode){
     // ── ⚠ LOW badge → review pay stub ───────────────────────────
     inner.querySelector('[data-action="review-pay"]')?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      window.location.href = "./more.html?paystub=1";
+      window.__FR?.showSpaPage?.("more");
+      setTimeout(() => {
+        document.querySelector('.moreTab[data-tab="settings"]')?.click();
+        const det = document.getElementById("payStubDetails");
+        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }, 300);
     });
 
     // ── +RO: new job on same RO ──────────────────────────────────
@@ -6303,7 +6308,7 @@ function startTour(force = false) {
     if (current?.action === "goto-more") {
       localStorage.setItem("fr_tour_more", "1");
       endTour();
-      window.location.href = "./more.html";
+      window.__FR?.showSpaPage?.("more");
       return;
     }
     if (current?.action === "open-details") {
@@ -8148,7 +8153,7 @@ function schedulePaydayReminder() {
   // Web fallback: setTimeout + Web Notification API
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
+    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./index.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -8795,7 +8800,7 @@ window.__FR = window.__FR || {};
 window.__FR.buildTag = BUILD_TAG;
 window.__FR.featureFreeze = FEATURE_FREEZE;
 window.__FR.activeDataPath = ACTIVE_DATA_PATH;
-window.__FR.sb = sb();
+try { window.__FR.sb = sb(); } catch {} // bootAuth handles Supabase-not-ready gracefully
 window.__FR.supabase = window.supabase;
 
 /* ─── SPA page switcher ─────────────────────────────────────────────────────
@@ -8889,14 +8894,14 @@ async function runOnce() {
     await bootAuth().catch(logErr("bootAuth"));
   }
 
-  await ensureDefaultTypes();
+  await ensureDefaultTypes().catch(logErr("ensureDefaultTypes"));
 
   // ================= MAIN PAGE INIT =================
   // Runs unconditionally in SPA — both sections are in the DOM at all times.
   if (typeof handleSave === "function") {
 
-    await renderTypeDatalist();
-    await renderTypesListInMore();
+    await renderTypeDatalist().catch(logErr("renderTypeDatalist"));
+    await renderTypesListInMore().catch(logErr("renderTypesListInMore"));
 
     document.getElementById("filterSelect")?.addEventListener("change", () => refreshUI(CURRENT_ENTRIES));
 
@@ -9228,7 +9233,7 @@ async function runOnce() {
 
   // ================= MORE PAGE INIT =================
   // Runs unconditionally in SPA — more section is always in the DOM.
-  {
+  try {
     const hasReviewUi = !!document.getElementById("reviewList");
     const hasGalleryUi = !!document.getElementById("photoGallery");
 
@@ -9322,7 +9327,7 @@ async function runOnce() {
     });
     // Show upgrade banner if user lands with ?upgraded=1 from Stripe success
     if (new URLSearchParams(location.search).get("upgraded") === "1") {
-      await loadSubscription?.();
+      await loadSubscription?.().catch(logErr("loadSubscription"));
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
     }
@@ -9342,7 +9347,7 @@ async function runOnce() {
     }
     // Data for the more page loads on first tab visit (see showSpaPage below),
     // NOT here at boot — avoids "Supabase not ready" errors at startup.
-  }
+  } catch (e) { logErr("moreInit")(e); }
 }
 
 // PWA install prompt

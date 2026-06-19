@@ -2402,7 +2402,12 @@ function renderList(entries, mode){
     // ── ⚠ LOW badge → review pay stub ───────────────────────────
     inner.querySelector('[data-action="review-pay"]')?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      window.location.href = "./more.html?paystub=1";
+      window.__FR?.showSpaPage?.("more");
+      setTimeout(() => {
+        document.querySelector('.moreTab[data-tab="settings"]')?.click();
+        const det = document.getElementById("payStubDetails");
+        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }, 300);
     });
 
     // ── +RO: new job on same RO ──────────────────────────────────
@@ -3443,7 +3448,7 @@ function startTour(force = false) {
     if (current?.action === "goto-more") {
       localStorage.setItem("fr_tour_more", "1");
       endTour();
-      window.location.href = "./more.html";
+      window.__FR?.showSpaPage?.("more");
       return;
     }
     if (current?.action === "open-details") {

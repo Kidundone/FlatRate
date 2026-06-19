@@ -60,7 +60,7 @@ window.__FR = window.__FR || {};
 window.__FR.buildTag = BUILD_TAG;
 window.__FR.featureFreeze = FEATURE_FREEZE;
 window.__FR.activeDataPath = ACTIVE_DATA_PATH;
-window.__FR.sb = sb();
+try { window.__FR.sb = sb(); } catch {} // bootAuth handles Supabase-not-ready gracefully
 window.__FR.supabase = window.supabase;
 
 /* ─── SPA page switcher ─────────────────────────────────────────────────────
@@ -154,14 +154,14 @@ async function runOnce() {
     await bootAuth().catch(logErr("bootAuth"));
   }
 
-  await ensureDefaultTypes();
+  await ensureDefaultTypes().catch(logErr("ensureDefaultTypes"));
 
   // ================= MAIN PAGE INIT =================
   // Runs unconditionally in SPA — both sections are in the DOM at all times.
   if (typeof handleSave === "function") {
 
-    await renderTypeDatalist();
-    await renderTypesListInMore();
+    await renderTypeDatalist().catch(logErr("renderTypeDatalist"));
+    await renderTypesListInMore().catch(logErr("renderTypesListInMore"));
 
     document.getElementById("filterSelect")?.addEventListener("change", () => refreshUI(CURRENT_ENTRIES));
 
@@ -493,7 +493,7 @@ async function runOnce() {
 
   // ================= MORE PAGE INIT =================
   // Runs unconditionally in SPA — more section is always in the DOM.
-  {
+  try {
     const hasReviewUi = !!document.getElementById("reviewList");
     const hasGalleryUi = !!document.getElementById("photoGallery");
 
@@ -587,7 +587,7 @@ async function runOnce() {
     });
     // Show upgrade banner if user lands with ?upgraded=1 from Stripe success
     if (new URLSearchParams(location.search).get("upgraded") === "1") {
-      await loadSubscription?.();
+      await loadSubscription?.().catch(logErr("loadSubscription"));
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
     }
@@ -607,7 +607,7 @@ async function runOnce() {
     }
     // Data for the more page loads on first tab visit (see showSpaPage below),
     // NOT here at boot — avoids "Supabase not ready" errors at startup.
-  }
+  } catch (e) { logErr("moreInit")(e); }
 }
 
 // PWA install prompt

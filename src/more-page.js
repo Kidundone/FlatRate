@@ -1590,7 +1590,7 @@ function schedulePaydayReminder() {
   // Web fallback: setTimeout + Web Notification API
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./more.html?paystub=1" } });
+    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./index.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
