@@ -67,6 +67,8 @@ window.__FR.supabase = window.supabase;
    Switches between #spa-main and #spa-more without any page reload.
    Called by tab-bar buttons (data-spa-page attribute) and from JS (showSpaPage).
 ────────────────────────────────────────────────────────────────────────────── */
+let _moreSectionLoaded = false;
+
 function showSpaPage(name) {
   const main = document.getElementById("spa-main");
   const more = document.getElementById("spa-more");
@@ -80,8 +82,21 @@ function showSpaPage(name) {
     if (active) t.setAttribute("aria-current", "page");
     else t.removeAttribute("aria-current");
   });
-  // Scroll the new section to top
   window.scrollTo(0, 0);
+
+  // Load more-page data on first visit (deferred from boot to avoid
+  // "Supabase not ready" errors). Refresh on every subsequent visit.
+  if (name === "more") {
+    if (!_moreSectionLoaded) {
+      _moreSectionLoaded = true;
+      safeLoadEntries?.({ fullHistory: true })
+        .then(() => refreshMorePagePanels?.())
+        .catch(logErr("moreData"));
+    } else {
+      // Lightweight refresh: re-render panels with already-loaded entries
+      refreshMorePagePanels?.().catch(logErr("moreRefresh"));
+    }
+  }
 }
 window.__FR.showSpaPage = showSpaPage;
 
@@ -461,7 +476,6 @@ async function runOnce() {
       window.__HIST_SEARCH_T__ = setTimeout(renderHistory, 180);
     });
 
-    initPhotosUI();
     updateShortPayBadge?.();
     initClockIn?.();
     initRepeatChip?.();
@@ -588,11 +602,11 @@ async function runOnce() {
       }, 600);
     }
     initPayStubUI();
-    await safeLoadEntries({ fullHistory: true });
-    await refreshMorePagePanels?.();
     if (hasGalleryUi) {
       initPhotosUI();
     }
+    // Data for the more page loads on first tab visit (see showSpaPage below),
+    // NOT here at boot — avoids "Supabase not ready" errors at startup.
   }
 }
 

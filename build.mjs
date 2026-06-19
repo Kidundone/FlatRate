@@ -220,14 +220,20 @@ if (existsSync("www")) {
 }
 
 // Vendor local copies (served from capacitor://localhost — no CDN latency)
+// Copied to BOTH root vendor/ (Cloudflare Pages / local dev) and www/vendor/ (Capacitor)
 const VENDOR = [
-  { src: "node_modules/@supabase/supabase-js/dist/umd/supabase.js", dest: "www/vendor/supabase.js" },
-  { src: "node_modules/jspdf/dist/jspdf.umd.min.js",                dest: "www/vendor/jspdf.umd.min.js" },
+  { src: "node_modules/@supabase/supabase-js/dist/umd/supabase.js", filename: "supabase.js" },
+  { src: "node_modules/jspdf/dist/jspdf.umd.min.js",                filename: "jspdf.umd.min.js" },
 ];
+mkdirSync("vendor", { recursive: true });
 mkdirSync("www/vendor", { recursive: true });
-for (const { src, dest } of VENDOR) {
-  if (existsSync(src)) copyFileSync(src, dest);
-  else console.warn(`Vendor missing (run npm install): ${src}`);
+for (const { src, filename } of VENDOR) {
+  if (existsSync(src)) {
+    copyFileSync(src, `vendor/${filename}`);
+    copyFileSync(src, `www/vendor/${filename}`);
+  } else {
+    console.warn(`Vendor missing (run npm install): ${src}`);
+  }
 }
 
 // Copy built assets to www/ for Capacitor
