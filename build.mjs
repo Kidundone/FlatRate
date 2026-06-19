@@ -130,8 +130,9 @@ self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys
-        // Delete old asset caches (previous build hashes). Keep pages cache.
-        .filter(k => k.startsWith("fr-assets-") && k !== ASSETS_CACHE)
+        // Delete ALL old fr-* caches (covers old naming "fr-{hash}" and
+        // new naming "fr-assets-{hash}"). Keep current assets + pages caches.
+        .filter(k => k.startsWith("fr-") && k !== ASSETS_CACHE && k !== PAGES_CACHE)
         .map(k => caches.delete(k))
     )).then(() => self.clients.claim())
   );

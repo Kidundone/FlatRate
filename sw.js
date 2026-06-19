@@ -2,12 +2,12 @@
 // Cache names:
 //   fr-assets-HASH  — immutable hashed JS/CSS (rotated each build)
 //   fr-pages-v1     — HTML pages (network-first; stable name, entries replaced)
-const ASSETS_CACHE = "fr-assets-4a0eb3ca9c";
+const ASSETS_CACHE = "fr-assets-8d81b6c5da";
 const PAGES_CACHE  = "fr-pages-v1";
 
 // Hashed asset URLs for this build
 const HASHED_ASSETS = [
-  "./app.4a0eb3ca9c.js",
+  "./app.8d81b6c5da.js",
   "./app.480f549cee.css",
 ];
 
@@ -35,8 +35,9 @@ self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys
-        // Delete old asset caches (previous build hashes). Keep pages cache.
-        .filter(k => k.startsWith("fr-assets-") && k !== ASSETS_CACHE)
+        // Delete ALL old fr-* caches (covers old naming "fr-{hash}" and
+        // new naming "fr-assets-{hash}"). Keep current assets + pages caches.
+        .filter(k => k.startsWith("fr-") && k !== ASSETS_CACHE && k !== PAGES_CACHE)
         .map(k => caches.delete(k))
     )).then(() => self.clients.claim())
   );
