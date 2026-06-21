@@ -55,8 +55,6 @@ async function checkForAppUpdate() {
 }
 window.__FR = window.__FR || {};
 window.__FR.checkForAppUpdate = checkForAppUpdate;
-
-window.__FR = window.__FR || {};
 window.__FR.buildTag = BUILD_TAG;
 window.__FR.featureFreeze = FEATURE_FREEZE;
 window.__FR.activeDataPath = ACTIVE_DATA_PATH;

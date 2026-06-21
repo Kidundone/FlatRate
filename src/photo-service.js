@@ -12,7 +12,7 @@ function setPhotoSummaryState(text) {
   if (summaryEl) summaryEl.textContent = text || "No photo";
 }
 
-async function requireUserId(sb) {
+async function requireUserId() {
   const uid = window.CURRENT_UID;
   if (!uid) return null;
   return uid;
@@ -63,7 +63,7 @@ async function downscaleImage(fileOrBlob, maxDim = 1600, quality = 0.8) {
 }
 
 async function uploadProofPhoto({ sb, empId, logId, file, roNumber = null }) {
-  const uid = await requireUserId(sb);
+  const uid = await requireUserId();
   if (!uid) throw new Error("Sign in required");
 
   const uploadBlob = await downscaleImage(file);

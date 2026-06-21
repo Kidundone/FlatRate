@@ -2169,8 +2169,12 @@ function filterEntriesByEmp(entries, empId, allowAll = false){
 }
 
 async function requireAdmin() {
+  // TODO: This passcode is visible in the client bundle. Move admin export
+  // behind a server-side check (e.g. Supabase Edge Function) before shipping
+  // to production. This is an obscurity-only gate, not a security control.
+  const ADMIN_PASSCODE = "0231";
   const pass = prompt("Admin export. Enter passcode:");
-  return pass === "0231"; // change this
+  return pass === ADMIN_PASSCODE;
 }
 
 function rangeSubLabel(mode){
@@ -2279,7 +2283,7 @@ async function bulkEditRate() {
   for (const e of selected) {
     try {
       const newEarnings = round2(Number(e.hours) * rateVal);
-      await saveEditedLog(e.id, { cash_amount: newEarnings });
+      await saveEditedLog(e.id, { cash_amount: newEarnings, hourly_rate: rateVal });
       const idx = (window.CURRENT_ENTRIES || []).findIndex(x => String(x.id) === String(e.id));
       if (idx >= 0) {
         window.CURRENT_ENTRIES[idx] = { ...window.CURRENT_ENTRIES[idx], rate: rateVal, earnings: newEarnings, selected: false };

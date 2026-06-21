@@ -732,7 +732,7 @@ async function _callScanPayStub(base64, mediaType = "image/jpeg") {
 
 async function scanPayStub(file) {
   const amountEl = document.getElementById("payStubAmountPaid");
-  const scanBtn = document.getElementById("scanCheckBtn");
+  const scanBtn = document.getElementById("scanCheckLibBtn");
   if (!amountEl || !scanBtn) return;
 
   const origText = scanBtn.textContent;
@@ -1803,7 +1803,12 @@ function initBulkDelete() {
 
     const ids = checked.map(cb => cb.closest(".bulkEntryRow")?.dataset.id).filter(Boolean);
     for (const id of ids) {
-      await del(STORES.entries, id).catch(console.warn);
+      try {
+        await softDeleteLog(sb(), id);
+      } catch (e) {
+        console.warn("[bulkDelete] Supabase delete failed, removing local only:", e);
+        await del(STORES.entries, id).catch(console.warn);
+      }
     }
 
     toast?.(`Deleted ${ids.length} entr${ids.length === 1 ? "y" : "ies"}`);

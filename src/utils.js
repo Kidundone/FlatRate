@@ -81,7 +81,7 @@ function scheduleRefreshUI(entries) {
 function setSummaryRange(next) {
   summaryRange = (next === "lastWeek") ? "lastWeek" : "thisWeek";
   window.__WEEK_WHICH__ = summaryRange;
-  if (PAGE === "main") scheduleRefreshUI(CURRENT_ENTRIES);
+  if (window.__PAGE__ === "main") scheduleRefreshUI(CURRENT_ENTRIES);
 }
 
 function setRefType(t) {
@@ -176,7 +176,7 @@ function setRangeMode(m, opts = {}) {
   const row = document.getElementById("weekWhichRow");
   if (row) row.style.display = (m === "week") ? "inline-flex" : "none";
 
-  if (PAGE === "main" && !opts.skipRefresh) {
+  if (window.__PAGE__ === "main" && !opts.skipRefresh) {
     if (m === "all" && !_fullHistoryLoaded) {
       refreshUI(CURRENT_ENTRIES); // show what we have now
       safeLoadEntries({ fullHistory: true }).catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[loadHistory]", e); }); // fill in older entries

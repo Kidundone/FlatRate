@@ -119,10 +119,10 @@ async function loadUserPrefixRules() {
 
   if (error) {
     console.error("Failed loading rules", error);
-    return [];
+    return;
   }
 
-  return (data || []).sort((a,b)=>b.prefix.length - a.prefix.length);
+  USER_PREFIX_RULES = (data || []).sort((a, b) => b.prefix.length - a.prefix.length);
 }
 
 function normalizeStock(stock) {
