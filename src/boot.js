@@ -283,6 +283,7 @@ async function runOnce() {
       const btn = document.getElementById("saveBtn");
       if (btn) btn.disabled = !(empOk && typeOk && hrsOk);
     }
+    window.updateSaveEnabled = updateSaveEnabled;
 
     const detailsBtn = document.getElementById("toggleDetailsBtn");
     const detailsPanel = document.getElementById("detailsPanel");

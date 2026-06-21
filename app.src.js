@@ -3044,8 +3044,8 @@ function startEditEntry(entry) {
     detailsBtn.textContent = "Less";
   }
 
-  const saveBtn = document.getElementById("saveBtn");
-  if (saveBtn) saveBtn.disabled = false;
+  // Let updateSaveEnabled() (boot.js) decide button state based on actual field values
+  if (typeof updateSaveEnabled === "function") updateSaveEnabled();
 }
 
 document.addEventListener("click", async (e) => {
@@ -9023,6 +9023,7 @@ async function runOnce() {
       const btn = document.getElementById("saveBtn");
       if (btn) btn.disabled = !(empOk && typeOk && hrsOk);
     }
+    window.updateSaveEnabled = updateSaveEnabled;
 
     const detailsBtn = document.getElementById("toggleDetailsBtn");
     const detailsPanel = document.getElementById("detailsPanel");

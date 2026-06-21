@@ -184,8 +184,8 @@ function startEditEntry(entry) {
     detailsBtn.textContent = "Less";
   }
 
-  const saveBtn = document.getElementById("saveBtn");
-  if (saveBtn) saveBtn.disabled = false;
+  // Let updateSaveEnabled() (boot.js) decide button state based on actual field values
+  if (typeof updateSaveEnabled === "function") updateSaveEnabled();
 }
 
 document.addEventListener("click", async (e) => {
