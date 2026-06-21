@@ -189,13 +189,15 @@ function wireAuthUI() {
   emailEl?.addEventListener("keydown", submitOnEnter);
   passEl?.addEventListener("keydown", submitOnEnter);
 
+  // Use touchend + click for iOS PWA — touchend fires before the 300ms delay
+  const onSignInTap = (e) => { e.preventDefault(); runSignIn().catch(console.error); };
+  signInBtn?.addEventListener("touchend", onSignInTap, { passive: false });
   signInBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     await runSignIn();
   });
 
-  signUpBtn?.addEventListener("click", async (e) => {
-    e.preventDefault();
+  const runSignUp = async () => {
     const client = getClient();
     if (!client) return;
     const email    = (emailEl?.value || "").trim();
@@ -221,7 +223,10 @@ function wireAuthUI() {
     } finally {
       setBusy(false);
     }
-  });
+  };
+  const onSignUpTap = (e) => { e.preventDefault(); runSignUp().catch(console.error); };
+  signUpBtn?.addEventListener("touchend", onSignUpTap, { passive: false });
+  signUpBtn?.addEventListener("click", async (e) => { e.preventDefault(); await runSignUp(); });
 
   resetBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
