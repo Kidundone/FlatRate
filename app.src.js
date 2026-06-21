@@ -8237,30 +8237,16 @@ function initMoreTabs() {
       t.setAttribute("aria-selected", active ? "true" : "false");
     });
     document.querySelectorAll(".moreTabPanel").forEach(p => {
-      const show = p.id === `mPanel-${name}`;
-      p.classList.toggle("active", show);
-      // iOS WKWebView: force hit-test rebuild on newly-visible panel
-      if (show) { void p.offsetHeight; requestAnimationFrame(() => { void p.offsetHeight; }); }
+      p.classList.toggle("active", p.id === `mPanel-${name}`);
     });
     localStorage.setItem("fr_more_tab", name);
     if (name === "history") renderBulkEntryList?.();
   }
 
   tabs.forEach(t => {
-    // touchstart fires before iOS scroll gesture recognition — most reliable
-    // trigger for position:sticky buttons in WKWebView. preventDefault() stops
-    // the 300ms click delay AND prevents double-fire of the click event.
-    let touchFired = false;
-    t.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      touchFired = true;
-      switchTab(t.dataset.tab);
-    }, { passive: false });
-    // click as fallback for mouse/trackpad (touchstart already blocked it on touch)
-    t.addEventListener("click", () => {
-      if (touchFired) { touchFired = false; return; }
-      switchTab(t.dataset.tab);
-    });
+    // Plain click works reliably now that #spa-more is never display:none
+    // (touch-action:manipulation in CSS eliminates the 300ms tap delay)
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
   });
 
   const saved = localStorage.getItem("fr_more_tab") || "jobs";
@@ -8846,14 +8832,10 @@ function showSpaPage(name) {
   const main = document.getElementById("spa-main");
   const more = document.getElementById("spa-more");
   if (main) main.style.display = name === "main" ? "" : "none";
-  if (more) more.style.display = name === "more" ? "" : "none";
-  // iOS WKWebView fix: when a container goes from display:none to visible,
-  // the touch hit-test tree can be stale. Reading offsetHeight forces a
-  // synchronous layout recalc; the rAF flushes the compositing update.
-  if (name === "more" && more) {
-    void more.offsetHeight;
-    requestAnimationFrame(() => { void more.offsetHeight; });
-  }
+  // #spa-more is controlled by CSS transform (body[data-page="more"] → translateX(0)).
+  // We deliberately never set display:none on #spa-more — iOS WKWebView permanently
+  // removes display:none subtrees from its touch hit-test tree, making every button
+  // inside it unresponsive even after the element becomes visible again.
   document.body.dataset.page = name;
   window.__PAGE__ = name;
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
@@ -8863,6 +8845,8 @@ function showSpaPage(name) {
     else t.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
+  // #spa-more is now its own scroll container (position:fixed, overflow-y:auto)
+  if (name === "more" && more) more.scrollTop = 0;
 
   // Load more-page data on first visit (deferred from boot to avoid
   // "Supabase not ready" errors). Refresh on every subsequent visit.

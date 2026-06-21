@@ -67,8 +67,34 @@ body.modal-open {
   right: 0;
   overflow: hidden;
 }
+/* Lock #spa-more's scroll container too when a modal is open */
+body.modal-open #spa-more {
+  overflow: hidden;
+}
 
 button, a, [role="button"], summary, label { touch-action: manipulation; }
+
+/* ── SPA page switching ────────────────────────────────────────────────────────
+   #spa-more is NEVER hidden with display:none — iOS WKWebView excludes
+   display:none subtrees from its touch hit-test tree and doesn't reliably
+   re-add them, making every button inside permanently unresponsive.
+   Instead we keep #spa-more in the DOM at all times, just slid off-screen.
+   The bottom .tabBar (always-in-DOM, always tappable) proves this pattern works.
+────────────────────────────────────────────────────────────────────────────── */
+#spa-more {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+  z-index: 10;
+  /* Slid off-screen right by default; CSS moves it on-screen for the active page */
+  transform: translateX(100%);
+  -webkit-overflow-scrolling: touch;
+}
+body[data-page="more"] #spa-more {
+  transform: translateX(0);
+}
 
 /* ── Floating details save bar ───────────────────── */
 /* Save button spacing when moved inside the Details panel */

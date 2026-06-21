@@ -71,14 +71,10 @@ function showSpaPage(name) {
   const main = document.getElementById("spa-main");
   const more = document.getElementById("spa-more");
   if (main) main.style.display = name === "main" ? "" : "none";
-  if (more) more.style.display = name === "more" ? "" : "none";
-  // iOS WKWebView fix: when a container goes from display:none to visible,
-  // the touch hit-test tree can be stale. Reading offsetHeight forces a
-  // synchronous layout recalc; the rAF flushes the compositing update.
-  if (name === "more" && more) {
-    void more.offsetHeight;
-    requestAnimationFrame(() => { void more.offsetHeight; });
-  }
+  // #spa-more is controlled by CSS transform (body[data-page="more"] → translateX(0)).
+  // We deliberately never set display:none on #spa-more — iOS WKWebView permanently
+  // removes display:none subtrees from its touch hit-test tree, making every button
+  // inside it unresponsive even after the element becomes visible again.
   document.body.dataset.page = name;
   window.__PAGE__ = name;
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
@@ -88,6 +84,8 @@ function showSpaPage(name) {
     else t.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
+  // #spa-more is now its own scroll container (position:fixed, overflow-y:auto)
+  if (name === "more" && more) more.scrollTop = 0;
 
   // Load more-page data on first visit (deferred from boot to avoid
   // "Supabase not ready" errors). Refresh on every subsequent visit.

@@ -1662,30 +1662,16 @@ function initMoreTabs() {
       t.setAttribute("aria-selected", active ? "true" : "false");
     });
     document.querySelectorAll(".moreTabPanel").forEach(p => {
-      const show = p.id === `mPanel-${name}`;
-      p.classList.toggle("active", show);
-      // iOS WKWebView: force hit-test rebuild on newly-visible panel
-      if (show) { void p.offsetHeight; requestAnimationFrame(() => { void p.offsetHeight; }); }
+      p.classList.toggle("active", p.id === `mPanel-${name}`);
     });
     localStorage.setItem("fr_more_tab", name);
     if (name === "history") renderBulkEntryList?.();
   }
 
   tabs.forEach(t => {
-    // touchstart fires before iOS scroll gesture recognition — most reliable
-    // trigger for position:sticky buttons in WKWebView. preventDefault() stops
-    // the 300ms click delay AND prevents double-fire of the click event.
-    let touchFired = false;
-    t.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      touchFired = true;
-      switchTab(t.dataset.tab);
-    }, { passive: false });
-    // click as fallback for mouse/trackpad (touchstart already blocked it on touch)
-    t.addEventListener("click", () => {
-      if (touchFired) { touchFired = false; return; }
-      switchTab(t.dataset.tab);
-    });
+    // Plain click works reliably now that #spa-more is never display:none
+    // (touch-action:manipulation in CSS eliminates the 300ms tap delay)
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
   });
 
   const saved = localStorage.getItem("fr_more_tab") || "jobs";
