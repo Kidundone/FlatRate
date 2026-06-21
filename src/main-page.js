@@ -1427,7 +1427,7 @@ function syncOfflineDot() {
 
 // ── Referral share ──────────────────────────────────────────────
 async function shareReferral() {
-  const url = "https://nellylabs.dev";
+  const url = "https://app.nellylabs.dev";
   const text = `I use Flat-Rate Tracker at work to log jobs and catch missing pay. Free to start — ${url}`;
   if (navigator.share) {
     try { await navigator.share({ title: "Flat-Rate Tracker", text, url }); return; } catch {}
