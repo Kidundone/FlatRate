@@ -2451,6 +2451,8 @@ body.compact .list    { gap: 1px; }
   position: relative;
   transition: color 140ms var(--ease);
   touch-action: manipulation;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .moreTab.active { color: var(--primary); }

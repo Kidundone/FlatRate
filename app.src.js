@@ -8237,18 +8237,30 @@ function initMoreTabs() {
       t.setAttribute("aria-selected", active ? "true" : "false");
     });
     document.querySelectorAll(".moreTabPanel").forEach(p => {
-      p.classList.toggle("active", p.id === `mPanel-${name}`);
+      const show = p.id === `mPanel-${name}`;
+      p.classList.toggle("active", show);
+      // iOS WKWebView: force hit-test rebuild on newly-visible panel
+      if (show) { void p.offsetHeight; requestAnimationFrame(() => { void p.offsetHeight; }); }
     });
     localStorage.setItem("fr_more_tab", name);
     if (name === "history") renderBulkEntryList?.();
   }
 
   tabs.forEach(t => {
-    // Use touchend + click for iOS PWA — same fix as sign-in buttons.
-    // position:sticky elements can swallow touch events before click fires on WKWebView.
-    const onTab = (e) => { e.preventDefault(); switchTab(t.dataset.tab); };
-    t.addEventListener("touchend", onTab, { passive: false });
-    t.addEventListener("click", () => switchTab(t.dataset.tab));
+    // touchstart fires before iOS scroll gesture recognition — most reliable
+    // trigger for position:sticky buttons in WKWebView. preventDefault() stops
+    // the 300ms click delay AND prevents double-fire of the click event.
+    let touchFired = false;
+    t.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      touchFired = true;
+      switchTab(t.dataset.tab);
+    }, { passive: false });
+    // click as fallback for mouse/trackpad (touchstart already blocked it on touch)
+    t.addEventListener("click", () => {
+      if (touchFired) { touchFired = false; return; }
+      switchTab(t.dataset.tab);
+    });
   });
 
   const saved = localStorage.getItem("fr_more_tab") || "jobs";
@@ -8835,6 +8847,13 @@ function showSpaPage(name) {
   const more = document.getElementById("spa-more");
   if (main) main.style.display = name === "main" ? "" : "none";
   if (more) more.style.display = name === "more" ? "" : "none";
+  // iOS WKWebView fix: when a container goes from display:none to visible,
+  // the touch hit-test tree can be stale. Reading offsetHeight forces a
+  // synchronous layout recalc; the rAF flushes the compositing update.
+  if (name === "more" && more) {
+    void more.offsetHeight;
+    requestAnimationFrame(() => { void more.offsetHeight; });
+  }
   document.body.dataset.page = name;
   window.__PAGE__ = name;
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {

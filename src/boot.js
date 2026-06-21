@@ -72,6 +72,13 @@ function showSpaPage(name) {
   const more = document.getElementById("spa-more");
   if (main) main.style.display = name === "main" ? "" : "none";
   if (more) more.style.display = name === "more" ? "" : "none";
+  // iOS WKWebView fix: when a container goes from display:none to visible,
+  // the touch hit-test tree can be stale. Reading offsetHeight forces a
+  // synchronous layout recalc; the rAF flushes the compositing update.
+  if (name === "more" && more) {
+    void more.offsetHeight;
+    requestAnimationFrame(() => { void more.offsetHeight; });
+  }
   document.body.dataset.page = name;
   window.__PAGE__ = name;
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
