@@ -1668,7 +1668,13 @@ function initMoreTabs() {
     if (name === "history") renderBulkEntryList?.();
   }
 
-  tabs.forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+  tabs.forEach(t => {
+    // Use touchend + click for iOS PWA — same fix as sign-in buttons.
+    // position:sticky elements can swallow touch events before click fires on WKWebView.
+    const onTab = (e) => { e.preventDefault(); switchTab(t.dataset.tab); };
+    t.addEventListener("touchend", onTab, { passive: false });
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
+  });
 
   const saved = localStorage.getItem("fr_more_tab") || "jobs";
   const valid = ["jobs", "history", "settings"];

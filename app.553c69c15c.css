@@ -2435,7 +2435,7 @@ body.compact .list    { gap: 1px; }
   padding: 0 4px;
   position: sticky;
   top: 0;
-  z-index: 90;
+  z-index: 110; /* above .top header (z-index:100) so it's never covered when scrolled */
 }
 
 .moreTab {
