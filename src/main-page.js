@@ -1405,7 +1405,6 @@ function maybeShowOnboarding() {
 
 function syncOfflineDot() {
   const dot = document.getElementById("offlineDot");
-  updatePendingBadge?.();
   if (!dot) return;
   const online = navigator.onLine;
   const pending = (getPendingQueue?.() || []).length;
