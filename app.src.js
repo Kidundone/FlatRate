@@ -3305,6 +3305,7 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   checkPayMilestone(todayDollars);
   updateStreakBadge(computeStreak(allEntries || []));
   updateHeroRecords(allEntries || []);
+  updateTechRankBadge(round1((filterEntriesByEmp(normalizeEntries(allEntries || []), getEmpId())).reduce((s, e) => s + (Number(e.hours) || 0), 0)));
 
   // ── Behind-pace warning ───────────────────────────────────────
   // If it's past noon, a goal is set, and you're under 50% of expected pace,
@@ -3508,6 +3509,107 @@ function renderRangeEntries(entries, mode) {
 let __lastGoalPct = 0;
 let __lastTodayDollars = 0;
 const PAY_MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
+
+/* ── Tech Rank system ─────────────────────────────────────────────────────────
+   Rank is based on cumulative flat-rate hours logged by the employee.
+   Stored in localStorage so it persists and level-up fires exactly once.
+──────────────────────────────────────────────────────────────────────────── */
+const TECH_RANKS = [
+  { minHrs: 0,    emoji: "🔧", title: "Rookie",            sub: "Every legend starts here." },
+  { minHrs: 50,   emoji: "🛠️", title: "Grease Monkey",     sub: "You're getting your hands dirty." },
+  { minHrs: 150,  emoji: "⚙️", title: "Journeyman",        sub: "You know your way around a bay." },
+  { minHrs: 350,  emoji: "🏎️", title: "Speed Wrench",      sub: "Fast, accurate, and reliable." },
+  { minHrs: 700,  emoji: "👑", title: "Master Tech",       sub: "Customers ask for you by name." },
+  { minHrs: 1500, emoji: "🔥", title: "Flat Rate Legend",  sub: "Few ever make it this far." },
+];
+
+function getTechRank(totalHours) {
+  let rank = TECH_RANKS[0];
+  for (const r of TECH_RANKS) {
+    if (totalHours >= r.minHrs) rank = r;
+    else break;
+  }
+  const idx = TECH_RANKS.indexOf(rank);
+  const next = TECH_RANKS[idx + 1] || null;
+  return { rank, idx, next };
+}
+
+function updateTechRankBadge(totalHours) {
+  const badge = document.getElementById("techRankBadge");
+  if (!badge) return;
+  const { rank, next } = getTechRank(totalHours);
+  let label = `${rank.emoji} ${rank.title}`;
+  if (next) {
+    const remaining = Math.ceil(next.minHrs - totalHours);
+    label += ` · ${remaining} hrs to ${next.title}`;
+  }
+  badge.textContent = label;
+  badge.style.display = "";
+}
+
+const LS_TECH_RANK = "fr_tech_rank_idx";
+
+function checkRankUp(allEntries) {
+  const empId = getEmpId();
+  if (!empId) return;
+  const own = filterEntriesByEmp(normalizeEntries(Array.isArray(allEntries) ? allEntries : []), empId);
+  const totalHours = round1(own.reduce((s, e) => s + (Number(e.hours) || 0), 0));
+  const { rank, idx } = getTechRank(totalHours);
+  updateTechRankBadge(totalHours);
+
+  const prevIdx = Number(localStorage.getItem(LS_TECH_RANK) ?? -1);
+  if (prevIdx === -1) {
+    // First time — just save, don't animate
+    localStorage.setItem(LS_TECH_RANK, String(idx));
+    return;
+  }
+  if (idx > prevIdx) {
+    localStorage.setItem(LS_TECH_RANK, String(idx));
+    showLevelUpAnimation(rank);
+  }
+}
+
+function showLevelUpAnimation(rank) {
+  const overlay = document.getElementById("levelUpOverlay");
+  const emojiEl = document.getElementById("levelUpEmoji");
+  const rankEl  = document.getElementById("levelUpRank");
+  const subEl   = document.getElementById("levelUpSub");
+  if (!overlay || !emojiEl || !rankEl || !subEl) return;
+
+  emojiEl.textContent = rank.emoji;
+  rankEl.textContent  = rank.title;
+  subEl.textContent   = rank.sub;
+
+  overlay.style.display = "flex";
+  overlay.classList.remove("levelUp-exit");
+  void overlay.offsetWidth;
+  overlay.classList.add("levelUp-enter");
+
+  triggerConfetti(60);
+
+  const hide = () => {
+    overlay.classList.add("levelUp-exit");
+    setTimeout(() => { overlay.style.display = "none"; overlay.classList.remove("levelUp-enter","levelUp-exit"); }, 500);
+  };
+  overlay.onclick = hide;
+  clearTimeout(overlay.__t);
+  overlay.__t = setTimeout(hide, 4000);
+}
+
+// Random save quotes — shown as a brief flash after each entry save
+const SAVE_QUOTES = [
+  "💸 Money logged!", "🔥 Keep grinding!", "💪 That's the way!",
+  "🚀 Stack those hours!", "⚡ Fast hands, full pockets!", "💰 Bread earned!",
+  "🏁 Another one in the books!", "🛠️ Dialed in!", "👊 Let's go!",
+  "📈 Building that bag!", "🎯 Locked in!", "😤 No days off!",
+];
+let __lastQuoteIdx = -1;
+function randomSaveQuote() {
+  let idx;
+  do { idx = Math.floor(Math.random() * SAVE_QUOTES.length); } while (idx === __lastQuoteIdx);
+  __lastQuoteIdx = idx;
+  return SAVE_QUOTES[idx];
+}
 
 function flashSaveBtn() {
   const btn = document.getElementById("saveBtn");
@@ -3954,6 +4056,13 @@ async function handleSave(ev) {
     }
     refreshUI(CURRENT_ENTRIES);
     if (!isEditing) animateFirstEntry();
+    // Fun save quote toast + rank check (after a brief delay so UI settles)
+    if (!isEditing) {
+      setTimeout(() => {
+        showMilestoneToast(randomSaveQuote());
+        checkRankUp(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+      }, 350);
+    }
     safeLoadEntries().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[safeLoad]", e); });
     document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSelectedPhotoFile(null);

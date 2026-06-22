@@ -3486,6 +3486,73 @@ body.compact .list    { gap: 1px; }
   letter-spacing: .1px;
 }
 
+/* ── Tech Rank badge ─────────────────────────────── */
+.techRankBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 5px;
+  letter-spacing: .1px;
+  opacity: .9;
+}
+
+/* ── Level-up overlay ────────────────────────────── */
+.levelUpOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.levelUpCard {
+  text-align: center;
+  padding: 40px 48px;
+  background: var(--surface2);
+  border-radius: 24px;
+  border: 1px solid var(--stroke);
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+}
+.levelUpEmoji {
+  font-size: 72px;
+  line-height: 1;
+  margin-bottom: 12px;
+  display: block;
+}
+.levelUpLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--primary);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.levelUpRank {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: -.5px;
+}
+.levelUpSub {
+  font-size: 14px;
+  color: var(--muted);
+}
+@keyframes levelUpIn {
+  from { opacity: 0; transform: scale(.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes levelUpOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.05); }
+}
+.levelUp-enter .levelUpCard { animation: levelUpIn 350ms cubic-bezier(.34,1.56,.64,1) forwards; }
+.levelUp-exit  { animation: levelUpOut 400ms ease forwards; }
+
 /* ── Goal setter popover ─────────────────────────── */
 .heroGoalRingWrap { cursor: pointer; }
 .heroGoalRingWrap:active { opacity: .85; }

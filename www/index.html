@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.14d90f6382.css">
+  <link rel="stylesheet" href="./app.2281d8a6ba.css">
 </head>
 <body data-page="main">
 
@@ -57,6 +57,7 @@
     <div class="heroPaceWarn" id="heroPaceWarn" style="display:none;"></div>
     <div id="heroEfficiency" class="heroEfficiency" style="display:none;"></div>
     <div id="heroRecords" class="heroRecords" style="display:none;"></div>
+    <div id="techRankBadge" class="techRankBadge" style="display:none;"></div>
   </div>
   <button id="clockInBtn" class="clockInBtn" type="button" aria-label="Clock in / Clock out">Clock In</button>
 </div>
@@ -895,8 +896,17 @@
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
   };
 </script>
+<!-- Level-up overlay (rank system) -->
+<div id="levelUpOverlay" class="levelUpOverlay" style="display:none;" aria-live="assertive">
+  <div class="levelUpCard">
+    <div class="levelUpEmoji" id="levelUpEmoji"></div>
+    <div class="levelUpLabel">RANK UP</div>
+    <div class="levelUpRank" id="levelUpRank"></div>
+    <div class="levelUpSub" id="levelUpSub"></div>
+  </div>
+</div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.a8d1bd915f.js" defer></script>
+<script src="./app.1392e024a2.js" defer></script>
 </body>
 </html>
