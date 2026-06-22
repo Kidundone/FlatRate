@@ -12,11 +12,11 @@
     "esbuild": "^0.21.0"
   },
   "dependencies": {
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
+    "@capacitor/cli": "^9.0.1-dev-20260305T153051.0",
+    "@capacitor/core": "^9.0.1-dev-20260305T153051.0",
     "@capacitor/haptics": "^8.0.2",
-    "@capacitor/ios": "^8.4.1",
-    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/ios": "^9.0.1-dev-20260305T153051.0",
+    "@capacitor/local-notifications": "^9.0.0-dev-2552-20260619T154837.0",
     "@supabase/supabase-js": "^2.49.0",
     "jspdf": "^2.5.1"
   }
