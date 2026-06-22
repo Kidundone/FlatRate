@@ -8226,11 +8226,10 @@ window.scheduleShiftReminder = scheduleShiftReminder;
 
 /* ── More-page inner tab switching ───────────────── */
 function initMoreTabs() {
-  window.__initMoreTabsCalled = (window.__initMoreTabsCalled || 0) + 1;
   const tabs = document.querySelectorAll(".moreTab[data-tab]");
-  window.__initMoreTabsFoundTabs = tabs.length;
   if (!tabs.length) return;
-  // Guard: if already inited (e.g. called twice due to boot error recovery), skip
+  // Guard: called early in runOnce (before any await), so double-call is impossible
+  // but guard is kept for safety.
   if (tabs[0]._moreTabInited) return;
   tabs[0]._moreTabInited = true;
 
@@ -8916,6 +8915,11 @@ async function runOnce() {
   if (window.__FR_BOOTED__) return;
   window.__FR_BOOTED__ = true;
 
+  // Init tabs FIRST — synchronously, before any await that could hang on network.
+  // bootAuth() awaits a Supabase network call and can hang indefinitely on slow
+  // connections (especially iOS). Tabs must work even if auth never resolves.
+  initMoreTabs?.();
+
   wirePhotoPickers?.();
   setSelectedPhotoFile?.(null);
   setPhotoUploadTarget?.("");
@@ -9383,12 +9387,6 @@ async function runOnce() {
     // Data for the more page loads on first tab visit (see showSpaPage below),
     // NOT here at boot — avoids "Supabase not ready" errors at startup.
   } catch (e) { logErr("moreInit")(e); }
-
-  // Tab init is OUTSIDE the try/catch so a silent throw above can never prevent
-  // tab clicks from working. The double-init guard in initMoreTabs makes this safe.
-  console.log("[FR] about to call initMoreTabs, fn type:", typeof initMoreTabs, "tabs:", document.querySelectorAll(".moreTab[data-tab]").length);
-  initMoreTabs?.();
-  console.log("[FR] initMoreTabs done, tab0 inited:", document.querySelectorAll(".moreTab[data-tab]")[0]?._moreTabInited);
 }
 
 // PWA install prompt

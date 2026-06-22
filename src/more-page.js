@@ -1652,11 +1652,10 @@ window.scheduleShiftReminder = scheduleShiftReminder;
 
 /* ── More-page inner tab switching ───────────────── */
 function initMoreTabs() {
-  window.__initMoreTabsCalled = (window.__initMoreTabsCalled || 0) + 1;
   const tabs = document.querySelectorAll(".moreTab[data-tab]");
-  window.__initMoreTabsFoundTabs = tabs.length;
   if (!tabs.length) return;
-  // Guard: if already inited (e.g. called twice due to boot error recovery), skip
+  // Guard: called early in runOnce (before any await), so double-call is impossible
+  // but guard is kept for safety.
   if (tabs[0]._moreTabInited) return;
   tabs[0]._moreTabInited = true;
 
