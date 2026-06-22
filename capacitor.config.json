@@ -5,33 +5,12 @@
   "server": {
     "androidScheme": "https"
   },
-  "ios": {
-    "contentInset": "always",
-    "backgroundColor": "#0b1220"
-  },
   "plugins": {
-    "SplashScreen": {
-      "launchShowDuration": 0,
-      "launchAutoHide": false,
-      "backgroundColor": "#0b1220",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true
-    },
     "Haptics": {},
     "LocalNotifications": {
       "smallIcon": "ic_stat_icon",
       "iconColor": "#22c55e",
       "sound": "beep.wav"
-    },
-    "PushNotifications": {
-      "presentationOptions": [
-        "badge",
-        "sound",
-        "alert"
-      ]
     }
   }
 }

@@ -9524,19 +9524,10 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
   if (banner) banner.style.display = "none";
 });
 
-async function bootAndHideSplash() {
-  await runOnce().catch(logErr("runOnce"));
-  // Hide Capacitor splash screen after the app is fully ready
-  try {
-    const { SplashScreen } = await import("@capacitor/splash-screen");
-    await SplashScreen.hide({ fadeOutDuration: 300 });
-  } catch (_) {
-    // Not running in Capacitor — ignore
-  }
-}
-
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootAndHideSplash);
+  document.addEventListener("DOMContentLoaded", () => {
+    runOnce().catch(logErr("runOnce"));
+  });
 } else {
-  bootAndHideSplash();
+  runOnce().catch(logErr("runOnce"));
 }
