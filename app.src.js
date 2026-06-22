@@ -9385,7 +9385,9 @@ async function runOnce() {
 
   // Tab init is OUTSIDE the try/catch so a silent throw above can never prevent
   // tab clicks from working. The double-init guard in initMoreTabs makes this safe.
+  console.log("[FR] about to call initMoreTabs, fn type:", typeof initMoreTabs, "tabs:", document.querySelectorAll(".moreTab[data-tab]").length);
   initMoreTabs?.();
+  console.log("[FR] initMoreTabs done, tab0 inited:", document.querySelectorAll(".moreTab[data-tab]")[0]?._moreTabInited);
 }
 
 // PWA install prompt
