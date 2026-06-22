@@ -1654,6 +1654,9 @@ window.scheduleShiftReminder = scheduleShiftReminder;
 function initMoreTabs() {
   const tabs = document.querySelectorAll(".moreTab[data-tab]");
   if (!tabs.length) return;
+  // Guard: if already inited (e.g. called twice due to boot error recovery), skip
+  if (tabs[0]._moreTabInited) return;
+  tabs[0]._moreTabInited = true;
 
   function switchTab(name) {
     tabs.forEach(t => {
