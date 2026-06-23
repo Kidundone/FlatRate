@@ -505,6 +505,9 @@ async function runOnce() {
     document.querySelector('textarea[name="notes"]')?.addEventListener("input", () => debouncedSaveDraft?.());
     document.getElementById("isComeback")?.addEventListener("change", () => debouncedSaveDraft?.());
     restoreDraft?.();
+    // Seed date picker to today on load (type="date" has no way to set a dynamic default in HTML)
+    const _datePickerEl = document.getElementById("entryDate");
+    if (_datePickerEl && !_datePickerEl.value) _datePickerEl.value = todayKeyLocal?.() || new Date().toISOString().slice(0, 10);
   }
 
   // ================= MORE PAGE INIT =================

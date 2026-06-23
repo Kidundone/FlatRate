@@ -71,6 +71,10 @@ function restoreDraft() {
       if (dbt) dbt.textContent   = "Less";
     }
 
+    // Seed date picker to today if not already set
+    const datePickerEl2 = document.getElementById("entryDate");
+    if (datePickerEl2 && !datePickerEl2.value) datePickerEl2.value = todayKeyLocal();
+
     updateEarningsPreview?.();
     // Trigger listeners so updateSaveEnabled re-evaluates the restored values
     ["hours", "typeText"].forEach(id =>
@@ -172,6 +176,12 @@ function startEditEntry(entry) {
   if (notesEl) notesEl.value = entry.notes || "";
   const isComebackEl = document.getElementById("isComeback");
   if (isComebackEl) isComebackEl.checked = !!entry.isComeback;
+  // Show the entry's original date in the date picker
+  const editDateEl = document.getElementById("entryDate");
+  if (editDateEl) {
+    const dk = entry.dayKey || dayKeyFromISO(entry.createdAt || "");
+    editDateEl.value = dk || todayKeyLocal();
+  }
   clearPickedPhoto();
   setPhotoLabelFromEntry(entry);
 
@@ -259,6 +269,9 @@ function handleClear(ev, options = {}) {
   if (rateEl) { rateEl.value = String(getDefaultRate()); rateEl.dataset.touched = ""; }
   if (notesEl) notesEl.value = "";
   clearPickedPhoto();
+  // Reset date picker to today
+  const datePickerEl = document.getElementById("entryDate");
+  if (datePickerEl) datePickerEl.value = todayKeyLocal();
   if (empInputEl) empInputEl.value = getEmpId();
   setRefType("RO");
   const detailsPanel = document.getElementById("detailsPanel");
@@ -1136,9 +1149,27 @@ async function handleSave(ev) {
       }
     }
 
-    const createdAt = (isEditing && baseEntry.createdAt) ? baseEntry.createdAt : nowISO();
-    const createdAtMs = (isEditing && Number.isFinite(baseEntry.createdAtMs)) ? baseEntry.createdAtMs : Date.now();
-    const dayKey = (isEditing && baseEntry.dayKey) ? baseEntry.dayKey : dayKeyFromISO(createdAt);
+    // Use the date picker value when adding a new entry (or if editing without a prior createdAt).
+    // The date input gives a local "YYYY-MM-DD" string; we build a noon-local ISO so timezone
+    // rounding never shifts it to the wrong day.
+    const dateInputEl = document.getElementById("entryDate");
+    const dateInputVal = dateInputEl ? dateInputEl.value : "";
+    let createdAt, createdAtMs, dayKey;
+    if (isEditing && baseEntry.createdAt) {
+      createdAt = baseEntry.createdAt;
+      createdAtMs = Number.isFinite(baseEntry.createdAtMs) ? baseEntry.createdAtMs : Date.now();
+      dayKey = baseEntry.dayKey || dayKeyFromISO(createdAt);
+    } else if (dateInputVal) {
+      // noon local time on the chosen date keeps us safely inside the chosen calendar day
+      const noonLocal = new Date(`${dateInputVal}T12:00:00`);
+      createdAt = noonLocal.toISOString();
+      createdAtMs = noonLocal.getTime();
+      dayKey = dateInputVal; // "YYYY-MM-DD" == dayKey format
+    } else {
+      createdAt = nowISO();
+      createdAtMs = Date.now();
+      dayKey = dayKeyFromISO(createdAt);
+    }
     const entry = {
       ...baseEntry,
       // IMPORTANT: never generate a new id while editing.
