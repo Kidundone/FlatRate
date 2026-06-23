@@ -882,6 +882,23 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   color: var(--primary);
 }
 
+/* Custom hour chips */
+#customHourChips { display: contents; }
+.fr26HourBtnCustom {
+  background: rgba(34,197,94,.08);
+  border-color: rgba(34,197,94,.35);
+  color: var(--primary);
+}
+/* + button */
+.fr26HourBtnAdd {
+  min-width: 42px;
+  color: var(--primary);
+  border-color: rgba(34,197,94,.4);
+  background: transparent;
+  font-size: 20px;
+  font-weight: 400;
+}
+
 .fr26Check {
   display: flex;
   align-items: center;

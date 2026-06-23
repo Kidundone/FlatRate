@@ -418,6 +418,58 @@ async function runOnce() {
       });
     });
 
+    // ── Custom hour chips ──────────────────────────────────────────────────
+    const LS_CUSTOM_CHIPS = "fr_custom_hour_chips";
+    function getCustomChips() {
+      try { return JSON.parse(localStorage.getItem(LS_CUSTOM_CHIPS) || "[]"); } catch { return []; }
+    }
+    function saveCustomChips(arr) {
+      try { localStorage.setItem(LS_CUSTOM_CHIPS, JSON.stringify(arr)); } catch {}
+    }
+    function renderCustomChips() {
+      const container = document.getElementById("customHourChips");
+      if (!container) return;
+      container.innerHTML = "";
+      getCustomChips().forEach((val) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "fr26HourBtn fr26HourBtnCustom";
+        btn.dataset.hoursQuick = String(val);
+        btn.textContent = String(val);
+        // tap = set value; long-press = delete
+        let pressTimer = null;
+        const startPress = () => { pressTimer = setTimeout(() => removeChip(val), 600); };
+        const endPress = () => clearTimeout(pressTimer);
+        btn.addEventListener("pointerdown", startPress);
+        btn.addEventListener("pointerup", endPress);
+        btn.addEventListener("pointercancel", endPress);
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          setQuickHoursValue?.(String(val));
+          restoreLastWorkType?.();
+          updateEarningsPreview?.();
+        });
+        container.appendChild(btn);
+      });
+    }
+    function removeChip(val) {
+      const updated = getCustomChips().filter(v => v !== val);
+      saveCustomChips(updated);
+      renderCustomChips();
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+    document.getElementById("addCustomHourChip")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const raw = prompt("Add custom hour chip (e.g. 1.9, 0.3):");
+      if (raw === null) return; // cancelled
+      const num = Math.round(parseFloat(raw) * 10) / 10;
+      if (!Number.isFinite(num) || num <= 0) { alert("Enter a positive number like 1.9"); return; }
+      const chips = getCustomChips();
+      if (!chips.includes(num)) { chips.push(num); chips.sort((a, b) => a - b); saveCustomChips(chips); }
+      renderCustomChips();
+    });
+    renderCustomChips();
+
     const _hoursEl = document.getElementById("hours");
     const _rateEl = document.querySelector('input[name="rate"]');
     _hoursEl?.addEventListener("input", () => updateEarningsPreview?.());
