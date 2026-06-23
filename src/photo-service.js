@@ -164,11 +164,48 @@ function wirePhotoPickers() {
     setPhotoSummaryState("Scanning…");
     await new Promise(r => setTimeout(r, 0)); // yield so UI updates
     setSelectedPhoto(file, label);
+    // Offer to save to camera roll when user takes a photo (not when picking from library)
+    if (label === "camera") {
+      saveToCameraRoll(file).catch(() => {}); // non-blocking; failure is silent
+    }
     scanPhotoAndPrefillForm(file).catch(e => console.warn("[OCR prefill]", e?.message || e));
   };
   inCamera.addEventListener("change", handlePhotoChange(inCamera, "camera"));
   inPicker.addEventListener("change", handlePhotoChange(inPicker, "library"));
   inFile.addEventListener("change",   handlePhotoChange(inFile, "file"));
+}
+
+/**
+ * Save a photo File to the device camera roll.
+ * On iOS PWA: Web Share API triggers the share sheet → user taps "Save Image" → Photos app.
+ * On desktop / unsupported: falls back to a silent download link.
+ */
+async function saveToCameraRoll(file) {
+  if (!file) return;
+  // Web Share API with files — supported on iOS 15+ and Android
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: "Save to Camera Roll",
+      });
+      return; // user dismissed or saved — either way we're done
+    } catch (err) {
+      // User cancelled the share sheet — that's fine, do nothing
+      if (err?.name === "AbortError") return;
+      // Unexpected error — fall through to download fallback
+    }
+  }
+  // Fallback: trigger a download (works on desktop, saves to Downloads on iOS)
+  try {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name || `photo-${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  } catch {}
 }
 
 async function fileToDataURL(file){
