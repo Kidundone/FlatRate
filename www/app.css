@@ -662,8 +662,8 @@ a.btn {
 .fr26PrimaryEntry > .fr26Row:first-child { border-top: 0; }
 
 .fr26GroupHeader {
-  padding: 14px 16px 6px;
-  font-size: 13px;
+  padding: 10px 16px 4px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text2);
   letter-spacing: .1px;
@@ -680,24 +680,24 @@ a.btn {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px 8px;
+  padding: 10px 14px 6px;
 }
 
 .fr26Row {
   display: grid;
-  gap: 8px;
-  padding: 11px 16px;
+  gap: 6px;
+  padding: 8px 16px;
   border-top: 1px solid var(--stroke);
   background: var(--surface);
 }
 
 /* Hours field hero sizing */
 #hours.fr26Input {
-  font-size: 44px;
+  font-size: 34px;
   font-weight: 900;
   text-align: center;
-  padding: 12px 16px;
-  letter-spacing: -2px;
+  padding: 8px 16px;
+  letter-spacing: -1px;
   background: transparent;
   border-color: transparent;
   border-bottom-color: var(--stroke2);
@@ -3237,10 +3237,6 @@ body.compact .list    { gap: 1px; }
 /* Inline entries list */
 .hcEntriesList {
   border-top: 1px solid var(--stroke);
-  max-height: 480px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
 }
 /* Entry row wrapper — swipe-to-delete container */
 .hcEntryWrap {
@@ -3250,25 +3246,39 @@ body.compact .list    { gap: 1px; }
 }
 .hcEntryWrap:last-child { border-bottom: none; }
 
-/* Revealed delete button (behind the row) */
+/* Swipe zone — subtle red tint, pill button centered inside */
 .hcEntryDelBtn {
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: 68px;
-  background: #ef4444;
-  color: #fff;
+  width: 72px;
+  background: rgba(239,68,68,.09);
   border: none;
+  border-left: 1px solid rgba(239,68,68,.18);
   border-radius: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .3px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
-.hcEntryDelBtn:active { background: #dc2626; }
+.hcEntryDelBtn:active { background: rgba(239,68,68,.18); }
+.hcEntryDelBtn:active .hcEntryDelPill { background: #dc2626; }
+
+/* Pill inside the zone — matches visual weight of other app buttons */
+.hcEntryDelPill {
+  background: #ef4444;
+  color: #fff;
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 .hcEntryRow {
   display: flex;
@@ -3284,7 +3294,7 @@ body.compact .list    { gap: 1px; }
   position: relative;
 }
 .hcEntryWrap--revealed .hcEntryRow {
-  transform: translateX(-68px);
+  transform: translateX(-72px);
 }
 .hcEntryRow:active { background: var(--surface2); }
 
@@ -3303,15 +3313,28 @@ body.compact .list    { gap: 1px; }
   line-height: 1.2;
 }
 .hcEntryRef--photo {
-  color: var(--primary);
-  cursor: pointer;
+  color: var(--text);
+}
+/* Dedicated photo chip — clearly tappable */
+.hcEntryPhotoChip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  background: rgba(34,197,94,.1);
+  border: 1px solid rgba(34,197,94,.28);
+  border-radius: var(--r-pill);
+  padding: 2px 8px 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  align-self: flex-start;
+  margin-top: 2px;
 }
-.hcEntryRef--photo:active { opacity: .7; }
-.hcEntryPhotoIcon { font-size: 11px; }
+.hcEntryPhotoChip:active { background: rgba(34,197,94,.22); opacity: .85; }
+.hcEntryPhotoIcon { font-size: 12px; }
 .hcEntryType {
   font-size: 13px;
   color: var(--text2);

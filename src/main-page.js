@@ -684,7 +684,7 @@ function renderRangeEntries(entries, mode) {
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "hcEntryDelBtn";
-    delBtn.textContent = "Delete";
+    delBtn.innerHTML = '<span class="hcEntryDelPill">🗑 Delete</span>';
     delBtn.addEventListener("click", (ev) => {
       ev.stopPropagation();
       handleDeleteEntry(e, ev);
@@ -698,17 +698,10 @@ function renderRangeEntries(entries, mode) {
     const left = document.createElement("div");
     left.className = "hcEntryLeft";
 
-    // Ref chip (tappable if has photo)
+    // Ref chip
     const refSpan = document.createElement("span");
-    refSpan.className = hasPhoto ? "hcEntryRef hcEntryRef--photo" : "hcEntryRef";
-    if (hasPhoto) {
-      refSpan.innerHTML = `<span class="hcEntryPhotoIcon">📷</span> `;
-      refSpan.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        openPhoto(e);
-      });
-    }
-    refSpan.appendChild(document.createTextNode(`${refLabel} ${refVal}`));
+    refSpan.className = "hcEntryRef";
+    refSpan.textContent = `${refLabel} ${refVal}`;
 
     const typeSpan = document.createElement("span");
     typeSpan.className = "hcEntryType";
@@ -716,6 +709,18 @@ function renderRangeEntries(entries, mode) {
 
     left.appendChild(refSpan);
     left.appendChild(typeSpan);
+
+    // Photo chip — clearly tappable, shown below ref/type
+    if (hasPhoto) {
+      const photoChip = document.createElement("span");
+      photoChip.className = "hcEntryPhotoChip";
+      photoChip.innerHTML = '<span class="hcEntryPhotoIcon">📷</span> View Photo';
+      photoChip.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openPhoto(e);
+      });
+      left.appendChild(photoChip);
+    }
 
     if (vin8) {
       const vinSpan = document.createElement("span");
