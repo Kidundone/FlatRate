@@ -56,9 +56,9 @@ Return ONLY valid JSON, no markdown, no explanation:
       generationConfig: {
         maxOutputTokens: 1024,
         temperature: 0,
-      },
-      thinkingConfig: {
-        thinkingBudget: 0,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
       },
     });
 
