@@ -2303,6 +2303,8 @@ function clearPickedPhoto() {
   setPhotoUploadTarget("");
   const panel = document.getElementById("photoPanel");
   if (panel) panel.open = false;
+  const saveRollBtn = document.getElementById("btnSaveToRoll");
+  if (saveRollBtn) saveRollBtn.style.display = "none";
 }
 
 function wirePhotoPickers() {
@@ -2335,15 +2337,30 @@ function wirePhotoPickers() {
     setPhotoSummaryState("Scanning…");
     await new Promise(r => setTimeout(r, 0)); // yield so UI updates
     setSelectedPhoto(file, label);
-    // Offer to save to camera roll when user takes a photo (not when picking from library)
-    if (label === "camera") {
-      saveToCameraRoll(file).catch(() => {}); // non-blocking; failure is silent
-    }
+    // Show "Save to Camera Roll" button only for camera shots
+    const saveRollBtn = document.getElementById("btnSaveToRoll");
+    if (saveRollBtn) saveRollBtn.style.display = label === "camera" ? "" : "none";
     scanPhotoAndPrefillForm(file).catch(e => console.warn("[OCR prefill]", e?.message || e));
   };
   inCamera.addEventListener("change", handlePhotoChange(inCamera, "camera"));
   inPicker.addEventListener("change", handlePhotoChange(inPicker, "library"));
   inFile.addEventListener("change",   handlePhotoChange(inFile, "file"));
+
+  // Wire the "Save to Camera Roll" button — must be a direct user gesture for Web Share API
+  document.getElementById("btnSaveToRoll")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const file = inCamera.files?.[0] || SELECTED_PHOTO_FILE || null;
+    if (!file) return;
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Save to Camera Roll" });
+      } else {
+        alert("Sharing not supported on this device/browser.");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") console.warn("[saveToRoll]", err);
+    }
+  });
 }
 
 /**
