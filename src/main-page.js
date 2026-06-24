@@ -701,6 +701,53 @@ function renderRangeEntries(entries, mode) {
   });
 }
 
+/* ─── VIN search ──────────────────────────────────────── */
+
+function initVinSearch() {
+  const input = document.getElementById("vinSearchInput");
+  const clearBtn = document.getElementById("vinSearchClear");
+  if (!input) return;
+
+  const doSearch = () => {
+    const q = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    clearBtn && (clearBtn.style.display = q ? "" : "none");
+
+    if (!q) {
+      // Restore normal range view — re-trigger current tab render
+      const activeTab = document.querySelector("[data-hc-range].hcTab--active");
+      activeTab?.click();
+      return;
+    }
+
+    const all = Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
+    const matches = all.filter(e => {
+      const vin = String(e.vin8 || e.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      return vin && vin.includes(q);
+    });
+
+    const container = document.getElementById("hcEntriesList");
+    if (!container) return;
+
+    if (matches.length === 0) {
+      container.innerHTML = `<div class="hcEntryEmpty">No entries found for VIN "${input.value.trim()}"</div>`;
+      return;
+    }
+
+    // Render matches sorted newest-first using existing renderer (mode "year" shows dates)
+    const sorted = [...matches].sort((a, b) =>
+      (b.createdAt || b.created_at || "").localeCompare(a.createdAt || a.created_at || "")
+    );
+    renderRangeEntries(sorted, "year");
+  };
+
+  input.addEventListener("input", doSearch);
+  clearBtn?.addEventListener("click", () => {
+    input.value = "";
+    doSearch();
+    input.focus();
+  });
+}
+
 /* ─── Animation & effects helpers ───────────────────── */
 
 let __lastGoalPct = 0;
@@ -3539,12 +3586,19 @@ document.addEventListener("click", ev => {
   if (!tab) return;
   const newMode = tab.getAttribute("data-hc-range");
   if (!newMode) return;
+  // Clear VIN search when switching tabs
+  const vinInput = document.getElementById("vinSearchInput");
+  const vinClear = document.getElementById("vinSearchClear");
+  if (vinInput) vinInput.value = "";
+  if (vinClear) vinClear.style.display = "none";
   window.__RANGE_MODE__ = newMode;
   window.__NAV_OFFSET__ = 0;
   window.__WEEK_DAY_PICK__ = "";
   rangeMode = newMode;
   refreshUI(CURRENT_ENTRIES);
 });
+
+initVinSearch();
 
 function maybeStartTour() {
   const forced = sessionStorage.getItem("fr_force_tour");

@@ -3294,6 +3294,33 @@ body.compact .list    { gap: 1px; }
 .hcNavBtn:not(:disabled):active { background: var(--primary); color: #fff; }
 .hcNavBtn:disabled { opacity: .3; cursor: default; }
 
+/* VIN search bar */
+.hcVinSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+.hcVinSearchInput {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px 10px;
+  height: auto;
+  border-radius: 8px;
+  letter-spacing: .05em;
+}
+.hcVinClearBtn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.hcVinClearBtn:active { color: var(--fg); }
+
 /* Inline entries list */
 .hcEntriesList {
   border-top: 1px solid var(--stroke);
