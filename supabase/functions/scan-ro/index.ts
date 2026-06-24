@@ -45,12 +45,13 @@ CRITICAL — IGNORE THE TECH NUMBER:
 - Every form has a large 5-digit handwritten number in blue/green marker (e.g. "10537", "10534")
 - This is the technician reach number — NOT the RO, stock, or VIN — IGNORE IT
 
-READING HANDWRITTEN MARKS ON CHECKBOXES (Get Ready forms):
-- CIRCLED item = top priority work — list it FIRST in job output
-- CHECKED box (✓ or ✗ checkmark inside box) = work to be done — list after circled items
-- STRIKETHROUGH on text (a line drawn through the words) = cancelled/not happening — SKIP IT completely
-- Empty unchecked box = not happening — SKIP IT
-- An item can be both circled AND checked — still list it first
+READING HANDWRITTEN MARKS ON CHECKBOXES (Get Ready forms) — look carefully at the image:
+- CIRCLED item = a hand-drawn oval or circle around the text label (not the checkbox) = TOP PRIORITY — list FIRST
+- CHECKED box = a ✓, ✗, checkmark, or filled mark INSIDE the small square checkbox = work to be done — list after circled items
+- STRIKETHROUGH = a horizontal line drawn directly THROUGH the text of an item label = CANCELLED — SKIP IT completely, do not include it
+- Empty checkbox with no mark = not assigned = SKIP IT
+- An item with BOTH a circle and a checkmark = still list it first under circled
+- If you are unsure whether a mark is a strikethrough or just a line near the text, err on the side of SKIPPING it
 
 EXTRACT:
 1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
@@ -73,9 +74,9 @@ Return ONLY this JSON, nothing else:
         },
       ],
       generationConfig: {
-        maxOutputTokens: 1024,
+        maxOutputTokens: 512,
         temperature: 0,
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingBudget: 1024 },
       },
     });
 

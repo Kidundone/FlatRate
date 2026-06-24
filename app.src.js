@@ -2429,7 +2429,7 @@ async function compressImageFile(file, {
   return new File([blob], "proof.jpg", { type: mime });
 }
 
-async function compressImageFileToDataUrl(file, maxW = 1200, quality = 0.75) {
+async function compressImageFileToDataUrl(file, maxW = 1200, quality = 0.75, enhance = false) {
   const dataUrl = await fileToDataURL(file);
   const img = await fileToImageFromDataUrl(dataUrl);
 
@@ -2443,6 +2443,25 @@ async function compressImageFileToDataUrl(file, maxW = 1200, quality = 0.75) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return dataUrl;
   ctx.drawImage(img, 0, 0, w, h);
+
+  // Optional contrast/brightness boost for document scanning
+  // Increases contrast so checkmarks, circles, and strikethroughs are crisper
+  if (enhance) {
+    try {
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const d = imageData.data;
+      // Contrast factor >1 = more contrast; combined with slight brightness boost
+      const contrast = 1.35;
+      const brightness = 10;
+      const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+      for (let i = 0; i < d.length; i += 4) {
+        d[i]   = Math.min(255, Math.max(0, factor * (d[i]   - 128) + 128 + brightness));
+        d[i+1] = Math.min(255, Math.max(0, factor * (d[i+1] - 128) + 128 + brightness));
+        d[i+2] = Math.min(255, Math.max(0, factor * (d[i+2] - 128) + 128 + brightness));
+      }
+      ctx.putImageData(imageData, 0, 0);
+    } catch { /* cross-origin or tainted canvas — skip enhancement */ }
+  }
 
   return canvas.toDataURL("image/jpeg", quality);
 }
@@ -2785,7 +2804,8 @@ async function scanPhotoAndPrefillForm(file) {
   showStatus("Reading photo…", true);
 
   try {
-    const dataUrl  = await compressImageFileToDataUrl(file, 800, 0.80);
+    // High-res + enhanced for document scanning: checkboxes, circles, and strikethroughs need crisp edges
+    const dataUrl  = await compressImageFileToDataUrl(file, 1600, 0.92, true);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
