@@ -951,11 +951,12 @@ a.btn {
   background: var(--surface2);
   color: var(--text2);
   border-radius: var(--r-pill);
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 120ms var(--ease);
+  touch-action: manipulation;
 }
 
 .fr26Chip:active { background: var(--surface3); }
