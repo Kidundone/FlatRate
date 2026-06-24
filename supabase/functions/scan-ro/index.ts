@@ -22,31 +22,33 @@ serve(async (req) => {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
-    const prompt = `You are scanning an automotive shop document — a Get Ready checklist or Repair Order from a car dealership. Extract the following fields. Be liberal: if something looks like it could be a stock number, RO number, or VIN, include it.
+    const prompt = `You are scanning an automotive shop document — a Get Ready checklist or Repair Order from a car dealership. Extract these fields carefully.
 
-── FIELDS TO EXTRACT ──
+── FIELDS ──
 
-ro: A repair/work order number. Look for labels like "WORKORDER", "RO#", "W/O", "ORDER NO", or a large printed number near those labels. Usually 5-6 digits (e.g. "490060"). Return null if not found.
+ro: Work order number. Labels: "WORKORDER", "RO#", "W/O". Usually 5-6 digits printed large (e.g. "492043"). Return null if absent.
 
-stk: A stock number. Look for "Stock", "STOCK #", "STK", "SOLD-STK:" labels. Often alphanumeric like "VXS13593", "SXS14394A", "DT253", "S6934". Return null if not found.
+stk: Stock number only — the alphanumeric code after labels "Stock", "STOCK #", "STK:", "SOLD-STK:". Examples: "A7127", "VXS13593", "DT253". Do NOT include the label word "STK" in the value. Return null if absent.
 
-vin: The vehicle VIN. Search the ENTIRE document for these patterns — do not limit to labeled fields:
-  1. Any 17-character alphanumeric string (letters A-Z except I/O/Q, and digits 0-9) — this IS a VIN even if not labeled
-  2. Fields labeled "VIN", "VIN Verification", "VIN (LAST 6)", "VEHICLE ID", or similar
-  3. A partial VIN of 6–8 chars near labels like "VIN (LAST 6)" or "LAST 8"
-  Return the longest VIN-like string found (prefer 17 chars). Return null only if truly nothing found.
+vin: Vehicle Identification Number. IMPORTANT rules:
+  - A full VIN is EXACTLY 17 characters, only letters A-Z (never I, O, or Q) and digits 0-9
+  - On Repair Orders it appears in the vehicle info table row under the "VIN" column header — read it character by character carefully
+  - Common VIN starts: 1G, 2G, 3G (GM), 1F, 2F (Ford), 1C, 2C (Chrysler), 5J, JH, 19X (Honda/Acura), WBA, WBS (BMW), JN, 1N (Nissan), 4T, JT (Toyota/Lexus)
+  - If you find a 17-char string matching this pattern, that IS the VIN — return it fully
+  - On Get Ready sheets look near labels "VIN Verification" or "VIN (LAST 6)" for a 6-8 char partial
+  - Return null only if truly nothing VIN-like exists
 
-jobs: An array of work items to be performed. Rules:
-  - INCLUDE: items with a ✓, ✗, checkmark, or filled square; items with a hand-drawn circle/oval around the label (highest priority — list first)
-  - SKIP: items with a line crossed THROUGH the text (strikethrough = cancelled); empty unchecked boxes
-  - Map common names: "RE-CLEAN FOR DELIVERY"→"Re-clean delivery", "FINANCE FPF"→"Finance FPF", "FPF"→"FPF", "DT-FPF"→"DT-FPF", "PRE-OWNED DETAIL"→"Pre-owned detail", "AUCTION DETAIL"→"Auction detail", "PDI"→"PDI", "REPDI"→"REPDI", "NCI"→"NCI", "OIL CHANGE"→"Oil change", "CERTIFIED INSPECTION"→"Cert inspection", "1-HOUR SAFETY CHECK"→"Safety check", "5 HOUR RE-DIST CHECK"→"Re-dist check", "ACCESSORIES"→"Accessories", "BID-LOT WASH & VACUUM"→"Lot wash", "SHOWROOM RE-CLEAN"→"Showroom re-clean", "MICS. RE-CLEAN"→"Misc re-clean", "AUCTION RE-CLEAN"→"Auction re-clean", "REMOVE ALL PLASTICS"→"Remove plastics/wash wax", "WASH"→"Wash & wax"
-  - For Repair Orders: extract each op-line description (keep under 40 chars each)
-  - Return [] if no marked items found
+jobs: Array of work items. Rules:
+  - INCLUDE: checked (✓/✗/filled box), circled items (circle drawn around text = highest priority, list first)
+  - SKIP: strikethrough items (line through text = cancelled), empty boxes
+  - Name mapping: "ACPDI"/"PDI"→"PDI", "ACNCIS"/"NCI"→"NCI", "ACND"/"REMOVE ALL PLASTICS/WASH & WAX"→"Remove plastics/wash wax", "RE-CLEAN FOR DELIVERY"→"Re-clean delivery", "FINANCE FPF"→"Finance FPF", "FPF"→"FPF", "PRE-OWNED DETAIL"→"Pre-owned detail", "AUCTION DETAIL"→"Auction detail", "OIL CHANGE"→"Oil change", "CERTIFIED INSPECTION"→"Cert inspection", "1-HOUR SAFETY CHECK"→"Safety check", "INAC NC SAFETY INSPECTION"→"Safety check", "5 HOUR RE-DIST CHECK"→"Re-dist check", "BID-LOT WASH & VACUUM"→"Lot wash", "SHOWROOM RE-CLEAN"→"Showroom re-clean"
+  - For Repair Orders: each LINE OP (A, B, C…) with DESCRIPTIONS/INSTRUCTIONS text = one job entry (under 40 chars)
+  - Return [] if nothing found
 
-IGNORE: Large handwritten 5-digit numbers in colored marker — those are technician reach numbers, not RO/STK/VIN.
+IGNORE: Handwritten 5-digit numbers in colored marker (tech reach numbers, not RO/VIN/STK).
 
-Return ONLY valid JSON, no markdown, no explanation:
-{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "jobs": ["Re-clean delivery", "Finance FPF"]}`;
+Return ONLY this JSON, no markdown, no extra text:
+{"ro": "492043", "vin": "5J8YE1H80TL041284", "stk": "A7127", "jobs": ["PDI", "Safety check", "Remove plastics/wash wax"]}`;
 
     const geminiBody = JSON.stringify({
       contents: [
