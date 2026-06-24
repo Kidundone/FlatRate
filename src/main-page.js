@@ -267,6 +267,9 @@ function handleClear(ev, options = {}) {
   if (typeEl) typeEl.value = preservedType;
   if (hoursEl) { hoursEl.value = ""; hoursEl.dataset.touched = ""; }
   if (rateEl) { rateEl.value = String(getDefaultRate()); rateEl.dataset.touched = ""; }
+  // Hide type-hours chip when form clears (it'll reappear when a type is picked)
+  const typeChipEl = document.getElementById("typeHoursChip");
+  if (typeChipEl) typeChipEl.style.display = "none";
   if (notesEl) notesEl.value = "";
   clearPickedPhoto();
   // Reset date picker to today

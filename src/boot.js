@@ -336,10 +336,32 @@ async function runOnce() {
       el?.addEventListener("change", updateSaveEnabled);
     });
 
+    // ── Type-hours chip: shows stored hours for the current job type ──────
+    async function updateTypeHoursChip(name) {
+      const chip = document.getElementById("typeHoursChip");
+      if (!chip) return;
+      if (!name?.trim()) { chip.style.display = "none"; return; }
+      const t = await findTypeByName?.(cleanEmpId?.(getEmpId?.()), name);
+      if (t && Number.isFinite(Number(t.lastHours)) && Number(t.lastHours) > 0) {
+        chip.textContent = String(t.lastHours);
+        chip.title = `${name} — your stored time`;
+        chip.style.display = "";
+      } else {
+        chip.style.display = "none";
+      }
+    }
+    document.getElementById("typeHoursChip")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const chip = document.getElementById("typeHoursChip");
+      if (chip) setQuickHoursValue?.(chip.textContent?.trim());
+      updateEarningsPreview?.();
+    });
+
     // Auto-fill hours + rate from stored type defaults when a type is selected
     document.getElementById("typeText")?.addEventListener("change", async () => {
       const name = document.getElementById("typeText")?.value || "";
       await maybeAutofillFromType?.(name);
+      await updateTypeHoursChip(name);
       updateEarningsPreview?.();
       checkDuplicates?.();
       updateSaveEnabled();

@@ -45,16 +45,23 @@ CRITICAL — IGNORE THE TECH NUMBER:
 - Every form has a large 5-digit handwritten number in blue/green marker (e.g. "10537", "10534")
 - This is the technician reach number — NOT the RO, stock, or VIN — IGNORE IT
 
+READING HANDWRITTEN MARKS ON CHECKBOXES (Get Ready forms):
+- CIRCLED item = top priority work — list it FIRST in job output
+- CHECKED box (✓ or ✗ checkmark inside box) = work to be done — list after circled items
+- STRIKETHROUGH on text (a line drawn through the words) = cancelled/not happening — SKIP IT completely
+- Empty unchecked box = not happening — SKIP IT
+- An item can be both circled AND checked — still list it first
+
 EXTRACT:
 1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
 2. stk — From "Stock", "STOCK #", or "SOLD-STK:" field. Examples: "VXS13593", "SXS14394A", "S6934", "DT253"
 3. vin — From "VIN Verification", "VIN (LAST 6)", or VIN bar. 6–17 chars. Examples: "TCS19634", "D53269", "4S4WMAJD6K3441392"
-4. job — A short description of the work to be done, inferred from checked boxes or line items:
-   - Type A/B Get Ready: look for checked boxes. Map them: "Detail without FPF" → "Detail no FPF", "Detail with FPF" → "Detail w/ FPF", "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "PRE-OWNED DETAIL" → "Pre-owned detail", "PDI" → "PDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "REPDI" → "REPDI". If multiple boxes checked, join with " + ". If none checked, return null.
-   - Type C Repair Order: use the DESCRIPTIONS/INSTRUCTIONS text from Line A (first line item). Keep it short (under 40 chars). If not readable, return null.
+4. job — Work to be done, built from circled and checked items only (never strikethrough, never unchecked):
+   - Type A/B Get Ready: identify circled items first, then checked items. Map names: "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "FINANCE FPF" → "Finance FPF", "FPF" → "FPF", "DT-FPF" → "DT-FPF", "PRE-OWNED DETAIL" → "Pre-owned detail", "AUCTION DETAIL" → "Auction detail", "PDI" → "PDI", "REPDI" → "REPDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "1-HOUR SAFETY CHECK" → "Safety check", "5 HOUR RE-DIST CHECK" → "Re-dist check", "ACCESSORIES" → "Accessories", "BID-LOT WASH & VACUUM" → "Lot wash", "SHOWROOM RE-CLEAN" → "Showroom re-clean", "MICS. RE-CLEAN" → "Misc re-clean", "AUCTION RE-CLEAN" → "Auction re-clean". Join all with " + ". If none found, return null.
+   - Type C Repair Order: use DESCRIPTIONS/INSTRUCTIONS text from Line A. Keep under 40 chars. If unreadable, return null.
 
 Return ONLY this JSON, nothing else:
-{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "job": "Detail no FPF"}`;
+{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "job": "Re-clean delivery + Finance FPF"}`;
 
     const geminiBody = JSON.stringify({
       contents: [
