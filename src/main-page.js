@@ -492,6 +492,55 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     }
   }
   updateClockInDisplay?.();
+  renderSmartHourChips(entries);
+}
+
+/**
+ * Build quick-hour chips from the tech's own entry history.
+ * Shows their most-used hour values (up to 8), sorted by frequency then value.
+ * Falls back to [0.5, 1.0, 2.0] for brand-new users with no history.
+ */
+function renderSmartHourChips(entries) {
+  const container = document.getElementById("smartHourChips");
+  if (!container) return;
+
+  const empId = getEmpId();
+  const myEntries = (Array.isArray(entries) ? entries : [])
+    .filter(e => !empId || cleanEmpId(e.empId) === cleanEmpId(empId));
+
+  // Count frequency of each rounded hour value
+  const freq = {};
+  for (const e of myEntries) {
+    const h = round1(Number(e.hours));
+    if (Number.isFinite(h) && h > 0) freq[h] = (freq[h] || 0) + 1;
+  }
+
+  let vals = Object.keys(freq)
+    .map(Number)
+    .sort((a, b) => freq[b] - freq[a] || a - b) // most-used first, tie-break by value
+    .slice(0, 8); // cap at 8 chips
+
+  // New user fallback
+  if (vals.length === 0) vals = [0.5, 1.0, 2.0];
+
+  // Sort final display order: ascending by value (most-used is indicated by the job chip)
+  vals.sort((a, b) => a - b);
+
+  container.innerHTML = "";
+  for (const val of vals) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fr26HourBtn";
+    btn.dataset.hoursQuick = String(val);
+    btn.textContent = String(val);
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      setQuickHoursValue?.(String(val));
+      restoreLastWorkType?.();
+      updateEarningsPreview?.();
+    });
+    container.appendChild(btn);
+  }
 }
 
 function renderHeroChart(entries, weekStart) {

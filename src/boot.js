@@ -431,14 +431,8 @@ async function runOnce() {
       updateSaveEnabled();
     });
 
-    document.querySelectorAll("[data-hours-quick]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        setQuickHoursValue?.(btn.getAttribute("data-hours-quick"));
-        restoreLastWorkType?.();
-        updateEarningsPreview?.();
-      });
-    });
+    // Smart hour chips are rendered dynamically by renderSmartHourChips() in main-page.js
+    // with inline click handlers — no static wiring needed here.
 
     // ── Custom hour chips ──────────────────────────────────────────────────
     const LS_CUSTOM_CHIPS = "fr_custom_hour_chips";
