@@ -676,29 +676,18 @@ function renderRangeEntries(entries, mode) {
     const typeStr = e.type || e.typeText || "—";
     const hrs = (Math.round(Number(e.hours || 0) * 10) / 10).toFixed(1);
 
-    // Wrapper — swipe container
+    // Row wrapper
     const wrap = document.createElement("div");
     wrap.className = "hcEntryWrap";
-
-    // Delete button (revealed on swipe-left)
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "hcEntryDelBtn";
-    delBtn.innerHTML = '<span class="hcEntryDelPill">🗑 Delete</span>';
-    delBtn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      handleDeleteEntry(e, ev);
-    });
 
     // Main row
     const row = document.createElement("div");
     row.className = "hcEntryRow";
 
-    // Left side
+    // Left side — ref, type, photo chip, vin, date
     const left = document.createElement("div");
     left.className = "hcEntryLeft";
 
-    // Ref chip
     const refSpan = document.createElement("span");
     refSpan.className = "hcEntryRef";
     refSpan.textContent = `${refLabel} ${refVal}`;
@@ -710,7 +699,6 @@ function renderRangeEntries(entries, mode) {
     left.appendChild(refSpan);
     left.appendChild(typeSpan);
 
-    // Photo chip — clearly tappable, shown below ref/type
     if (hasPhoto) {
       const photoChip = document.createElement("span");
       photoChip.className = "hcEntryPhotoChip";
@@ -736,16 +724,19 @@ function renderRangeEntries(entries, mode) {
       left.appendChild(dateSpan);
     }
 
-    // Right side
+    // Right side — pay + hours
     const right = document.createElement("div");
     right.className = "hcEntryRight";
     right.innerHTML = `<span class="hcEntryPay">${formatMoney(e.earnings)}</span><span class="hcEntryHrs">${hrs}h</span>`;
 
-    // Edit button
+    // Action buttons — edit + delete, always visible, inline icon squares
+    const actions = document.createElement("div");
+    actions.className = "hcEntryActions";
+
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "hcEntryEditBtn";
-    editBtn.textContent = "✎";
+    editBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     editBtn.title = "Edit";
     editBtn.addEventListener("click", (ev) => {
       ev.stopPropagation();
@@ -753,42 +744,30 @@ function renderRangeEntries(entries, mode) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "hcEntryDelBtn";
+    delBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    delBtn.title = "Delete";
+    delBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      handleDeleteEntry(e, ev);
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
     row.appendChild(left);
     row.appendChild(right);
-    row.appendChild(editBtn);
+    row.appendChild(actions);
 
-    // Tap row = edit
+    // Tap row body = edit (but not the action buttons)
     row.addEventListener("click", () => {
       startEditEntry(e);
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    // Swipe-left to reveal delete (only one open at a time)
-    let swipeStartX = 0, swipeStartY = 0, swiping = false;
-    const isRevealed = () => wrap.classList.contains("hcEntryWrap--revealed");
-    row.addEventListener("touchstart", (ev) => {
-      // Close every other revealed row first
-      container.querySelectorAll(".hcEntryWrap--revealed").forEach(el => {
-        if (el !== wrap) el.classList.remove("hcEntryWrap--revealed");
-      });
-      swipeStartX = ev.touches[0].clientX;
-      swipeStartY = ev.touches[0].clientY;
-      swiping = false;
-    }, { passive: true });
-    row.addEventListener("touchmove", (ev) => {
-      const dx = ev.touches[0].clientX - swipeStartX;
-      const dy = ev.touches[0].clientY - swipeStartY;
-      if (!swiping && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll, ignore
-      swiping = true;
-      if (dx < -36 && !isRevealed()) {
-        wrap.classList.add("hcEntryWrap--revealed");
-      } else if (dx > 16 && isRevealed()) {
-        wrap.classList.remove("hcEntryWrap--revealed");
-      }
-    }, { passive: true });
-
     wrap.appendChild(row);
-    wrap.appendChild(delBtn);
     container.appendChild(wrap);
   }
 
@@ -799,12 +778,7 @@ function renderRangeEntries(entries, mode) {
     container.appendChild(more);
   }
 
-  // Tap anywhere else → close revealed rows
-  container.addEventListener("click", (ev) => {
-    if (!ev.target.closest(".hcEntryDelBtn")) {
-      container.querySelectorAll(".hcEntryWrap--revealed").forEach(el => el.classList.remove("hcEntryWrap--revealed"));
-    }
-  }, { capture: true, passive: true });
+  // (swipe-to-delete removed — buttons are always visible inline)
 }
 
 /* ─── VIN search ──────────────────────────────────────── */
