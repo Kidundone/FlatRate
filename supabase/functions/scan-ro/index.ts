@@ -57,6 +57,9 @@ Return ONLY valid JSON, no markdown, no explanation:
         maxOutputTokens: 1024,
         temperature: 0,
       },
+      thinkingConfig: {
+        thinkingBudget: 0,
+      },
     });
 
     const RETRIES = 3;
@@ -66,7 +69,7 @@ Return ONLY valid JSON, no markdown, no explanation:
         await new Promise((r) => setTimeout(r, attempt * 1200));
       }
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
       );
       // retry on 503 (overloaded) or 429 (rate limit)
