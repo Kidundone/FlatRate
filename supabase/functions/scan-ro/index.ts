@@ -30,7 +30,11 @@ ro: A repair/work order number. Look for labels like "WORKORDER", "RO#", "W/O", 
 
 stk: A stock number. Look for "Stock", "STOCK #", "STK", "SOLD-STK:" labels. Often alphanumeric like "VXS13593", "SXS14394A", "DT253", "S6934". Return null if not found.
 
-vin: A VIN or partial VIN. Look for "VIN", "VIN Verification", "VIN (LAST 6)", or a 17-char alphanumeric string in a vehicle info bar. Can be 6–17 chars. Return null if not found.
+vin: The vehicle VIN. Search the ENTIRE document for these patterns — do not limit to labeled fields:
+  1. Any 17-character alphanumeric string (letters A-Z except I/O/Q, and digits 0-9) — this IS a VIN even if not labeled
+  2. Fields labeled "VIN", "VIN Verification", "VIN (LAST 6)", "VEHICLE ID", or similar
+  3. A partial VIN of 6–8 chars near labels like "VIN (LAST 6)" or "LAST 8"
+  Return the longest VIN-like string found (prefer 17 chars). Return null only if truly nothing found.
 
 jobs: An array of work items to be performed. Rules:
   - INCLUDE: items with a ✓, ✗, checkmark, or filled square; items with a hand-drawn circle/oval around the label (highest priority — list first)
