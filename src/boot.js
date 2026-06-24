@@ -277,6 +277,23 @@ async function runOnce() {
     if (logForm && typeof handleSave === "function") {
       if (!logForm.dataset.saveWired) {
         logForm.dataset.saveWired = "1";
+
+        // Block Enter key from submitting the form on any input/select/textarea.
+        // Only the Save button (type="submit") should trigger save.
+        logForm.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            const t = e.target;
+            if (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA") {
+              e.preventDefault();
+              // Move focus to next focusable field rather than submitting
+              const fields = [...logForm.querySelectorAll("input:not([hidden]):not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])")];
+              const idx = fields.indexOf(t);
+              if (idx >= 0 && idx < fields.length - 1) fields[idx + 1].focus();
+              else t.blur();
+            }
+          }
+        });
+
         logForm.addEventListener("submit", (e) => {
           e.preventDefault();
           if (window.__saving) return;
