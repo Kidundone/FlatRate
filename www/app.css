@@ -3384,6 +3384,30 @@ body.compact .list    { gap: 1px; }
   border-top: 1px solid var(--stroke);
 }
 
+/* Action buttons inside heroChartCard */
+.hcActionRow {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  border-top: 1px solid var(--stroke);
+}
+.hcActionRow::-webkit-scrollbar { display: none; }
+.hcActionRow .btn {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 7px 14px;
+  white-space: nowrap;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--stroke2);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
 /* JS compat — always hidden, JS can't override */
 .js-compat { display: none !important; }
 

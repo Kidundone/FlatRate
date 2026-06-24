@@ -801,8 +801,10 @@ function initVinSearch() {
 
     const all = Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
     const matches = all.filter(e => {
-      const vin = String(e.vin8 || e.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-      return vin && vin.includes(q);
+      const vin  = String(e.vin8 || e.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const ro   = String(e.ref || e.ro || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const type = String(e.type || e.typeText || "").toUpperCase().replace(/[^A-Z0-9 ]/g, "");
+      return (vin && vin.includes(q)) || (ro && ro.includes(q)) || (type && type.includes(q));
     });
 
     const container = document.getElementById("hcEntriesList");
@@ -946,23 +948,40 @@ function flashSaveBtn() {
 
 function animateHeroNumber(el, to) {
   if (!el) return;
-  const from = parseFloat(el.dataset.rawVal || "0") || 0;
+  // Always count up from 0 on first render of each page session
+  const from = el.dataset.animated ? (parseFloat(el.dataset.rawVal || "0") || 0) : 0;
   el.dataset.rawVal = String(to);
-  if (from === to) return;
+  el.dataset.animated = "1";
+  if (from === to && from !== 0) return;
   el.classList.remove("pop");
   void el.offsetWidth;
   el.classList.add("pop");
   const start = performance.now();
-  const dur = Math.min(700, Math.abs(to - from) * 1.5 + 250);
+  const dur = Math.min(900, Math.max(400, Math.abs(to - from) * 2 + 300));
+  // Ease-out-back: counts up fast then slightly overshoots and settles
+  const easeOutBack = (t) => {
+    const c1 = 1.40158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  };
   const step = (now) => {
     const t = Math.min(1, (now - start) / dur);
-    const ease = 1 - Math.pow(1 - t, 3);
-    el.textContent = formatMoney(from + (to - from) * ease);
+    const eased = easeOutBack(t);
+    el.textContent = formatMoney(Math.max(0, from + (to - from) * eased));
     if (t < 1) requestAnimationFrame(step);
     else el.textContent = formatMoney(to);
   };
   requestAnimationFrame(step);
 }
+
+// Reset animation state on iOS bfcache restore so count-up always fires from 0
+window.addEventListener("pageshow", (ev) => {
+  if (ev.persisted) {
+    document.querySelectorAll("[data-animated]").forEach(el => {
+      el.removeAttribute("data-animated");
+      el.removeAttribute("data-raw-val");
+    });
+  }
+});
 
 function triggerConfetti(count = 36) {
   const colors = ["#22c55e","#4ade80","#86efac","#ffffff","#fbbf24","#f472b6","#60a5fa"];

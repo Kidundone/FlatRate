@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flat-Rate">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="stylesheet" href="./app.9ef2fea62c.css">
+  <link rel="stylesheet" href="./app.e16b8a0052.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -285,11 +285,17 @@
     </div>
     <div class="hcVinSearch">
       <input id="vinSearchInput" type="text" inputmode="text"
-             autocapitalize="characters" autocomplete="off" spellcheck="false"
-             placeholder="Search by VIN…" class="fr26Input hcVinSearchInput" />
-      <button id="vinSearchClear" type="button" class="hcVinClearBtn" style="display:none;" aria-label="Clear VIN search">✕</button>
+             autocapitalize="none" autocomplete="off" spellcheck="false"
+             placeholder="Search VIN, RO#, work type…" class="fr26Input hcVinSearchInput" />
+      <button id="vinSearchClear" type="button" class="hcVinClearBtn" style="display:none;" aria-label="Clear search">✕</button>
     </div>
     <div class="hcEntriesList" id="hcEntriesList"></div>
+    <div class="hcActionRow">
+      <button class="btn" id="historyBtn" type="button">Full History</button>
+      <button class="btn" id="shareTodayBtn" type="button">Share Day</button>
+      <button class="btn" id="shareWeekCardBtn" type="button">Share Week 📊</button>
+      <button class="btn" id="shareWeekPDFBtn" type="button">Email PDF</button>
+    </div>
   </div>
 </div>
 
@@ -372,7 +378,7 @@
     <option value="all">All</option>
   </select>
 
-  <section class="card">
+  <section class="card" style="display:none;" aria-hidden="true">
     <div class="searchRow" style="margin-top:0;">
       <div class="fr26InlineField" style="flex:1;">
         <input id="searchInput" placeholder="Search RO#, VIN, work type…" class="fr26Input" aria-label="Search entries" />
@@ -940,6 +946,6 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.19c9d8b662.js" defer></script>
+<script src="./app.fe4e8b8ade.js" defer></script>
 </body>
 </html>
