@@ -593,20 +593,6 @@ a.btn {
   font-size: 13px;
 }
 
-/* Bare buttons inherit .btn look */
-button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26Chip):not(.fr26HourBtn):not(.typeIconBtn):not(.clockInBtn):not(.repeatChip):not(.comboSuggestChip) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 9px 16px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--stroke2);
-  background: var(--surface2);
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* ── Segmented controls ──────────────────────────── */
 .seg {
   display: inline-flex;
