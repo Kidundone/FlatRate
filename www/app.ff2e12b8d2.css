@@ -593,20 +593,6 @@ a.btn {
   font-size: 13px;
 }
 
-/* Bare buttons inherit .btn look */
-button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26Chip):not(.fr26HourBtn):not(.typeIconBtn):not(.clockInBtn):not(.repeatChip):not(.comboSuggestChip) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 9px 16px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--stroke2);
-  background: var(--surface2);
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* ── Segmented controls ──────────────────────────── */
 .seg {
   display: inline-flex;
@@ -2932,7 +2918,7 @@ body.compact .list    { gap: 1px; }
   letter-spacing: -.8px;
 }
 .heroGoalSubText {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.05em;
   margin-top: 3px;
@@ -3068,7 +3054,10 @@ body.compact .list    { gap: 1px; }
   padding: 10px 12px 8px;
 }
 .hcTab {
-  padding: 6px 14px;
+  padding: 7px 14px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--r-pill);
   border: none;
   background: transparent;
@@ -3092,7 +3081,7 @@ body.compact .list    { gap: 1px; }
   gap: 4px;
 }
 .hcRangeLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted2);
   font-weight: 600;
   letter-spacing: .2px;
@@ -3107,7 +3096,7 @@ body.compact .list    { gap: 1px; }
 }
 .heroChartSvg {
   width: 100%;
-  height: 44px;
+  height: 56px;
   display: block;
   overflow: visible;
 }
@@ -3127,7 +3116,7 @@ body.compact .list    { gap: 1px; }
   padding: 3px 2px 8px;
 }
 .heroChartLabel {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted2);
   font-weight: 500;
   text-align: center;
@@ -3158,7 +3147,7 @@ body.compact .list    { gap: 1px; }
 }
 .hcStat--pay .hcStatVal { color: var(--primary); }
 .hcStatLbl {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted2);
   text-transform: uppercase;
   letter-spacing: .5px;
@@ -3197,8 +3186,8 @@ body.compact .list    { gap: 1px; }
 
 /* Nav buttons — live inside .hcNavGroup flanking the label */
 .hcNavBtn {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: var(--surface2);
@@ -3225,7 +3214,6 @@ body.compact .list    { gap: 1px; }
 }
 .hcVinSearchInput {
   flex: 1;
-  font-size: 13px;
   padding: 6px 10px;
   height: auto;
   border-radius: 8px;
@@ -3321,7 +3309,7 @@ body.compact .list    { gap: 1px; }
 .hcEntryRef--photo:active { opacity: .7; }
 .hcEntryPhotoIcon { font-size: 11px; }
 .hcEntryType {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text2);
   white-space: nowrap;
   overflow: hidden;
@@ -3364,7 +3352,7 @@ body.compact .list    { gap: 1px; }
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
-.hcEntryEditBtn:active { color: var(--accent, #29d9a5); }
+.hcEntryEditBtn:active { color: var(--primary); }
 .hcEntryEmpty {
   padding: 20px 14px;
   font-size: 13px;
@@ -3444,14 +3432,14 @@ body.compact .list    { gap: 1px; }
 /* Streak pill */
 .heroStreak {
   display:inline-flex; align-items:center; gap:3px;
-  font-size:9px; font-weight:700; color:var(--primary);
+  font-size:10px; font-weight:700; color:var(--primary);
   background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.2);
   border-radius:8px; padding:2px 7px; margin-top:4px; letter-spacing:.04em;
 }
 
 /* Short-pay flag */
 .shortPayFlag {
-  font-size:9px; font-weight:700;
+  font-size:10px; font-weight:700;
   background:rgba(245,158,11,.15); color:#f59e0b;
   border-radius:4px; padding:1px 5px; margin-left:4px; vertical-align:middle;
 }
@@ -3675,7 +3663,7 @@ body.compact .list    { gap: 1px; }
   margin-top: 4px;
 }
 .eightWkLabel {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   text-align: center;
   flex: 1;

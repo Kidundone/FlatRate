@@ -3579,7 +3579,7 @@ function renderHeroChart(entries, weekStart) {
   }
 
   const max = Math.max(...buckets.map(b => b.dollars), 1);
-  const W = 300, H = 44, barW = 30, gap = (W - 7 * barW) / 8;
+  const W = 300, H = 56, barW = 30, gap = (W - 7 * barW) / 8;
   const isLight = document.documentElement.dataset.theme === "light";
   const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
   const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
