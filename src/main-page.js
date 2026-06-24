@@ -3167,17 +3167,17 @@ const TOUR_STEPS = [
   {
     el: null,
     title: "Welcome to Flat-Rate Tracker",
-    body: "Log every job, track your flat hours and earnings, and catch short pay — all offline-first, right on the shop floor. Here's a quick tour of everything.",
+    body: "Log every job, track your flat hours and earnings, and catch short pay — all offline-first, right on the shop floor. Here's a quick tour of the app.",
   },
   {
     el: "#clockInBtn",
     title: "Clock In / Clock Out",
-    body: "Tap Clock In when your shift starts and Clock Out when you leave. The app tracks your shift length and shows your efficiency ratio — flat hours earned vs. hours actually worked.",
+    body: "Tap Clock In when your shift starts and Clock Out when you leave. The app tracks your shift length and shows your efficiency ratio — flat hours earned vs. hours on the clock.",
   },
   {
     el: ".heroGoalRingWrap",
     title: "Weekly Goal Ring",
-    body: "This ring shows your progress toward your weekly goal. Tap it to set a target — either total hours or total pay for the week. The ring fills as you hit it.",
+    body: "Tap the ring to set a weekly target — total hours or total pay. The ring fills as you progress. Tap again any time to adjust your goal.",
   },
   {
     el: ".heroAmt",
@@ -3187,49 +3187,64 @@ const TOUR_STEPS = [
   {
     el: ".heroChartCard",
     title: "Week at a Glance",
-    body: "Each bar is one day this week. Tap a bar to see that day's hours, jobs, and pay. Use the Day / Week / Month / Year tabs to zoom in or out.",
+    body: "Each bar is one day this week. Tap a bar to see that day's hours, jobs, and pay. Switch between Day / Week / Month / Year with the tabs.",
   },
   {
     el: ".fr26QuickHours",
-    title: "Log Hours — Quick Tap",
-    body: "Tap the flat-rate time the job pays — 0.5, 1.0, 1.5, up to 6.0. Or type any amount directly in the Hours field. The wall clock doesn't matter, only what the job pays.",
+    title: "Smart Hour Chips",
+    body: "These chips are built from your most-used hours — tap one to fill the Hours field instantly. They update as you log more jobs, so your most common times always appear first.",
   },
   {
     el: "#typeText",
     title: "Work Done",
-    body: "Type the job name here. Your saved job types appear as chips the moment you start typing — tap one to fill it in instantly. The more you log, the smarter the suggestions get.",
+    body: "Type the job name here. Your saved job types appear as chips the moment you start typing — tap one to fill it in. The more you log, the smarter the suggestions get.",
   },
   {
     el: "#repeatLastBtn",
     title: "Repeat Last Job",
-    body: "Tap 'Repeat Last' to instantly pre-fill the same job type and hours from your previous entry. Useful for back-to-back identical jobs without re-typing.",
+    body: "Tap 'Repeat Last' to pre-fill the same job type and hours from your previous entry — great for back-to-back identical jobs.",
   },
   {
     el: "#ref",
     title: "RO / STK Number",
-    body: "Enter the repair order or stock number here. Toggle between RO and STK with the buttons on the right. Optional, but makes any job easy to look up later.",
+    body: "Enter the repair order or stock number here. Toggle between RO and STK with the buttons. Optional, but makes any job easy to track and look up.",
   },
   {
     el: ".fr26QuickTools",
-    title: "Extra Details",
-    body: "Tap 'Add Details' to reveal extra fields — last 8 of VIN, a per-job rate override, notes, and a comeback flag. Fill these in for any job that might end up in a pay dispute.",
+    title: "Add Details",
+    body: "Tap 'Add Details' to reveal extra fields — VIN, a per-job rate override, notes, and a comeback flag. Fill these in for jobs that might end up in a pay dispute.",
     action: "open-details",
   },
   {
     el: "#vin8",
-    title: "VIN, Rate Override & Notes",
-    body: "Last 8 of the VIN links the job to a specific vehicle. Override the rate for jobs paid differently. The comeback checkbox flags return visits — tracked separately in your stats.",
+    title: "VIN & Rate Override",
+    body: "Enter the last 8 of the VIN to link the job to a specific vehicle. Override the rate for jobs paid differently. The comeback checkbox flags return visits.",
+  },
+  {
+    el: null,
+    title: "Scan a Repair Order",
+    body: "Tap the camera icon on the log form to scan an RO or Get Ready sheet. The app reads the RO number, VIN, STK, and jobs automatically — and picks the job most likely for your role.",
   },
   {
     el: "#saveBtn",
     title: "Save — You're Done",
-    body: "Tap Save and the job is logged instantly, even with no signal. Everything queues locally and syncs to the cloud the moment you're back online.",
+    body: "Tap Save and the job is logged instantly, even offline. Everything queues locally and syncs to the cloud the moment you're back online.",
   },
   {
     el: ".tabItem:last-child",
     title: "More Tab",
-    body: "The More tab is your control center — Job Types, full History, Owe Me tracker, and all Settings. Tap Next and we'll walk through it.",
+    body: "The More tab has your full History, Job Types, Owe Me tracker, and Settings. Let's head there next.",
     action: "goto-more",
+  },
+  {
+    el: "#vinSearchInput",
+    title: "Search by VIN",
+    body: "Type any part of a VIN here to instantly filter your history to that vehicle. Useful for finding all jobs on a specific car.",
+  },
+  {
+    el: ".hcEntriesList",
+    title: "History — Tap & Swipe",
+    body: "Tap any entry to edit it — the form scrolls to the top pre-filled. Swipe left on an entry to reveal the Delete button. Your last 60 entries are shown.",
   },
 ];
 

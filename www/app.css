@@ -222,31 +222,6 @@ main {
   text-align: center;
 }
 
-/* ── Stats strip ─────────────────────────────────── */
-#statsStrip {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 0 16px 12px;
-  background: var(--bg);
-  border-bottom: none;
-}
-
-.stripCell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 6px;
-  min-width: 0;
-  background: var(--surface);
-  border-radius: 12px;
-  border: none;
-}
-
 .stripLabel {
   font-size: 8px;
   font-weight: 500;
@@ -407,10 +382,6 @@ main {
   color: var(--muted);
   margin-top: 3px;
 }
-
-/* Backward-compat aliases used by review/more-page items */
-.itemEarnings { font-size: 20px; font-weight: 800; letter-spacing: -.5px; color: var(--text); }
-.itemHours    { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
 /* ── Collapsible entries ─────────────────────────── */
 .item .itemTop { cursor: pointer; user-select: none; -webkit-user-select: none; }
@@ -1011,7 +982,6 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 }
 
 .fr26BtnPrimary, .fr26BtnGhost {
-  border-radius: var(--r-pill);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -1096,7 +1066,7 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   padding: 0 16px 10px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent, #29d9a5);
+  color: var(--primary);
   min-height: 20px;
   transition: opacity 0.3s;
 }
@@ -1115,15 +1085,15 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 .fr26ScanJobAlt {
   font-size: 12px;
   padding: 4px 10px;
-  border: 1px solid var(--accent, #29d9a5);
-  border-radius: 20px;
+  border: 1px solid rgba(34,197,94,.5);
+  border-radius: var(--r-pill);
   background: transparent;
-  color: var(--accent, #29d9a5);
+  color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
 }
 .fr26ScanJobAlt:active {
-  background: var(--accent, #29d9a5);
+  background: var(--primary);
   color: #000;
 }
 
@@ -1308,44 +1278,6 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   background: rgba(255,196,0,.08);
   font-size: 13px;
 }
-
-/* ── Stats panel ─────────────────────────────────── */
-.statsCard { padding: 0; overflow: hidden; }
-
-.statsSummary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.statsSummary::-webkit-details-marker { display: none; }
-
-.statsSummary::after {
-  content: "+";
-  font-size: 20px;
-  font-weight: 300;
-  color: var(--primary);
-}
-
-.statsCard[open] .statsSummary::after { content: "−"; }
-
-.statsSummaryMeta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.statsPanelBody { padding: 0 16px 16px; }
-.statsPanelBody > .card:first-child { margin-top: 0; }
-.statsPanelBody > .card:last-child { margin-bottom: 0; }
 
 /* ── History overlay ─────────────────────────────── */
 .historyOverlay {
@@ -2259,9 +2191,6 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
 [data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
 [data-theme="light"] .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 [data-theme="light"] .pill { background: var(--surface2); color: var(--text); }
-[data-theme="light"] .statsCard { background: var(--surface); }
-[data-theme="light"] .statsStrip { background: var(--surface); border-top-color: var(--stroke); border-bottom-color: var(--stroke); }
-[data-theme="light"] #statsStrip { background: var(--surface); border-color: var(--stroke); }
 [data-theme="light"] .tabItem { color: var(--muted); }
 [data-theme="light"] .tabItem--active { color: var(--primary); }
 [data-theme="light"] .goalBar { background: var(--surface3); }
@@ -2374,15 +2303,6 @@ body.compact .itemMeta { margin-top: 3px; }
 body.compact .itemActions { margin-top: 5px; }
 body.compact .small   { font-size: 11px; }
 body.compact .list    { gap: 1px; }
-
-/* ── Range nav buttons ───────────────────────────── */
-.rangeNavBtn {
-  padding: 4px 10px;
-  font-size: 18px;
-  line-height: 1;
-  min-width: 32px;
-  border-radius: 8px;
-}
 
 /* ── iBtn active state (comeback toggle) ─────────── */
 .iBtn--active {
@@ -2618,6 +2538,7 @@ body.compact .list    { gap: 1px; }
 .bulkDeleteBar {
   position: sticky;
   bottom: 0;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -2648,13 +2569,11 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
   transition: background 400ms;
 }
-/* 3 states: offline (red pulse), pending (orange pulse), synced (green dim) */
-/* will-change isolates this element to its own compositor layer so the pulse
-   doesn't trigger full-page repaints on WKWebView */
-.offlineDot { will-change: transform, opacity; }
-.offlineDot--offline  { background: var(--danger); animation: pulseDot 1.4s ease-in-out infinite; }
-.offlineDot--pending  { background: #f59e0b; animation: pulseDot 1s ease-in-out infinite; }
-.offlineDot--synced   { background: var(--primary); opacity: .55; animation: none; will-change: auto; }
+/* 3 states: offline (red pulse), pending (orange pulse), synced (green dim)
+   will-change only on animated states — avoids a permanent compositor layer */
+.offlineDot--offline  { background: var(--danger); animation: pulseDot 1.4s ease-in-out infinite; will-change: transform, opacity; }
+.offlineDot--pending  { background: #f59e0b; animation: pulseDot 1s ease-in-out infinite; will-change: transform, opacity; }
+.offlineDot--synced   { background: var(--primary); opacity: .55; }
 
 @keyframes pulseDot {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -3226,7 +3145,7 @@ body.compact .list    { gap: 1px; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 13px 6px 11px;
+  padding: 12px 6px;
   border-right: 1px solid var(--stroke);
 }
 .hcStat:last-child { border-right: none; }
@@ -3348,6 +3267,7 @@ body.compact .list    { gap: 1px; }
   background: #ef4444;
   color: #fff;
   border: none;
+  border-radius: 0;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -3368,6 +3288,7 @@ body.compact .list    { gap: 1px; }
   transition: transform 200ms ease, background 120ms;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
   position: relative;
 }
 .hcEntryWrap--revealed .hcEntryRow {
