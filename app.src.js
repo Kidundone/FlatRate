@@ -3670,7 +3670,7 @@ function renderRangeEntries(entries, mode) {
     return;
   }
 
-  const MAX = 30;
+  const MAX = 60;
   const shown = entries.slice(0, MAX);
   const hasMore = entries.length > MAX;
   const showDate = mode !== "day";
@@ -3681,39 +3681,137 @@ function renderRangeEntries(entries, mode) {
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
-  const html = shown.map(e => {
+  container.innerHTML = "";
+
+  for (const e of shown) {
     const refLabel = e.refType === "STOCK" ? "STK" : "RO";
     const refVal = e.ref || e.ro || "—";
     const hasPhoto = entryHasPhoto(e);
-    const refClass = hasPhoto ? "hcEntryRef hcEntryRef--photo" : "hcEntryRef";
-    const photoAttr = hasPhoto ? ` data-hc-photo-id="${escapeHtml(String(e.id))}"` : "";
-    const photoIcon = hasPhoto ? `<span class="hcEntryPhotoIcon">📷</span>` : "";
-    const dateHtml = showDate && e.dayKey ? `<span class="hcEntryDate">${fmtDay(e.dayKey)}</span>` : "";
-    const typeStr = escapeHtml(e.type || e.typeText || "—");
-    return `<div class="hcEntryRow">
-      <div class="hcEntryLeft">
-        <span class="${refClass}"${photoAttr}>${photoIcon}${refLabel} ${escapeHtml(refVal)}</span>
-        <span class="hcEntryType">${typeStr}</span>${dateHtml}
-      </div>
-      <div class="hcEntryRight">
-        <span class="hcEntryPay">${formatMoney(e.earnings)}</span>
-        <span class="hcEntryHrs">${(Math.round(Number(e.hours||0)*10)/10).toFixed(1)}h</span>
-      </div>
-    </div>`;
-  }).join("");
+    const vin8 = String(e.vin8 || "").trim();
+    const typeStr = e.type || e.typeText || "—";
+    const hrs = (Math.round(Number(e.hours || 0) * 10) / 10).toFixed(1);
 
-  container.innerHTML = html + (hasMore
-    ? `<div class="hcEntryMore">+${entries.length - MAX} more — open History to see all</div>` : "");
+    // Wrapper — swipe container
+    const wrap = document.createElement("div");
+    wrap.className = "hcEntryWrap";
 
-  // Wire photo taps
-  container.querySelectorAll(".hcEntryRef--photo").forEach(el => {
-    const id = el.getAttribute("data-hc-photo-id");
-    if (!id) return;
-    el.addEventListener("click", () => {
-      const entry = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []).find(x => String(x.id) === id);
-      if (entry) openPhoto(entry);
+    // Delete button (revealed on swipe-left)
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "hcEntryDelBtn";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      handleDeleteEntry(e, ev);
     });
-  });
+
+    // Main row
+    const row = document.createElement("div");
+    row.className = "hcEntryRow";
+
+    // Left side
+    const left = document.createElement("div");
+    left.className = "hcEntryLeft";
+
+    // Ref chip (tappable if has photo)
+    const refSpan = document.createElement("span");
+    refSpan.className = hasPhoto ? "hcEntryRef hcEntryRef--photo" : "hcEntryRef";
+    if (hasPhoto) {
+      refSpan.innerHTML = `<span class="hcEntryPhotoIcon">📷</span> `;
+      refSpan.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openPhoto(e);
+      });
+    }
+    refSpan.appendChild(document.createTextNode(`${refLabel} ${refVal}`));
+
+    const typeSpan = document.createElement("span");
+    typeSpan.className = "hcEntryType";
+    typeSpan.textContent = typeStr;
+
+    left.appendChild(refSpan);
+    left.appendChild(typeSpan);
+
+    if (vin8) {
+      const vinSpan = document.createElement("span");
+      vinSpan.className = "hcEntryVin";
+      vinSpan.textContent = `VIN …${vin8.slice(-8)}`;
+      left.appendChild(vinSpan);
+    }
+
+    if (showDate && e.dayKey) {
+      const dateSpan = document.createElement("span");
+      dateSpan.className = "hcEntryDate";
+      dateSpan.textContent = fmtDay(e.dayKey);
+      left.appendChild(dateSpan);
+    }
+
+    // Right side
+    const right = document.createElement("div");
+    right.className = "hcEntryRight";
+    right.innerHTML = `<span class="hcEntryPay">${formatMoney(e.earnings)}</span><span class="hcEntryHrs">${hrs}h</span>`;
+
+    // Edit button
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "hcEntryEditBtn";
+    editBtn.textContent = "✎";
+    editBtn.title = "Edit";
+    editBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      startEditEntry(e);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    row.appendChild(left);
+    row.appendChild(right);
+    row.appendChild(editBtn);
+
+    // Tap row = edit
+    row.addEventListener("click", () => {
+      startEditEntry(e);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    // Swipe-left to reveal delete
+    let swipeStartX = 0, swipeStartY = 0, swiping = false, revealed = false;
+    row.addEventListener("touchstart", (ev) => {
+      swipeStartX = ev.touches[0].clientX;
+      swipeStartY = ev.touches[0].clientY;
+      swiping = false;
+    }, { passive: true });
+    row.addEventListener("touchmove", (ev) => {
+      const dx = ev.touches[0].clientX - swipeStartX;
+      const dy = ev.touches[0].clientY - swipeStartY;
+      if (!swiping && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll, ignore
+      swiping = true;
+      if (dx < -40 && !revealed) {
+        wrap.classList.add("hcEntryWrap--revealed");
+        revealed = true;
+      } else if (dx > 20 && revealed) {
+        wrap.classList.remove("hcEntryWrap--revealed");
+        revealed = false;
+      }
+    }, { passive: true });
+
+    wrap.appendChild(row);
+    wrap.appendChild(delBtn);
+    container.appendChild(wrap);
+  }
+
+  if (hasMore) {
+    const more = document.createElement("div");
+    more.className = "hcEntryMore";
+    more.textContent = `+${entries.length - MAX} more`;
+    container.appendChild(more);
+  }
+
+  // Tap anywhere else → close revealed rows
+  container.addEventListener("click", (ev) => {
+    if (!ev.target.closest(".hcEntryDelBtn")) {
+      container.querySelectorAll(".hcEntryWrap--revealed").forEach(el => el.classList.remove("hcEntryWrap--revealed"));
+    }
+  }, { capture: true, passive: true });
 }
 
 /* ─── VIN search ──────────────────────────────────────── */
