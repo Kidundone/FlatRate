@@ -86,7 +86,7 @@ Return ONLY this JSON, nothing else:
         await new Promise((r) => setTimeout(r, attempt * 1200));
       }
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
       );
       // retry on 503 (overloaded) or 429 (rate limit)

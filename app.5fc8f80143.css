@@ -147,6 +147,9 @@ header {
   .top {
     padding-top: max(52px, calc(12px + env(safe-area-inset-top, 44px)));
   }
+  #swUpdateBanner {
+    padding-top: max(52px, calc(10px + env(safe-area-inset-top, 44px)));
+  }
 }
 
 h1 {
