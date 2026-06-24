@@ -57,12 +57,12 @@ EXTRACT:
 1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
 2. stk — From "Stock", "STOCK #", or "SOLD-STK:" field. Examples: "VXS13593", "SXS14394A", "S6934", "DT253"
 3. vin — From "VIN Verification", "VIN (LAST 6)", or VIN bar. 6–17 chars. Examples: "TCS19634", "D53269", "4S4WMAJD6K3441392"
-4. job — Work to be done, built from circled and checked items only (never strikethrough, never unchecked):
-   - Type A/B Get Ready: identify circled items first, then checked items. Map names: "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "FINANCE FPF" → "Finance FPF", "FPF" → "FPF", "DT-FPF" → "DT-FPF", "PRE-OWNED DETAIL" → "Pre-owned detail", "AUCTION DETAIL" → "Auction detail", "PDI" → "PDI", "REPDI" → "REPDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "1-HOUR SAFETY CHECK" → "Safety check", "5 HOUR RE-DIST CHECK" → "Re-dist check", "ACCESSORIES" → "Accessories", "BID-LOT WASH & VACUUM" → "Lot wash", "SHOWROOM RE-CLEAN" → "Showroom re-clean", "MICS. RE-CLEAN" → "Misc re-clean", "AUCTION RE-CLEAN" → "Auction re-clean". Join all with " + ". If none found, return null.
-   - Type C Repair Order: use DESCRIPTIONS/INSTRUCTIONS text from Line A. Keep under 40 chars. If unreadable, return null.
+4. jobs — An ARRAY of every individual job found, each as a separate string. Order: circled items first, then checked items. Never include strikethrough or unchecked items.
+   - Type A/B Get Ready: each checked/circled line item is a separate entry in the array. Map names: "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "FINANCE FPF" → "Finance FPF", "FPF" → "FPF", "DT-FPF" → "DT-FPF", "PRE-OWNED DETAIL" → "Pre-owned detail", "AUCTION DETAIL" → "Auction detail", "PDI" → "PDI", "REPDI" → "REPDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "1-HOUR SAFETY CHECK" → "Safety check", "5 HOUR RE-DIST CHECK" → "Re-dist check", "ACCESSORIES" → "Accessories", "BID-LOT WASH & VACUUM" → "Lot wash", "SHOWROOM RE-CLEAN" → "Showroom re-clean", "MICS. RE-CLEAN" → "Misc re-clean", "AUCTION RE-CLEAN" → "Auction re-clean", "REMOVE ALL PLASTICS" → "Remove plastics/wash wax", "WASH" → "Wash & wax". If none found, return [].
+   - Type C Repair Order: each line item (A, B, C…) that has DESCRIPTIONS/INSTRUCTIONS text is a separate entry. Keep each under 40 chars. Use the job code + description, e.g. "PDI", "NCI", "Remove plastics/wash wax". Return [] if unreadable.
 
 Return ONLY this JSON, nothing else:
-{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "job": "Re-clean delivery + Finance FPF"}`;
+{"ro": null, "vin": "TCS19634", "stk": "VXS13593", "jobs": ["Re-clean delivery", "Finance FPF"]}`;
 
     const geminiBody = JSON.stringify({
       contents: [
@@ -114,7 +114,7 @@ Return ONLY this JSON, nothing else:
     const textPart = parts.find((p: any) => p.text && !p.thought) || parts[0];
     const raw = textPart?.text?.trim() || "{}";
 
-    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null } = {};
+    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null; jobs?: string[] } = {};
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
@@ -127,7 +127,7 @@ Return ONLY this JSON, nothing else:
         ro: parsed.ro || null,
         vin: parsed.vin || null,
         stk: parsed.stk || null,
-        job: parsed.job || null,
+        jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );

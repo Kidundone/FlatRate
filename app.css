@@ -1102,6 +1102,28 @@ button:not(.btn):not(.segBtn):not(.fr26BtnPrimary):not(.fr26BtnGhost):not(.fr26C
   font-weight: 400;
 }
 
+/* Alternative job chips shown after OCR scan */
+.fr26ScanJobAlts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 10px;
+}
+.fr26ScanJobAlt {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--accent, #29d9a5);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--accent, #29d9a5);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fr26ScanJobAlt:active {
+  background: var(--accent, #29d9a5);
+  color: #000;
+}
+
 .fr26QuickTools {
   display: flex;
   flex-wrap: nowrap;

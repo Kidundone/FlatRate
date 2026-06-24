@@ -612,14 +612,60 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) 
   }
 }
 
+/**
+ * Score a job name against this user's history.
+ * Returns a count: how many times this emp has logged something matching that job name.
+ */
+function _scoreJobForUser(jobName, empId) {
+  const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
+  const myEmpId = String(empId || "").toLowerCase().replace(/\D/g, "");
+  const needle = jobName.toLowerCase().trim();
+  let score = 0;
+  for (const e of entries) {
+    const eId = String(e.empId || e.emp_id || "").toLowerCase().replace(/\D/g, "");
+    if (myEmpId && eId && eId !== myEmpId) continue;
+    const ework = String(e.workType || e.work_type || e.typeText || e.type_text || "").toLowerCase().trim();
+    if (!ework) continue;
+    // Full match scores more than partial
+    if (ework === needle) score += 3;
+    else if (ework.includes(needle) || needle.includes(ework)) score += 1;
+  }
+  // Also check saved job-type defaults (findTypeByName exists in db-service)
+  if (typeof findTypeByName === "function" && empId) {
+    try {
+      const saved = findTypeByName(empId, jobName);
+      if (saved) score += 2; // user has used this type before
+    } catch {}
+  }
+  return score;
+}
+
+/**
+ * Pick the best job for this user from a list, and return [bestJob, ...rest].
+ * Circled items are already sorted first by the edge function.
+ * We re-rank by user history score, but break ties by keeping the original order
+ * (so circled items still win when no history exists).
+ */
+function _rankJobsForUser(jobs, empId) {
+  if (!Array.isArray(jobs) || jobs.length === 0) return [];
+  const scored = jobs.map((job, idx) => ({
+    job,
+    score: _scoreJobForUser(job, empId),
+    idx,
+  }));
+  scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
+  return scored.map(s => s.job);
+}
+
 // Snap-to-fill: scan photo immediately when selected, prefill form fields before save.
 async function scanPhotoAndPrefillForm(file) {
   if (!file) return;
 
-  const scanStatus = document.getElementById("photoScanStatus");
-  const refEl      = document.getElementById("ref");
-  const vinEl      = document.getElementById("vin8");
-  const typeEl     = document.getElementById("typeText");
+  const scanStatus   = document.getElementById("photoScanStatus");
+  const altChips     = document.getElementById("scanJobAlternatives");
+  const refEl        = document.getElementById("ref");
+  const vinEl        = document.getElementById("vin8");
+  const typeEl       = document.getElementById("typeText");
   const detailsPanel = document.getElementById("detailsPanel");
   const detailsBtn   = document.getElementById("toggleDetailsBtn");
 
@@ -630,7 +676,30 @@ async function scanPhotoAndPrefillForm(file) {
     scanStatus.className = "fr26ScanStatus" + (isScanning ? " scanning" : "");
   };
 
+  const hideAlts = () => { if (altChips) { altChips.innerHTML = ""; altChips.style.display = "none"; } };
+
+  const showAltJobChips = (altJobs) => {
+    if (!altChips || !altJobs.length || !typeEl) return;
+    altChips.innerHTML = "";
+    for (const j of altJobs) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fr26HourBtn fr26ScanJobAlt";
+      btn.textContent = j;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (typeEl) typeEl.value = j;
+        hideAlts();
+        updateEarningsPreview?.();
+        document.getElementById("hours")?.focus();
+      });
+      altChips.appendChild(btn);
+    }
+    altChips.style.display = "";
+  };
+
   showStatus("Reading photo…", true);
+  hideAlts();
 
   try {
     // High-res + enhanced for document scanning: checkboxes, circles, and strikethroughs need crisp edges
@@ -639,18 +708,16 @@ async function scanPhotoAndPrefillForm(file) {
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
 
-    const { ro, vin, stk, job } = result || {};
+    const { ro, vin, stk, jobs } = result || {};
     const filled = [];
 
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
     if (refEl && !refEl.value.trim()) {
       if (ro) {
-        // RO form: combine RO/STK if both present (e.g. "474073/A7001")
         refEl.value = stk ? `${ro}/${stk}` : ro;
         document.getElementById("refTypeRO")?.click();
         filled.push(stk ? `RO ${ro}/STK ${stk}` : `RO ${ro}`);
       } else if (stk) {
-        // Get Ready form: fill stock, set toggle to Stock
         refEl.value = stk;
         document.getElementById("refTypeSTK")?.click();
         filled.push(`STK ${stk}`);
@@ -666,10 +733,16 @@ async function scanPhotoAndPrefillForm(file) {
       }
     }
 
-    // Auto-fill Work Done if empty and job was detected
-    if (typeEl && !typeEl.value.trim() && job) {
-      typeEl.value = job;
-      filled.push(`Job: ${job}`);
+    // Role-aware job selection: rank jobs by this user's history, pick best match
+    if (typeEl && !typeEl.value.trim() && Array.isArray(jobs) && jobs.length > 0) {
+      const empId = typeof getEmpId === "function" ? getEmpId() : null;
+      const ranked = _rankJobsForUser(jobs, empId);
+      const bestJob = ranked[0];
+      typeEl.value = bestJob;
+      filled.push(`Job: ${bestJob}`);
+      // Show remaining jobs as tappable alternative chips
+      const alts = ranked.slice(1);
+      if (alts.length) showAltJobChips(alts);
     }
 
     if (filled.length) {
@@ -679,9 +752,8 @@ async function scanPhotoAndPrefillForm(file) {
         if (detailsBtn) detailsBtn.textContent = "Less";
       }
       showStatus("✓ " + filled.join("  ·  "));
-      // If work done was auto-filled, focus hours; otherwise focus work done
       setTimeout(() => {
-        if (job && typeEl?.value) {
+        if (typeEl?.value) {
           document.getElementById("hours")?.focus();
         } else {
           typeEl?.focus();
@@ -696,6 +768,7 @@ async function scanPhotoAndPrefillForm(file) {
 
   } catch (e) {
     setPhotoSummaryState("Selected");
+    hideAlts();
     const msg = e?.message || "";
     console.warn("[OCR prefill error]", msg, e);
     if (msg === "auth_expired" || e?.status === 401) {
