@@ -2874,7 +2874,7 @@ async function scanPhotoAndPrefillForm(file) {
 
   try {
     // High-res + enhanced for document scanning: checkboxes, circles, and strikethroughs need crisp edges
-    const dataUrl  = await compressImageFileToDataUrl(file, 1600, 0.92, true);
+    const dataUrl  = await compressImageFileToDataUrl(file, 1200, 0.82, true);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
@@ -9324,6 +9324,13 @@ async function runOnce() {
   } else {
     window.__APP_BOOTED__ = true;
     await bootAuth().catch(logErr("bootAuth"));
+  }
+
+  // Dismiss splash — auth is done, app is ready to show
+  const _splash = document.getElementById("appSplash");
+  if (_splash) {
+    _splash.classList.add("hide");
+    setTimeout(() => { _splash.style.display = "none"; }, 380);
   }
 
   await ensureDefaultTypes().catch(logErr("ensureDefaultTypes"));

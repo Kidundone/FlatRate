@@ -703,7 +703,7 @@ async function scanPhotoAndPrefillForm(file) {
 
   try {
     // High-res + enhanced for document scanning: checkboxes, circles, and strikethroughs need crisp edges
-    const dataUrl  = await compressImageFileToDataUrl(file, 1600, 0.92, true);
+    const dataUrl  = await compressImageFileToDataUrl(file, 1200, 0.82, true);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);

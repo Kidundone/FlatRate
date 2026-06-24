@@ -22,46 +22,26 @@ serve(async (req) => {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
-    const prompt = `You are reading a Flow Motors Winston Salem automotive document. Extract data precisely.
+    const prompt = `You are scanning an automotive shop document — a Get Ready checklist or Repair Order from a car dealership. Extract the following fields. Be liberal: if something looks like it could be a stock number, RO number, or VIN, include it.
 
-THERE ARE 3 DOCUMENT TYPES:
+── FIELDS TO EXTRACT ──
 
-TYPE A — HANDWRITTEN GET READY (yellow paper):
-- Header says "Flow Motors Winston Salem / New- Preowned Get Ready"
-- Handwritten fields: "Stock" (e.g. "VXS13593"), "VIN Verification" (e.g. "TCS19634")
-- NO repair order number on this form
+ro: A repair/work order number. Look for labels like "WORKORDER", "RO#", "W/O", "ORDER NO", or a large printed number near those labels. Usually 5-6 digits (e.g. "490060"). Return null if not found.
 
-TYPE B — PRINTED GET READY (white paper with checkboxes):
-- Header says "FLOW MOTORS WINSTON SALEM / NEW - PRE-OWNED GET READY" or "NEW/PRE-OWNED GET READY"
-- Printed fields: "STOCK #" (e.g. "SXS14394A", "DT253"), "VIN (LAST 6)" (e.g. "D53269", "169625")
-- NO repair order number on this form
+stk: A stock number. Look for "Stock", "STOCK #", "STK", "SOLD-STK:" labels. Often alphanumeric like "VXS13593", "SXS14394A", "DT253", "S6934". Return null if not found.
 
-TYPE C — REPAIR ORDER (printed, multi-copy):
-- Header: "FLOW MOTORS OF WINSTON-SALEM" with large number next to "WORKORDER" (e.g. "490060")
-- Full 17-char VIN in vehicle bar (e.g. "4S4WMAJD6K3441392")
-- Stock may appear in options line as "SOLD-STK:S6934"
+vin: A VIN or partial VIN. Look for "VIN", "VIN Verification", "VIN (LAST 6)", or a 17-char alphanumeric string in a vehicle info bar. Can be 6–17 chars. Return null if not found.
 
-CRITICAL — IGNORE THE TECH NUMBER:
-- Every form has a large 5-digit handwritten number in blue/green marker (e.g. "10537", "10534")
-- This is the technician reach number — NOT the RO, stock, or VIN — IGNORE IT
+jobs: An array of work items to be performed. Rules:
+  - INCLUDE: items with a ✓, ✗, checkmark, or filled square; items with a hand-drawn circle/oval around the label (highest priority — list first)
+  - SKIP: items with a line crossed THROUGH the text (strikethrough = cancelled); empty unchecked boxes
+  - Map common names: "RE-CLEAN FOR DELIVERY"→"Re-clean delivery", "FINANCE FPF"→"Finance FPF", "FPF"→"FPF", "DT-FPF"→"DT-FPF", "PRE-OWNED DETAIL"→"Pre-owned detail", "AUCTION DETAIL"→"Auction detail", "PDI"→"PDI", "REPDI"→"REPDI", "NCI"→"NCI", "OIL CHANGE"→"Oil change", "CERTIFIED INSPECTION"→"Cert inspection", "1-HOUR SAFETY CHECK"→"Safety check", "5 HOUR RE-DIST CHECK"→"Re-dist check", "ACCESSORIES"→"Accessories", "BID-LOT WASH & VACUUM"→"Lot wash", "SHOWROOM RE-CLEAN"→"Showroom re-clean", "MICS. RE-CLEAN"→"Misc re-clean", "AUCTION RE-CLEAN"→"Auction re-clean", "REMOVE ALL PLASTICS"→"Remove plastics/wash wax", "WASH"→"Wash & wax"
+  - For Repair Orders: extract each op-line description (keep under 40 chars each)
+  - Return [] if no marked items found
 
-READING HANDWRITTEN MARKS ON CHECKBOXES (Get Ready forms) — look carefully at the image:
-- CIRCLED item = a hand-drawn oval or circle around the text label (not the checkbox) = TOP PRIORITY — list FIRST
-- CHECKED box = a ✓, ✗, checkmark, or filled mark INSIDE the small square checkbox = work to be done — list after circled items
-- STRIKETHROUGH = a horizontal line drawn directly THROUGH the text of an item label = CANCELLED — SKIP IT completely, do not include it
-- Empty checkbox with no mark = not assigned = SKIP IT
-- An item with BOTH a circle and a checkmark = still list it first under circled
-- If you are unsure whether a mark is a strikethrough or just a line near the text, err on the side of SKIPPING it
+IGNORE: Large handwritten 5-digit numbers in colored marker — those are technician reach numbers, not RO/STK/VIN.
 
-EXTRACT:
-1. ro — Only from Type C near "WORKORDER". Null for Types A and B.
-2. stk — From "Stock", "STOCK #", or "SOLD-STK:" field. Examples: "VXS13593", "SXS14394A", "S6934", "DT253"
-3. vin — From "VIN Verification", "VIN (LAST 6)", or VIN bar. 6–17 chars. Examples: "TCS19634", "D53269", "4S4WMAJD6K3441392"
-4. jobs — An ARRAY of every individual job found, each as a separate string. Order: circled items first, then checked items. Never include strikethrough or unchecked items.
-   - Type A/B Get Ready: each checked/circled line item is a separate entry in the array. Map names: "RE-CLEAN FOR DELIVERY" → "Re-clean delivery", "FINANCE FPF" → "Finance FPF", "FPF" → "FPF", "DT-FPF" → "DT-FPF", "PRE-OWNED DETAIL" → "Pre-owned detail", "AUCTION DETAIL" → "Auction detail", "PDI" → "PDI", "REPDI" → "REPDI", "NCI" → "NCI", "OIL CHANGE" → "Oil change", "CERTIFIED INSPECTION" → "Cert inspection", "1-HOUR SAFETY CHECK" → "Safety check", "5 HOUR RE-DIST CHECK" → "Re-dist check", "ACCESSORIES" → "Accessories", "BID-LOT WASH & VACUUM" → "Lot wash", "SHOWROOM RE-CLEAN" → "Showroom re-clean", "MICS. RE-CLEAN" → "Misc re-clean", "AUCTION RE-CLEAN" → "Auction re-clean", "REMOVE ALL PLASTICS" → "Remove plastics/wash wax", "WASH" → "Wash & wax". If none found, return [].
-   - Type C Repair Order: each line item (A, B, C…) that has DESCRIPTIONS/INSTRUCTIONS text is a separate entry. Keep each under 40 chars. Use the job code + description, e.g. "PDI", "NCI", "Remove plastics/wash wax". Return [] if unreadable.
-
-Return ONLY this JSON, nothing else:
+Return ONLY valid JSON, no markdown, no explanation:
 {"ro": null, "vin": "TCS19634", "stk": "VXS13593", "jobs": ["Re-clean delivery", "Finance FPF"]}`;
 
     const geminiBody = JSON.stringify({
@@ -74,7 +54,7 @@ Return ONLY this JSON, nothing else:
         },
       ],
       generationConfig: {
-        maxOutputTokens: 512,
+        maxOutputTokens: 1024,
         temperature: 0,
       },
     });
@@ -86,7 +66,7 @@ Return ONLY this JSON, nothing else:
         await new Promise((r) => setTimeout(r, attempt * 1200));
       }
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
       );
       // retry on 503 (overloaded) or 429 (rate limit)

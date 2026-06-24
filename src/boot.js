@@ -169,6 +169,13 @@ async function runOnce() {
     await bootAuth().catch(logErr("bootAuth"));
   }
 
+  // Dismiss splash — auth is done, app is ready to show
+  const _splash = document.getElementById("appSplash");
+  if (_splash) {
+    _splash.classList.add("hide");
+    setTimeout(() => { _splash.style.display = "none"; }, 380);
+  }
+
   await ensureDefaultTypes().catch(logErr("ensureDefaultTypes"));
 
   // ================= MAIN PAGE INIT =================
