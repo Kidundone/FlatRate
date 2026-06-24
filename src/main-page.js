@@ -282,7 +282,7 @@ function handleClear(ev, options = {}) {
   if (detailsPanel) detailsPanel.style.display = "none";
   if (detailsBtn) detailsBtn.textContent = "Add Details";
   const saveBtn = document.getElementById("saveBtn");
-  if (saveBtn) saveBtn.disabled = true;
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = EDITING_ID ? "Update" : "Save"; }
   const dw = document.getElementById("dupWarnGlobal");
   if (dw) { dw.style.display = "none"; dw.dataset.level = ""; }
   const ep = document.getElementById("earningsPreview");
