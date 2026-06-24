@@ -76,7 +76,6 @@ Return ONLY this JSON, nothing else:
       generationConfig: {
         maxOutputTokens: 512,
         temperature: 0,
-        thinkingConfig: { thinkingBudget: 1024 },
       },
     });
 
