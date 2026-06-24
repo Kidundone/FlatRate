@@ -758,9 +758,14 @@ function renderRangeEntries(entries, mode) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    // Swipe-left to reveal delete
-    let swipeStartX = 0, swipeStartY = 0, swiping = false, revealed = false;
+    // Swipe-left to reveal delete (only one open at a time)
+    let swipeStartX = 0, swipeStartY = 0, swiping = false;
+    const isRevealed = () => wrap.classList.contains("hcEntryWrap--revealed");
     row.addEventListener("touchstart", (ev) => {
+      // Close every other revealed row first
+      container.querySelectorAll(".hcEntryWrap--revealed").forEach(el => {
+        if (el !== wrap) el.classList.remove("hcEntryWrap--revealed");
+      });
       swipeStartX = ev.touches[0].clientX;
       swipeStartY = ev.touches[0].clientY;
       swiping = false;
@@ -770,12 +775,10 @@ function renderRangeEntries(entries, mode) {
       const dy = ev.touches[0].clientY - swipeStartY;
       if (!swiping && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll, ignore
       swiping = true;
-      if (dx < -40 && !revealed) {
+      if (dx < -36 && !isRevealed()) {
         wrap.classList.add("hcEntryWrap--revealed");
-        revealed = true;
-      } else if (dx > 20 && revealed) {
+      } else if (dx > 16 && isRevealed()) {
         wrap.classList.remove("hcEntryWrap--revealed");
-        revealed = false;
       }
     }, { passive: true });
 

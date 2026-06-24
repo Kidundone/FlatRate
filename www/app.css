@@ -3254,13 +3254,14 @@ body.compact .list    { gap: 1px; }
 .hcEntryDelBtn {
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: 80px;
+  width: 68px;
   background: #ef4444;
   color: #fff;
   border: none;
   border-radius: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3283,7 +3284,7 @@ body.compact .list    { gap: 1px; }
   position: relative;
 }
 .hcEntryWrap--revealed .hcEntryRow {
-  transform: translateX(-80px);
+  transform: translateX(-68px);
 }
 .hcEntryRow:active { background: var(--surface2); }
 
