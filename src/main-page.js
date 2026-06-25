@@ -1690,7 +1690,7 @@ async function shareDaySummary() {
     : "";
 
   const text = [
-    `📋 Flat-Rate Summary — ${dayLabel}`,
+    `📋 Flatrate Buddy — ${dayLabel}`,
     `Emp #${empId}`,
     "",
     ...lines,
@@ -1802,9 +1802,9 @@ function syncOfflineDot() {
 // ── Referral share ──────────────────────────────────────────────
 async function shareReferral() {
   const url = "https://app.nellylabs.dev";
-  const text = `I use Flat-Rate Tracker at work to log jobs and catch missing pay. Free to start — ${url}`;
+  const text = `I use Flatrate Buddy at work to log jobs and catch missing pay. Free to start — ${url}`;
   if (navigator.share) {
-    try { await navigator.share({ title: "Flat-Rate Tracker", text, url }); return; } catch {}
+    try { await navigator.share({ title: "Flatrate Buddy", text, url }); return; } catch {}
   }
   try {
     await navigator.clipboard.writeText(text);
@@ -1858,7 +1858,7 @@ async function shareWeekPDF() {
   const nl = (step = 6) => { y += step; if (y > pageBottom) { doc.addPage(); y = 20; } };
 
   doc.setFontSize(16);
-  doc.text("Flat Rate — Weekly Report", left, y);
+  doc.text("Flatrate Buddy — Weekly Report", left, y);
   nl(8);
   doc.setFontSize(10);
   doc.text(`Employee: ${empId}   Week: ${weekKey}`, left, y);

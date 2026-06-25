@@ -81,7 +81,7 @@ async function exportEntriesToPDF(entries) {
   };
 
   doc.setFontSize(16);
-  doc.text("Flat Rate Tracker Report", left, y);
+  doc.text("Flatrate Buddy Report", left, y);
 
   nextLine(10);
 
@@ -499,7 +499,7 @@ async function exportAuditReport() {
   const emp = getEmpId() || "N/A";
 
   doc.setFontSize(16);
-  doc.text("Flat Rate Audit Report", left, y);
+  doc.text("Flatrate Buddy — Audit Report", left, y);
   y += 10;
 
   doc.setFontSize(11);
