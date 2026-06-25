@@ -257,8 +257,9 @@ for (const { src, filename } of VENDOR) {
 const WWW_ASSETS = [
   "index.html", "more.html", "auth-callback.html", "dashboard.html",
   "manifest.webmanifest", "sw.js", "app.css",
-  "icon-192.png", "icon-512.png", "_redirects",
+  "icon-192.png", "icon-512.png", "favicon.ico", "_redirects",
   "tos.html", "privacy.html", "landing.html",
+  "robots.txt", "sitemap.xml",
 ];
 mkdirSync("www", { recursive: true });
 // Copy hashed JS + CSS

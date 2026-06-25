@@ -10076,6 +10076,17 @@ async function runOnce() {
       setTimeout(() => maybeStartTour?.(), 100);
     });
 
+    document.getElementById("shareAppBtn")?.addEventListener("click", async () => {
+      const url = "https://app.nellylabs.dev/landing.html";
+      const text = "Check out Flatrate Buddy — free app for tracking flat-rate jobs and catching short pay.";
+      if (navigator.share) {
+        try { await navigator.share({ title: "Flatrate Buddy", text, url }); return; } catch {}
+      }
+      try { await navigator.clipboard.writeText(url); toast?.("Link copied!"); } catch {
+        toast?.("Share: " + url);
+      }
+    });
+
     document.getElementById("repairBtn")?.addEventListener("click", async () => {
       const empId = getEmpId();
       if (!empId) return alert("Enter Employee # first.");

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Flatrate Buddy — Built for Flat-Rate Technicians</title>
   <meta name="description" content="Log jobs in seconds, track every flat hour, and catch short pay before it disappears. Free to start — installs to your home screen." />
-  <link rel="icon" href="./icon-192.png">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" href="./icon-192.png" type="image/png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -404,7 +405,76 @@
   <h2 class="ctaH2">Start tracking your hours today</h2>
   <p class="ctaSub">Free to use. No credit card. Works offline from day one. Every job you log is one less dollar that can slip through the cracks.</p>
   <a href="./index.html" class="btnPrimary">Open Flatrate Buddy →</a>
+
+  <!-- EMAIL CAPTURE -->
+  <div style="margin-top:48px;padding-top:40px;border-top:1px solid rgba(255,255,255,0.07);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);margin-bottom:10px;">Get updates</div>
+    <div style="font-size:15px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Drop your email and we'll let you know when new features ship.</div>
+    <form id="waitlistForm" style="display:flex;gap:10px;max-width:400px;margin:0 auto;flex-wrap:wrap;">
+      <input id="waitlistEmail" type="email" placeholder="your@email.com" required
+        style="flex:1;min-width:200px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
+               border-radius:10px;padding:12px 16px;color:#fff;font-size:15px;outline:none;" />
+      <button type="submit"
+        style="background:var(--primary);color:#000;font-size:15px;font-weight:700;
+               padding:12px 24px;border-radius:10px;border:none;cursor:pointer;white-space:nowrap;">
+        Notify me
+      </button>
+    </form>
+    <div id="waitlistMsg" style="margin-top:12px;font-size:14px;min-height:20px;"></div>
+  </div>
 </div>
+
+<!--
+  To enable the email form, create this table in your Supabase dashboard:
+
+  create table waitlist (
+    id uuid primary key default gen_random_uuid(),
+    email text not null unique,
+    created_at timestamptz default now()
+  );
+
+  Then enable Row Level Security and add this policy:
+  create policy "Anyone can join" on waitlist for insert with check (true);
+-->
+<script>
+(function() {
+  const SB_URL  = "https://lfnydhidbwfyfjafazdy.supabase.co";
+  const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4";
+
+  document.getElementById("waitlistForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("waitlistEmail")?.value?.trim();
+    const msg   = document.getElementById("waitlistMsg");
+    if (!email || !msg) return;
+
+    msg.style.color = "var(--muted)";
+    msg.textContent = "Submitting…";
+
+    try {
+      const res = await fetch(`${SB_URL}/rest/v1/waitlist`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SB_KEY,
+          "Authorization": `Bearer ${SB_KEY}`,
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok || res.status === 409) {
+        msg.style.color = "#22c55e";
+        msg.textContent = res.status === 409 ? "You're already on the list!" : "You're in! 🎉 We'll keep you posted.";
+        document.getElementById("waitlistEmail").value = "";
+      } else {
+        throw new Error(res.status);
+      }
+    } catch {
+      msg.style.color = "#f87171";
+      msg.textContent = "Something went wrong — try again.";
+    }
+  });
+})();
+</script>
 
 <footer>
   <div class="footerBrand">© 2026 Flatrate Buddy</div>

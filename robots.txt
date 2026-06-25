@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /auth-callback.html
+Disallow: /dashboard.html
+
+Sitemap: https://app.nellylabs.dev/sitemap.xml
