@@ -1,7 +1,7 @@
 {
-  "name": "Flat-Rate Log",
-  "short_name": "Flat-Rate",
-  "description": "Track flat-rate hours, earnings, and RO numbers for automotive technicians.",
+  "name": "Flatrate Buddy",
+  "short_name": "FR Buddy",
+  "description": "Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
