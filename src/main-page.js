@@ -317,8 +317,14 @@ function buildEntryMetaHtml(entry) {
   const vin8 = String(entry?.vin8 || "").trim();
   const updatedAt = entry?.updatedAt || entry?.updated_at || entry?.createdAt || entry?.created_at || "";
   const parts = [escapeHtml(formatTimeAgo(updatedAt))];
+  // Show rate only when it differs from the current default — helps spot mismatches
+  const entryRate = Number(entry?.rate);
+  const defaultRate = Number(getDefaultRate?.() || 0);
+  if (entryRate > 0 && Math.abs(entryRate - defaultRate) > 0.01) {
+    parts.push(`$${entryRate}/hr`);
+  }
   if (vin8) parts.push(`VIN ${escapeHtml(vin8)}`);
-  if (entryHasPhoto(entry)) parts.push("Photo");
+  if (entryHasPhoto(entry)) parts.push("📷");
   return `<div class="itemMeta">${parts.join(" · ")}</div>`;
 }
 

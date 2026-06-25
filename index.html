@@ -17,29 +17,34 @@
   <meta property="og:type"        content="website" />
   <meta property="og:title"       content="Flat-Rate Tracker" />
   <meta property="og:description" content="Log flat-rate hours, track earnings, and spot comebacks — built for automotive technicians." />
-  <meta property="og:image"       content="https://flatrate.pages.dev/icon-512.png" />
-  <meta property="og:url"         content="https://flatrate.pages.dev/" />
+  <meta property="og:image"       content="https://app.nellylabs.dev/icon-512.png" />
+  <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Log flat-rate hours, track earnings, and spot comebacks — built for automotive technicians." />
-  <link rel="stylesheet" href="./app.b4a0e58d06.css">
+  <link rel="stylesheet" href="./app.8720d3d2b2.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
       background: #0b1220;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 28px;
+      gap: 20px;
       transition: opacity 0.35s ease;
       padding-top: env(safe-area-inset-top, 0px);
     }
     #appSplash.hide { opacity: 0; pointer-events: none; }
+    .splashIcon {
+      width: 80px; height: 80px;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
     .splashLogo {
       font-size: 13px; font-weight: 600; letter-spacing: 0.18em;
       color: rgba(255,255,255,0.5); text-transform: uppercase;
     }
     .splashRing {
-      width: 64px; height: 64px;
-      border: 3px solid rgba(255,255,255,0.08);
-      border-top-color: var(--primary, #22c55e);
+      width: 28px; height: 28px;
+      border: 2.5px solid rgba(255,255,255,0.1);
+      border-top-color: #22c55e;
       border-radius: 50%;
       animation: splashSpin 0.8s linear infinite;
     }
@@ -49,6 +54,7 @@
 <body data-page="main">
 
 <div id="appSplash">
+  <img src="./icon-192.png" class="splashIcon" alt="" aria-hidden="true" />
   <div class="splashLogo">Flat-Rate</div>
   <div class="splashRing"></div>
 </div>
@@ -969,6 +975,6 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.c557657560.js" defer></script>
+<script src="./app.9625e6f630.js" defer></script>
 </body>
 </html>

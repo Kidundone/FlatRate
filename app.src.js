@@ -3377,8 +3377,14 @@ function buildEntryMetaHtml(entry) {
   const vin8 = String(entry?.vin8 || "").trim();
   const updatedAt = entry?.updatedAt || entry?.updated_at || entry?.createdAt || entry?.created_at || "";
   const parts = [escapeHtml(formatTimeAgo(updatedAt))];
+  // Show rate only when it differs from the current default — helps spot mismatches
+  const entryRate = Number(entry?.rate);
+  const defaultRate = Number(getDefaultRate?.() || 0);
+  if (entryRate > 0 && Math.abs(entryRate - defaultRate) > 0.01) {
+    parts.push(`$${entryRate}/hr`);
+  }
   if (vin8) parts.push(`VIN ${escapeHtml(vin8)}`);
-  if (entryHasPhoto(entry)) parts.push("Photo");
+  if (entryHasPhoto(entry)) parts.push("📷");
   return `<div class="itemMeta">${parts.join(" · ")}</div>`;
 }
 
@@ -8850,7 +8856,7 @@ async function renderBulkEntryList() {
 
   const empId = getEmpId();
   if (!empId) {
-    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">Enter Employee # in Settings to view entries.</div>`;
+    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No Employee # set. <button type="button" class="linkBtn" onclick="document.querySelector('.moreTab[data-tab=\\'settings\\']')?.click()">Go to Settings →</button></div>`;
     return;
   }
 
@@ -9356,8 +9362,8 @@ function logErr(label) {
   };
 }
 
-window.BUILD = "20260316-weekend-stable";
-const BUILD_TAG = "weekend-stable";
+window.BUILD = "20260624-stable";
+const BUILD_TAG = "stable";
 const FEATURE_FREEZE = Object.freeze({
   active: true,
   entriesDataPath: "supabase",
@@ -10048,6 +10054,15 @@ async function runOnce() {
       await loadSubscription?.().catch(logErr("loadSubscription"));
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
+    }
+    // PWA shortcut deep-links: ?tab=history or ?tab=settings
+    const _tabParam = new URLSearchParams(location.search).get("tab");
+    if (_tabParam === "history" || _tabParam === "settings") {
+      history.replaceState({}, "", location.pathname);
+      showSpaPage("more");
+      setTimeout(() => {
+        document.querySelector(`.moreTab[data-tab="${_tabParam}"]`)?.click();
+      }, 400);
     }
     // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {

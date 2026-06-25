@@ -1692,7 +1692,7 @@ async function renderBulkEntryList() {
 
   const empId = getEmpId();
   if (!empId) {
-    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">Enter Employee # in Settings to view entries.</div>`;
+    container.innerHTML = `<div class="muted small" style="padding:12px 16px;">No Employee # set. <button type="button" class="linkBtn" onclick="document.querySelector('.moreTab[data-tab=\\'settings\\']')?.click()">Go to Settings →</button></div>`;
     return;
   }
 

@@ -8,8 +8,8 @@ function logErr(label) {
   };
 }
 
-window.BUILD = "20260316-weekend-stable";
-const BUILD_TAG = "weekend-stable";
+window.BUILD = "20260624-stable";
+const BUILD_TAG = "stable";
 const FEATURE_FREEZE = Object.freeze({
   active: true,
   entriesDataPath: "supabase",
@@ -700,6 +700,15 @@ async function runOnce() {
       await loadSubscription?.().catch(logErr("loadSubscription"));
       toast?.("You're now on Pro — exports unlocked!");
       history.replaceState({}, "", location.pathname);
+    }
+    // PWA shortcut deep-links: ?tab=history or ?tab=settings
+    const _tabParam = new URLSearchParams(location.search).get("tab");
+    if (_tabParam === "history" || _tabParam === "settings") {
+      history.replaceState({}, "", location.pathname);
+      showSpaPage("more");
+      setTimeout(() => {
+        document.querySelector(`.moreTab[data-tab="${_tabParam}"]`)?.click();
+      }, 400);
     }
     // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {
