@@ -2836,6 +2836,50 @@ body.compact .list    { gap: 1px; }
   animation: tourPulse 1.8s cubic-bezier(0.4,0,0.6,1) infinite;
 }
 
+/* ── Tour mascot — FR Buddy guide character ──────────────────────────────── */
+.tourMascotBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.tourMascotAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #1a3b1a 0%, #0d1f0d 100%);
+  border: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  animation: mascotBob 2.8s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(34,197,94,0.25);
+}
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  45%       { transform: translateY(-5px) rotate(1.5deg); }
+  70%       { transform: translateY(-2px) rotate(0deg); }
+}
+
+.tourMascotName {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: .03em;
+}
+
+.tourMascotSub {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 
 /* Very small phones (< 380px) */
