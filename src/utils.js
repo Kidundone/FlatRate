@@ -854,6 +854,41 @@ function getEntryRecordFacts(entry) {
   };
 }
 
+/* ── Action Sheet (replaces browser confirm/alert) ───────────────── */
+/**
+ * showActionSheet({ title, message, confirmLabel, danger, cancelLabel })
+ * Returns a Promise<boolean> — true if user confirmed.
+ * iOS-style bottom sheet with safe-area padding, backdrop tap to cancel.
+ */
+function showActionSheet({ title, message, confirmLabel = "Confirm", danger = false, cancelLabel = "Cancel" } = {}) {
+  return new Promise((resolve) => {
+    lockBodyScroll();
+
+    const overlay = document.createElement("div");
+    overlay.className = "asOverlay";
+    overlay.innerHTML = `
+      <div class="asCard" role="dialog" aria-modal="true">
+        <div class="asHandle"></div>
+        ${title   ? `<div class="asTitle">${title}</div>`     : ""}
+        ${message ? `<div class="asMsg">${message}</div>`     : ""}
+        <button type="button" class="asConfirm${danger ? " asDanger" : ""}">${confirmLabel}</button>
+        <button type="button" class="asCancel">${cancelLabel}</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => overlay.classList.add("asOverlay--in"));
+
+    const dismiss = (result) => {
+      overlay.classList.remove("asOverlay--in");
+      setTimeout(() => { overlay.remove(); unlockBodyScroll(); resolve(result); }, 220);
+    };
+
+    overlay.querySelector(".asConfirm").addEventListener("click", () => dismiss(true));
+    overlay.querySelector(".asCancel").addEventListener("click",  () => dismiss(false));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) dismiss(false); });
+  });
+}
+
 /* ── Body scroll lock (iOS-safe) ─────────────────────────────────── */
 let _scrollLockY = 0;
 

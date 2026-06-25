@@ -840,7 +840,7 @@ async function undoSoftDeleteLog(sb, id) {
 
 let LAST_DELETED = null;
 
-async function onDeleteClicked(btn, idOverride = null) {
+async function onDeleteClicked(btn, idOverride = null, { skipConfirm = false } = {}) {
   const id = String(
     idOverride
     || btn?.dataset?.del
@@ -849,7 +849,17 @@ async function onDeleteClicked(btn, idOverride = null) {
   ).trim();
   if (!id) return;
 
-  if (!confirm("Soft delete this entry?")) return;
+  // Confirmation is handled by the caller (handleDeleteEntry / deleteSelectedEntries)
+  // skipConfirm=true means caller already got user consent
+  if (!skipConfirm) {
+    const ok = await showActionSheet({
+      title: "Delete Entry?",
+      message: "This removes the job from your log.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+  }
 
   if (btn) {
     if (btn.dataset.busy === "1") return;
@@ -877,7 +887,7 @@ async function onDeleteClicked(btn, idOverride = null) {
     });
   } catch (e) {
     console.error("DELETE FAILED", e);
-    alert("Delete failed: " + (e?.message || e));
+    toast("Delete failed — " + (e?.message || "try again"));
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -899,7 +909,7 @@ async function onUndoDelete() {
     if (bar) bar.style.display = "none";
   } catch (e) {
     console.error("UNDO FAILED", e);
-    alert("Undo failed: " + (e?.message || e));
+    toast("Undo failed — " + (e?.message || "try again"));
   }
 }
 
@@ -2152,6 +2162,41 @@ function getEntryRecordFacts(entry) {
   };
 }
 
+/* ── Action Sheet (replaces browser confirm/alert) ───────────────── */
+/**
+ * showActionSheet({ title, message, confirmLabel, danger, cancelLabel })
+ * Returns a Promise<boolean> — true if user confirmed.
+ * iOS-style bottom sheet with safe-area padding, backdrop tap to cancel.
+ */
+function showActionSheet({ title, message, confirmLabel = "Confirm", danger = false, cancelLabel = "Cancel" } = {}) {
+  return new Promise((resolve) => {
+    lockBodyScroll();
+
+    const overlay = document.createElement("div");
+    overlay.className = "asOverlay";
+    overlay.innerHTML = `
+      <div class="asCard" role="dialog" aria-modal="true">
+        <div class="asHandle"></div>
+        ${title   ? `<div class="asTitle">${title}</div>`     : ""}
+        ${message ? `<div class="asMsg">${message}</div>`     : ""}
+        <button type="button" class="asConfirm${danger ? " asDanger" : ""}">${confirmLabel}</button>
+        <button type="button" class="asCancel">${cancelLabel}</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => overlay.classList.add("asOverlay--in"));
+
+    const dismiss = (result) => {
+      overlay.classList.remove("asOverlay--in");
+      setTimeout(() => { overlay.remove(); unlockBodyScroll(); resolve(result); }, 220);
+    };
+
+    overlay.querySelector(".asConfirm").addEventListener("click", () => dismiss(true));
+    overlay.querySelector(".asCancel").addEventListener("click",  () => dismiss(false));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) dismiss(false); });
+  });
+}
+
 /* ── Body scroll lock (iOS-safe) ─────────────────────────────────── */
 let _scrollLockY = 0;
 
@@ -3257,10 +3302,19 @@ document.addEventListener("click", async (ev) => {
 async function handleDeleteEntry(entry, ev) {
   ev?.preventDefault();
   ev?.stopPropagation();
-
   if (!entry || entry.id == null) return toast("Missing id.");
 
-  await onDeleteClicked(ev?.currentTarget, entry.id);
+  const typeStr = String(entry.type || entry.typeText || "this entry");
+  const refStr  = (entry.ref || entry.ro) ? ` · RO ${entry.ref || entry.ro}` : "";
+  const ok = await showActionSheet({
+    title: "Delete Job?",
+    message: `${typeStr}${refStr}`,
+    confirmLabel: "Delete",
+    danger: true,
+  });
+  if (!ok) return;
+
+  await onDeleteClicked(null, entry.id, { skipConfirm: true });
 }
 
 function handleClear(ev, options = {}) {
@@ -4145,10 +4199,16 @@ async function deleteSelectedEntries() {
   const selected = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []).filter(e => e.selected);
   if (!selected.length) { toast("No entries selected."); return; }
   const word = selected.length === 1 ? "entry" : "entries";
-  if (!confirm(`Delete ${selected.length} selected ${word}? This cannot be undone.`)) return;
+  const ok = await showActionSheet({
+    title: `Delete ${selected.length} ${word}?`,
+    message: "This cannot be undone.",
+    confirmLabel: `Delete ${selected.length}`,
+    danger: true,
+  });
+  if (!ok) return;
   let failed = 0;
   for (const e of selected) {
-    try { await onDeleteClicked(null, e.id); } catch { failed++; }
+    try { await onDeleteClicked(null, e.id, { skipConfirm: true }); } catch { failed++; }
   }
   if (failed > 0) toast(`${failed} entr${failed === 1 ? "y" : "ies"} failed to delete — try again`);
   await safeLoadEntries();
@@ -4331,7 +4391,14 @@ async function handleSave(ev) {
 
     if (!typeName) { toast("Type required"); return; }
     if (!hoursVal || hoursVal <= 0) { toast("Hours must be > 0"); return; }
-    if (hoursVal > 24 && !confirm(`${hoursVal} hours is unusually high — save anyway?`)) return;
+    if (hoursVal > 24) {
+      const ok = await showActionSheet({
+        title: `${hoursVal} hours?`,
+        message: "That's unusually high. Save anyway?",
+        confirmLabel: "Save Anyway",
+      });
+      if (!ok) return;
+    }
 
     if (!isEditing) {
       const todayKey = dayKeyFromISO(nowISO());
@@ -4342,7 +4409,12 @@ async function handleSave(ev) {
         const refUp = ref.toUpperCase();
         const hit = pool.find(e => String(e.ref || e.ro || "").trim().toUpperCase() === refUp);
         if (hit) {
-          const ok = confirm(`⛔ Duplicate RO detected!\n\n${ref} was already logged today:\n${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}\n\nSave anyway?`);
+          const ok = await showActionSheet({
+            title: `Duplicate RO: ${ref}`,
+            message: `Already logged today: ${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}`,
+            confirmLabel: "Save Anyway",
+            danger: true,
+          });
           if (!ok) return;
         }
       }
@@ -4356,7 +4428,11 @@ async function handleSave(ev) {
           round1(e.hours) === hRound
         );
         if (hit) {
-          const ok = confirm(`⚠️ Possible duplicate!\n\nSame type + hours already logged today:\n${hit.type || "?"} · ${hit.hours} hrs · ${formatTimeAgo(hit.updatedAt || hit.createdAt)}\n\nSave anyway?`);
+          const ok = await showActionSheet({
+            title: "Possible Duplicate",
+            message: `Same type + hours already logged today: ${hit.type || "?"} · ${hit.hours} hrs · ${formatTimeAgo(hit.updatedAt || hit.createdAt)}`,
+            confirmLabel: "Save Anyway",
+          });
           if (!ok) return;
         }
       }
@@ -5180,7 +5256,7 @@ async function maybeSaveTypeNameOnly(nameRaw){
 
 async function saveTypeFromMoreForm(){
   const empId = cleanEmpId(getEmpId());
-  if (!empId) return alert("Enter Employee # first.");
+  if (!empId) { toast("Enter Employee # first."); return; }
 
   const nameEl = document.getElementById("savedTypeName");
   const hoursEl = document.getElementById("savedTypeHours");
@@ -5190,9 +5266,9 @@ async function saveTypeFromMoreForm(){
   const hours = Number(hoursEl?.value || 0);
   const rate = Number(rateEl?.value || getDefaultRate());
 
-  if (!name) return alert("Type name required.");
-  if (!Number.isFinite(hours) || hours < 0) return alert("Default hours must be a number >= 0.");
-  if (!Number.isFinite(rate) || rate < 0) return alert("Rate must be a number >= 0.");
+  if (!name) { toast("Type name required."); return; }
+  if (!Number.isFinite(hours) || hours < 0) { toast("Default hours must be ≥ 0."); return; }
+  if (!Number.isFinite(rate) || rate < 0) { toast("Rate must be ≥ 0."); return; }
 
   const existing = await findTypeByName(empId, name);
   await upsertTypeDefaults(name, hours, rate);
@@ -5315,7 +5391,8 @@ async function renderTypesListInMore(){
     });
     delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (!confirm(`Delete type "${t.name}"?`)) return;
+      const ok = await showActionSheet({ title: `Delete "${t.name}"?`, confirmLabel: "Delete", danger: true });
+      if (!ok) return;
       addDeletedTypeNames(getEmpId(), [normalizeTypeLower(t.name)]);
       await del(STORES.types, t.id);
       await renderTypeDatalist();

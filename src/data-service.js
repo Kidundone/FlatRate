@@ -550,7 +550,7 @@ async function undoSoftDeleteLog(sb, id) {
 
 let LAST_DELETED = null;
 
-async function onDeleteClicked(btn, idOverride = null) {
+async function onDeleteClicked(btn, idOverride = null, { skipConfirm = false } = {}) {
   const id = String(
     idOverride
     || btn?.dataset?.del
@@ -559,7 +559,17 @@ async function onDeleteClicked(btn, idOverride = null) {
   ).trim();
   if (!id) return;
 
-  if (!confirm("Soft delete this entry?")) return;
+  // Confirmation is handled by the caller (handleDeleteEntry / deleteSelectedEntries)
+  // skipConfirm=true means caller already got user consent
+  if (!skipConfirm) {
+    const ok = await showActionSheet({
+      title: "Delete Entry?",
+      message: "This removes the job from your log.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+  }
 
   if (btn) {
     if (btn.dataset.busy === "1") return;
@@ -587,7 +597,7 @@ async function onDeleteClicked(btn, idOverride = null) {
     });
   } catch (e) {
     console.error("DELETE FAILED", e);
-    alert("Delete failed: " + (e?.message || e));
+    toast("Delete failed — " + (e?.message || "try again"));
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -609,7 +619,7 @@ async function onUndoDelete() {
     if (bar) bar.style.display = "none";
   } catch (e) {
     console.error("UNDO FAILED", e);
-    alert("Undo failed: " + (e?.message || e));
+    toast("Undo failed — " + (e?.message || "try again"));
   }
 }
 
