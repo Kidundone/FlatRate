@@ -10202,6 +10202,68 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
 window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
+/* ── What's New changelog ───────────────────────── */
+const APP_VERSION = "1.2";
+const LS_SEEN_VER = "fr_seen_version";
+
+const CHANGELOG = {
+  "1.2": [
+    "FR Buddy mascot now guides you through the app tour 🦫",
+    "Landing page at app.nellylabs.dev/landing.html",
+    "Payday reminder notification — get pinged on pay day",
+    "Share the app link in More → Help",
+    "App icon updated with mascot, plus maskable icon for Android",
+    "Robots.txt + sitemap for better discoverability",
+    "Cloudflare Web Analytics — privacy-first visitor tracking",
+  ],
+};
+
+function showWhatsNew(version) {
+  const modal  = document.getElementById("whatsNewModal");
+  const list   = document.getElementById("whatsNewList");
+  const verLbl = document.getElementById("whatsNewVersionLabel");
+  if (!modal || !list) return;
+  const items = CHANGELOG[version] || [];
+  if (!items.length) return;
+  list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
+  if (verLbl) verLbl.textContent = "v" + version;
+  modal.style.display = "flex";
+}
+
+function closeWhatsNew() {
+  const modal = document.getElementById("whatsNewModal");
+  if (modal) modal.style.display = "none";
+  localStorage.setItem(LS_SEEN_VER, APP_VERSION);
+}
+
+document.getElementById("whatsNewCloseBtn")?.addEventListener("click", closeWhatsNew);
+document.getElementById("whatsNewDoneBtn")?.addEventListener("click", closeWhatsNew);
+document.getElementById("whatsNewModal")?.addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeWhatsNew();
+});
+document.getElementById("whatsNewBtn")?.addEventListener("click", () => showWhatsNew(APP_VERSION));
+
+// Show automatically once per version (after a short delay so the app settles)
+const _seenVer = localStorage.getItem(LS_SEEN_VER);
+if (_seenVer !== APP_VERSION) {
+  setTimeout(() => showWhatsNew(APP_VERSION), 1800);
+}
+
+/* ── Test notification button ───────────────────── */
+document.getElementById("testNotifBtn")?.addEventListener("click", async () => {
+  const perm = await Notification.requestPermission?.().catch(() => "denied");
+  if (perm === "denied") {
+    window.__FR?.toast?.("Notifications blocked — enable them in browser settings");
+    return;
+  }
+  await window.__FR?.sendNotification?.(
+    "Flatrate Buddy 🔔",
+    "Notifications are working! You're all set.",
+    "fr-test"
+  );
+  window.__FR?.toast?.("Test notification sent!");
+});
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     runOnce().catch(logErr("runOnce"));

@@ -22,7 +22,7 @@
   <meta property="og:image"       content="https://app.nellylabs.dev/icon-512.png" />
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
-  <link rel="stylesheet" href="./app.fcbef642e0.css">
+  <link rel="stylesheet" href="./app.eda1fde66d.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -824,6 +824,22 @@
           <div class="moreDivider"></div>
           <div class="moreRow">
             <div>
+              <div class="moreRowLabel">Test Notification</div>
+              <div class="moreRowSub">Send a test push to verify they're working</div>
+            </div>
+            <button class="btn" id="testNotifBtn" type="button">Test</button>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">What's New</div>
+              <div class="moreRowSub">See the latest updates to this app</div>
+            </div>
+            <button class="btn" id="whatsNewBtn" type="button">View</button>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
               <div class="moreRowLabel">App Update</div>
               <div class="moreRowSub">Force-check for the latest version</div>
             </div>
@@ -995,7 +1011,23 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.a3323b9d9a.js" defer></script>
+<script src="./app.45b25bd87e.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
+
+<!-- What's New modal -->
+<div id="whatsNewModal" class="modalBackdrop" style="display:none;" role="dialog" aria-modal="true" aria-label="What's New">
+  <div class="modalSheet whatsNewSheet">
+    <div class="whatsNewHeader">
+      <img src="./icon-192.png" width="38" height="38" style="border-radius:18%;flex-shrink:0;" alt="" />
+      <div>
+        <div class="whatsNewTitle">What's New</div>
+        <div class="whatsNewVersion" id="whatsNewVersionLabel">v1.2</div>
+      </div>
+      <button class="modalCloseBtn" id="whatsNewCloseBtn" aria-label="Close">✕</button>
+    </div>
+    <ul class="whatsNewList" id="whatsNewList"></ul>
+    <button class="fr26BtnPrimary" id="whatsNewDoneBtn" style="width:100%;margin-top:8px;">Got it 👍</button>
+  </div>
+</div>
 </body>
 </html>
