@@ -9245,70 +9245,70 @@ const MORE_TOUR_STEPS = [
   /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
-    title: "Three Tabs",
-    body: "Job Types stores your saved job templates. History shows your full entry list with weekly stats. Settings holds your rate, pay stub, notifications, and account. Let's go through each.",
+    title: "More Has Three Tabs",
+    body: "Job Types is your job template library. History is every job you've ever logged. Settings holds your rate, pay stub, cloud backup, and account. Let me walk you through each one.",
     action: "switch-tab:jobs",
   },
   {
     el: "#savedTypeCreateForm",
-    title: "Add a Job Type",
-    body: "Enter a job name, the flat-rate hours it typically pays, and your rate per hour, then tap Add. That template is now available as an instant chip every time you log on the main page.",
+    title: "Save Your Common Jobs",
+    body: "Type a job name, how many flat hours it typically pays, and your rate. Hit Add — now that job shows up as a one-tap chip every time you log on the main page. Do this for your top 5 jobs and logging gets way faster.",
     action: "switch-tab:jobs",
   },
   {
     el: "#savedTypesList",
-    title: "Your Saved Types",
-    body: "All your templates live here. Tap the pencil icon to edit hours or rate. Tap the trash icon to delete. Use the Select button to pick multiple and delete them in one shot.",
+    title: "Your Job Type Library",
+    body: "All your saved templates live here. Pencil icon edits hours or rate. Trash deletes it. Hit Select to pick multiples and wipe them in one shot.",
     action: "switch-tab:jobs",
   },
   /* ── History tab ───────────────────────── */
   {
     el: "#insightsCard",
-    title: "This Week's Stats",
-    body: "At a glance — your effective $/hr, average daily pay, comeback count, and weekly pace. All calculated automatically from your logged entries.",
+    title: "Your Stats at a Glance",
+    body: "Effective $/hr, average daily pay, comeback count, weekly pace — all auto-calculated from your logs. Check this every Friday before you clock out.",
     action: "switch-tab:history",
   },
   {
     el: "#entrySearchInput",
-    title: "Search Your History",
-    body: "Type any job name, RO number, or date to filter your full entry list in real time. Every job you've ever logged is searchable here.",
+    title: "Search Every Job You've Logged",
+    body: "Type a job name, RO number, date — anything. Your full history filters in real time. Great for pulling up a specific car or disputing a flagged job.",
     action: "switch-tab:history",
   },
   {
     el: "#bulkSelectToggle",
     title: "Bulk Delete",
-    body: "Tap Select to enter selection mode. Check individual rows or tap All to grab everything. Then hit Delete. Useful for clearing test entries.",
+    body: "Tap Select to enter selection mode, check individual rows or tap All, then hit Delete. Good for clearing out test entries after setup.",
     action: "switch-tab:history",
   },
   {
     el: "#oweMeForm",
     title: "Owe Me Tracker",
-    body: "Log anything the shop owes you — warranty callbacks, goodwill jobs, parts delays. Enter a description and dollar amount. The running total shows as a badge on the section header.",
+    body: "Shop owes you money? Log it here — warranty callbacks, goodwill, parts hold-ups. Add a description and dollar amount. The running total stays visible so you don't forget to chase it down.",
     action: "switch-tab:history",
   },
   /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Default Hourly Rate",
-    body: "Every job you log uses this rate to calculate earnings. You can override it per job using the Rate field in Add Details when logging.",
+    title: "Set Your Hourly Rate",
+    body: "This is the rate I use to calculate your earnings on every job. Set it once, forget it. You can always override per job in the Add Details section when something pays differently.",
     action: "switch-tab:settings",
   },
   {
     el: "#authForm",
-    title: "Cloud Backup",
-    body: "Sign in to back up everything to the cloud. Switch phones or reinstall and your full history comes back instantly. Your data is tied to your account, not your device.",
+    title: "Back Up to the Cloud",
+    body: "Sign in and I'll sync everything — switch phones, reinstall, doesn't matter. Your full history comes back instantly. Your data lives with your account, not your device.",
     action: "switch-tab:settings",
   },
   {
     el: "#payStubDetails",
-    title: "Pay Stub — Catch Short Pay",
-    body: "Enter your check amount each pay period and the app compares it against your logged hours. Any gap between what you logged and what you were paid is flagged automatically.",
+    title: "Catch Short Pay 💰",
+    body: "Enter your check amount each pay period. I compare it against every logged job and flag the gap automatically. If you're getting shorted, this is how you prove it.",
     action: "open-paystub",
   },
   {
     el: null,
-    title: "You're All Set ✓",
-    body: "Start logging jobs and check back after payday. Replay this tour any time from Settings → Help → Take Tour.",
+    title: "You're Good to Go! 🛠️",
+    body: "That's everything. Start logging, check back after payday, and let me do the math. Replay this tour any time from More → Help → Take Tour.",
     last: true,
   },
 ];
@@ -9514,6 +9514,8 @@ function showSpaPage(name) {
       // Lightweight refresh: re-render panels with already-loaded entries
       refreshMorePagePanels?.().catch(logErr("moreRefresh"));
     }
+    // Fire More-page continuation tour if pending (fires every visit; startMoreTour guards itself)
+    setTimeout(() => window.__FR?.startMoreTour?.(), 600);
   }
 }
 window.__FR.showSpaPage = showSpaPage;

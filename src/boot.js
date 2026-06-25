@@ -99,6 +99,8 @@ function showSpaPage(name) {
       // Lightweight refresh: re-render panels with already-loaded entries
       refreshMorePagePanels?.().catch(logErr("moreRefresh"));
     }
+    // Fire More-page continuation tour if pending (fires every visit; startMoreTour guards itself)
+    setTimeout(() => window.__FR?.startMoreTour?.(), 600);
   }
 }
 window.__FR.showSpaPage = showSpaPage;
