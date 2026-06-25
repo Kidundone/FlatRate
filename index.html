@@ -23,7 +23,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.eda1fde66d.css">
+  <link rel="stylesheet" href="./app.6dc28dd112.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -849,6 +849,14 @@
           <div class="moreDivider"></div>
           <div class="moreRow">
             <div>
+              <div class="moreRowLabel">Report a Bug</div>
+              <div class="moreRowSub">Something broken? Let me know</div>
+            </div>
+            <a id="bugReportBtn" class="btn" href="mailto:eamnelsonmalloy@icloud.com?subject=Flatrate%20Buddy%20Bug%20Report&body=App%20version%3A%201.2%0A%0AWhat%20happened%3A%0A%0ASteps%20to%20reproduce%3A%0A">Report</a>
+          </div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
               <div class="moreRowLabel">Privacy Policy</div>
               <div class="moreRowSub">How your data is stored and used</div>
             </div>
@@ -1012,12 +1020,33 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.45b25bd87e.js" defer></script>
+<script src="./app.b838a7a293.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
+<!-- Payday Summary modal -->
+<div id="paydaySummaryModal" class="modalShell" role="dialog" aria-modal="true" aria-label="Payday Summary">
+  <div class="whatsNewSheet" style="gap:14px;">
+    <div class="whatsNewHeader">
+      <span style="font-size:28px;line-height:1;">💰</span>
+      <div>
+        <div class="whatsNewTitle">Payday!</div>
+        <div class="whatsNewVersion" id="paydaySummaryWeek"></div>
+      </div>
+      <button class="modalCloseBtn" id="paydaySummaryCloseBtn" aria-label="Close">✕</button>
+    </div>
+    <div id="paydaySummaryStats" class="insightGrid" style="margin:0;"></div>
+    <div id="paydaySummaryTopJob" style="font-size:13px;color:var(--text2);display:none;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="fr26BtnPrimary" id="paydayEmailBtn" style="width:100%;">✉️ Email My Summary</button>
+      <button class="btn" id="paydayPdfBtn" style="width:100%;padding:10px;">📄 Export Week PDF</button>
+    </div>
+    <div class="muted small" style="text-align:center;">Don't forget to enter your pay stub below to check for short pay.</div>
+  </div>
+</div>
+
 <!-- What's New modal -->
-<div id="whatsNewModal" class="modalBackdrop" style="display:none;" role="dialog" aria-modal="true" aria-label="What's New">
-  <div class="modalSheet whatsNewSheet">
+<div id="whatsNewModal" class="modalShell" role="dialog" aria-modal="true" aria-label="What's New">
+  <div class="whatsNewSheet">
     <div class="whatsNewHeader">
       <img src="./icon-192.png" width="38" height="38" style="border-radius:18%;flex-shrink:0;" alt="" />
       <div>

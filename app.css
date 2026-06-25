@@ -3902,17 +3902,19 @@ body.compact .list    { gap: 1px; }
 [data-theme="light"] .cbStat--cost { background: rgba(239,68,68,.07); }
 [data-theme="light"] .shortPayAlert { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }
 
-/* ── What's New modal ───────────────────────────── */
+/* ── What's New / Payday Summary modal sheet ────── */
 .whatsNewSheet {
   background: var(--card-bg);
-  border-radius: 20px 20px 0 0;
-  padding: 20px 20px 32px;
-  max-width: 480px;
-  width: 100%;
-  margin: auto 0 0;
+  border-radius: 16px;
+  padding: 20px 20px 24px;
+  max-width: 420px;
+  width: calc(100% - 32px);
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .whatsNewHeader { display:flex; align-items:center; gap:12px; }
 .whatsNewTitle { font-size:18px; font-weight:800; color:var(--text1); line-height:1.1; }

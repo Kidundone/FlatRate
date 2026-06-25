@@ -1596,6 +1596,98 @@ async function sendNotification(title, body, tag = "fr-note", extra = {}) {
 window.__FR = window.__FR || {};
 window.__FR.sendNotification = sendNotification;
 
+/* ── Payday week summary ─────────────────────────── */
+async function buildWeekSummary() {
+  const empId = getEmpId();
+  if (!empId) return null;
+  const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : await getAll(STORES.entries));
+  const own = filterEntriesByEmp(all, empId);
+  const ws = startOfWeekLocal(new Date());
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const weekEntries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  const totals = computeTotals(weekEntries);
+  const daysWorked = new Set(weekEntries.map(e => e.dayKey || dayKeyFromISO(e.createdAt)).filter(Boolean)).size;
+  const comebacks = weekEntries.filter(e => e.isComeback).length;
+  const typeMap = new Map();
+  for (const e of weekEntries) {
+    const t = e.type || e.typeText || "Unknown";
+    const cur = typeMap.get(t) || { earnings: 0, count: 0 };
+    typeMap.set(t, { earnings: round2(cur.earnings + (e.earnings || 0)), count: cur.count + 1 });
+  }
+  const topType = Array.from(typeMap.entries()).sort((a, b) => b[1].earnings - a[1].earnings)[0];
+  const fmtDate = d => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return { totals, daysWorked, comebacks, topType, weekEntries, wsLabel: `Week of ${fmtDate(ws)} – ${fmtDate(we)}`, ws };
+}
+
+async function showPaydaySummary() {
+  const modal = document.getElementById("paydaySummaryModal");
+  if (!modal) return;
+  const s = await buildWeekSummary();
+  if (!s) { modal.classList.add("open"); return; } // show blank if no emp
+
+  const weekLbl = document.getElementById("paydaySummaryWeek");
+  const statsEl = document.getElementById("paydaySummaryStats");
+  const topJobEl = document.getElementById("paydaySummaryTopJob");
+
+  if (weekLbl) weekLbl.textContent = s.wsLabel;
+  if (statsEl) statsEl.innerHTML = `
+    <div class="insightCell"><div class="insightLabel">Hours</div><div class="insightValue">${s.totals.hours.toFixed(1)}</div></div>
+    <div class="insightCell"><div class="insightLabel">Pay Logged</div><div class="insightValue">${formatMoney(s.totals.dollars)}</div></div>
+    <div class="insightCell"><div class="insightLabel">Jobs</div><div class="insightValue">${s.totals.count}</div></div>
+    <div class="insightCell"><div class="insightLabel">Comebacks</div><div class="insightValue ${s.comebacks > 0 ? "insightValue--warn" : ""}">${s.comebacks > 0 ? s.comebacks : "None ✓"}</div></div>
+  `;
+  if (topJobEl) {
+    if (s.topType) {
+      topJobEl.textContent = `Top earner: ${s.topType[0]} · ${formatMoney(s.topType[1].earnings)} · ${s.topType[1].count} job${s.topType[1].count !== 1 ? "s" : ""}`;
+      topJobEl.style.display = "";
+    } else {
+      topJobEl.style.display = "none";
+    }
+  }
+
+  // Wire email button
+  const emailBtn = document.getElementById("paydayEmailBtn");
+  if (emailBtn) {
+    emailBtn.onclick = () => {
+      const empId = getEmpId();
+      const lines = [
+        `Flatrate Buddy — ${s.wsLabel}`,
+        `Employee #: ${empId || "—"}`,
+        ``,
+        `Hours Logged: ${s.totals.hours.toFixed(1)}`,
+        `Pay Logged:   ${formatMoney(s.totals.dollars)}`,
+        `Jobs:         ${s.totals.count}`,
+        `Days Worked:  ${s.daysWorked}`,
+        `Comebacks:    ${s.comebacks}`,
+        s.topType ? `Top Earner:   ${s.topType[0]} (${formatMoney(s.topType[1].earnings)})` : "",
+      ].filter(l => l !== undefined).join("\n");
+      const subject = encodeURIComponent(`Flatrate Buddy — ${s.wsLabel}`);
+      const body = encodeURIComponent(lines);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    };
+  }
+
+  // Wire PDF button
+  const pdfBtn = document.getElementById("paydayPdfBtn");
+  if (pdfBtn) {
+    pdfBtn.onclick = async () => {
+      modal.classList.remove("open");
+      await exportEntriesToPDF(s.weekEntries);
+    };
+  }
+
+  modal.classList.add("open");
+}
+
+document.getElementById("paydaySummaryCloseBtn")?.addEventListener("click", () => {
+  document.getElementById("paydaySummaryModal")?.classList.remove("open");
+});
+document.getElementById("paydaySummaryModal")?.addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove("open");
+});
+
+window.__FR.showPaydaySummary = showPaydaySummary;
+
 async function requestNotifPermission() {
   // Native iOS/Android — use Capacitor Local Notifications
   if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.LocalNotifications) {

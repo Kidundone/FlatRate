@@ -723,15 +723,20 @@ async function runOnce() {
         document.querySelector(`.moreTab[data-tab="${_tabParam}"]`)?.click();
       }, 400);
     }
-    // Payday notification deep-link: ?paystub=1 → open Settings tab + expand pay stub
+    // Payday notification deep-link: ?paystub=1 → show week summary, then open pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {
       history.replaceState({}, "", location.pathname);
       showSpaPage("more");
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Show payday week summary modal first
+        await window.__FR?.showPaydaySummary?.();
+        // Also open pay stub section underneath
         document.querySelector('.moreTab[data-tab="settings"]')?.click();
-        const det = document.getElementById("payStubDetails");
-        if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
-      }, 600);
+        setTimeout(() => {
+          const det = document.getElementById("payStubDetails");
+          if (det) { det.open = true; }
+        }, 400);
+      }, 800);
     }
     initPayStubUI();
     if (hasGalleryUi) {
