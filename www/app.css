@@ -2849,8 +2849,8 @@ body.compact .list    { gap: 1px; }
 .tourMascotAvatar {
   width: 46px;
   height: 46px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #1a3b1a 0%, #0d1f0d 100%);
+  border-radius: 22%;
+  background: #0b1220;
   border: 2px solid var(--primary);
   display: flex;
   align-items: center;

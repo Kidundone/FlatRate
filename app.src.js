@@ -6345,6 +6345,12 @@ const TOUR_STEPS = [
     title: "History — Tap & Swipe",
     body: "Tap any entry to edit it — form scrolls up pre-filled. Swipe left to reveal Delete. That's the whole app. You're ready to roll! 🛠️",
   },
+  {
+    el: null,
+    title: "Add Me to Your Home Screen 📱",
+    body: "Last thing — install Flatrate Buddy so it opens like a real app, works offline, and stays on your home screen. Tap the banner that pops up, or use your browser's 'Add to Home Screen' option.",
+    last: true,
+  },
 ];
 
 // ── Goal Setter (tap hero ring) ──────────────────────────
@@ -6902,6 +6908,11 @@ function startTour(force = false) {
     const spotlight = document.getElementById("tourSpotlight");
     if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
     localStorage.setItem("fr_tour_done", "1");
+    // Nudge PWA install if not yet installed
+    if (window.__FR?.canInstall?.()) {
+      const banner = document.getElementById("installBanner");
+      if (banner) banner.style.display = "";
+    }
   }
 
   nextBtn.onclick = () => {
@@ -8800,7 +8811,7 @@ function schedulePaydayReminder() {
       LN.schedule({
         notifications: [{
           id: 1002,
-          title: "Flat-Rate — Payday",
+          title: "Flatrate Buddy — Payday 💰",
           body: "Tap to enter your check amount and verify you weren't short-paid.",
           schedule: { at: d },
           smallIcon: "ic_stat_icon",
@@ -8813,7 +8824,7 @@ function schedulePaydayReminder() {
   // Web fallback: setTimeout + Web Notification API
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   window.__FR_PAYDAY__ = setTimeout(() => {
-    sendNotification("Flat-Rate", "Payday — tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./index.html?paystub=1" } });
+    sendNotification("Flatrate Buddy — Payday 💰", "Tap to enter your check amount and verify you weren't short-paid.", "payday-reminder", { data: { url: "./index.html?paystub=1" } });
     schedulePaydayReminder();
   }, d.getTime() - now.getTime());
 }
@@ -9307,8 +9318,8 @@ const MORE_TOUR_STEPS = [
   },
   {
     el: null,
-    title: "You're Good to Go! 🛠️",
-    body: "That's everything. Start logging, check back after payday, and let me do the math. Replay this tour any time from More → Help → Take Tour.",
+    title: "Add Me to Your Home Screen 📱",
+    body: "Almost done — install Flatrate Buddy so it opens like a real app, works offline, and stays on your home screen. Tap the banner that pops up or use your browser's 'Add to Home Screen' option. Replay this tour any time from More → Help → Take Tour.",
     last: true,
   },
 ];
@@ -9401,6 +9412,11 @@ function startMoreTour() {
     const spotlight = document.getElementById("tourSpotlight");
     if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
     localStorage.setItem("fr_tour_done", "1");
+    // Nudge PWA install if not yet installed
+    if (window.__FR?.canInstall?.()) {
+      const banner = document.getElementById("installBanner");
+      if (banner) banner.style.display = "";
+    }
   }
 
   nextBtn.onclick = () => { step++; if (step >= MORE_TOUR_STEPS.length) endTour(); else show(step); };
@@ -10171,6 +10187,9 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
   const banner = document.getElementById("installBanner");
   if (banner) banner.style.display = "none";
 });
+
+window.__FR.canInstall   = () => !!_deferredInstallPrompt;
+window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {

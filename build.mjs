@@ -22,7 +22,7 @@ const SOURCE_PARTS = [
   "src/boot.js",
 ];
 // more.html is now a redirect stub — no hashed assets to update in it
-const HTML_FILES = ["index.html", "auth-callback.html", "dashboard.html"];
+const HTML_FILES = ["index.html", "auth-callback.html", "dashboard.html", "landing.html"];
 
 function hashOf(buf) {
   return createHash("sha1").update(buf).digest("hex").slice(0, 10);
@@ -258,6 +258,7 @@ const WWW_ASSETS = [
   "index.html", "more.html", "auth-callback.html", "dashboard.html",
   "manifest.webmanifest", "sw.js", "app.css",
   "icon-192.png", "icon-512.png", "_redirects",
+  "tos.html", "privacy.html", "landing.html",
 ];
 mkdirSync("www", { recursive: true });
 // Copy hashed JS + CSS

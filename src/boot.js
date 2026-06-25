@@ -757,6 +757,9 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
   if (banner) banner.style.display = "none";
 });
 
+window.__FR.canInstall   = () => !!_deferredInstallPrompt;
+window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     runOnce().catch(logErr("runOnce"));

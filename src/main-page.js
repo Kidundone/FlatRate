@@ -3285,6 +3285,12 @@ const TOUR_STEPS = [
     title: "History — Tap & Swipe",
     body: "Tap any entry to edit it — form scrolls up pre-filled. Swipe left to reveal Delete. That's the whole app. You're ready to roll! 🛠️",
   },
+  {
+    el: null,
+    title: "Add Me to Your Home Screen 📱",
+    body: "Last thing — install Flatrate Buddy so it opens like a real app, works offline, and stays on your home screen. Tap the banner that pops up, or use your browser's 'Add to Home Screen' option.",
+    last: true,
+  },
 ];
 
 // ── Goal Setter (tap hero ring) ──────────────────────────
@@ -3842,6 +3848,11 @@ function startTour(force = false) {
     const spotlight = document.getElementById("tourSpotlight");
     if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
     localStorage.setItem("fr_tour_done", "1");
+    // Nudge PWA install if not yet installed
+    if (window.__FR?.canInstall?.()) {
+      const banner = document.getElementById("installBanner");
+      if (banner) banner.style.display = "";
+    }
   }
 
   nextBtn.onclick = () => {
