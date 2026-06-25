@@ -57,13 +57,13 @@ function payForPdfEntry(entry, hours, rate) {
 async function exportEntriesToPDF(entries) {
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) {
-    alert("PDF export is not ready yet. Refresh and try again.");
+    toast("PDF not ready — refresh and try again.");
     return;
   }
 
   const rows = Array.isArray(entries) ? entries : [];
   if (!rows.length) {
-    alert("No entries to export.");
+    toast("No entries to export.");
     return;
   }
 
@@ -126,7 +126,7 @@ function exportSelected() {
   const selected = (window.STATE?.entries || []).filter((entry) => entry?.selected);
 
   if (!selected.length) {
-    alert("No entries selected");
+    toast("No entries selected");
     return;
   }
 
@@ -143,7 +143,7 @@ function exportWeek(weekKey) {
   ));
 
   if (!entries.length) {
-    alert(`No entries found for week: ${key}`);
+    toast(`No entries found for week: ${key}`);
     return;
   }
 
@@ -229,9 +229,9 @@ async function exportJSON(){
 async function saveFlaggedHours(){
   const fh = document.getElementById("flaggedHours");
   const val = fh ? Number(fh.value || 0) : 0;
-  if (!Number.isFinite(val) || val < 0) return alert("Flagged hours must be a number >= 0.");
+  if (!Number.isFinite(val) || val < 0) { toast("Flagged hours must be a number ≥ 0."); return; }
   await setThisWeekFlag(val);
-  alert("Flagged hours saved for this week.");
+  toast("Flagged hours saved for this week.");
 }
 
 function expectedTotalsForWeekKey(weekStartKey, empId = getEmpId()) {
@@ -394,7 +394,8 @@ async function deletePayStubFromTrend(weekStartKey) {
 
   const weekLabel = stub.weekEnding || weekEndingForWeekStartKey(key) || key;
   const extra = stub.biweekly && stub.linkedWeek ? " This will remove both linked weeks." : "";
-  if (!confirm(`Delete saved pay stub for ${weekLabel}?${extra}`)) return;
+  const confirmed = await showActionSheet({ title: `Delete pay stub for ${weekLabel}?`, message: extra || undefined, confirmLabel: "Delete", danger: true });
+  if (!confirmed) return;
 
   const removed = removePayStubEntry(key, { includeLinked: true });
   const selectedWeekEl = document.getElementById("payStubWeekEnding");
@@ -482,13 +483,13 @@ async function exportAuditReport() {
   if (!requirePro()) return;
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) {
-    alert("PDF export is not ready yet. Refresh and try again.");
+    toast("PDF not ready — refresh and try again.");
     return;
   }
 
   const ctx = getPayStubAuditContext();
   if (ctx.error) {
-    alert(ctx.error);
+    toast(ctx.error);
     return;
   }
 
@@ -548,11 +549,11 @@ async function savePayStubEntry() {
   const weekEnding = String(weekEl.value || "").trim();
   const amountPaid = Number(amountEl.value || 0);
 
-  if (!weekEnding) return alert("Week ending is required.");
-  if (!Number.isFinite(amountPaid) || amountPaid <= 0) return alert("Enter a check amount greater than 0.");
+  if (!weekEnding) { toast("Week ending is required."); return; }
+  if (!Number.isFinite(amountPaid) || amountPaid <= 0) { toast("Enter a check amount greater than $0."); return; }
 
   const weekStartKey = weekStartKeyFromDateInput(weekEnding);
-  if (!weekStartKey) return alert("Week ending date is invalid.");
+  if (!weekStartKey) { toast("Week ending date is invalid."); return; }
 
   const biweekly = isBiweeklyMode();
   const week2StartKey = biweekly ? getWeek2StartKey(weekStartKey) : null;
@@ -699,6 +700,7 @@ async function refreshMorePagePanels() {
 
   renderInsights?.();
   renderEarningsChart?.();
+  renderComebackStats?.();
   renderPayTrend?.();
   renderPayStubComparison?.();
   renderMissingWorkReview?.();
@@ -1046,7 +1048,7 @@ async function renderReview(){
 }
 
 async function exportAllCsvAdmin() {
-  if (!(await requireAdmin())) return alert("Denied.");
+  if (!(await requireAdmin())) { toast("Access denied."); return; }
 
   const entries = await getAll(STORES.entries);
   entries.sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -1238,14 +1240,14 @@ function initSettingsUI() {
 async function exportDisputeReport(weekKey) {
   if (!requirePro()) return;
   const { jsPDF } = window.jspdf || {};
-  if (!jsPDF) { alert("PDF export is not ready. Refresh and try again."); return; }
+  if (!jsPDF) { toast("PDF not ready — refresh and try again."); return; }
 
   const empId = getEmpId();
-  if (!empId) { alert("Enter Employee # first."); return; }
+  if (!empId) { toast("Enter Employee # first."); return; }
 
   const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
   const own = filterEntriesByEmp(all, empId);
-  if (!own.length) { alert("No logged entries found."); return; }
+  if (!own.length) { toast("No logged entries found."); return; }
 
   const singleWeek = typeof weekKey === "string" && weekKey.length === 10;
 
@@ -1256,7 +1258,7 @@ async function exportDisputeReport(weekKey) {
   let rangeEnd = "";
   if (singleWeek) {
     const ws = parseDateInputValue(weekKey);
-    if (!ws) { alert("Invalid week key."); return; }
+    if (!ws) { toast("Invalid week key."); return; }
     rangeStart = weekKey; // "YYYY-MM-DD"
     rangeEnd = dateKey(endOfWeekLocal(ws));
   }
@@ -1276,7 +1278,7 @@ async function exportDisputeReport(weekKey) {
   }
 
   if (singleWeek && !weekMap.size) {
-    alert(`No entries found for ${rangeStart} → ${rangeEnd}.`);
+    toast(`No entries found for ${rangeStart} → ${rangeEnd}.`);
     return;
   }
 
@@ -1370,9 +1372,9 @@ async function exportDisputeReport(weekKey) {
 async function exportDisputeThisWeek() {
   const weekEl = document.getElementById("payStubWeekEnding");
   const weekEnding = String(weekEl?.value || "").trim();
-  if (!weekEnding) { alert("Set a Week Ending date in the Pay Stub section first."); return; }
+  if (!weekEnding) { toast("Set a Week Ending date in the Pay Stub section first."); return; }
   const weekStartKey = weekStartKeyFromDateInput(weekEnding);
-  if (!weekStartKey) { alert("Invalid week ending date."); return; }
+  if (!weekStartKey) { toast("Invalid week ending date."); return; }
   await exportDisputeReport(weekStartKey);
 }
 
@@ -1452,18 +1454,17 @@ function renderInsights() {
 window.renderInsights = renderInsights;
 
 function renderEarningsChart() {
-  const container = document.getElementById("earningsChart");
+  const container = document.getElementById("eightWeekChartCard");
   if (!container) return;
 
   const empId = getEmpId();
-  if (!empId) { container.innerHTML = `<div class="muted small">Enter Employee # to see chart.</div>`; return; }
+  if (!empId) { container.innerHTML = `<div class="muted small" style="padding:8px 0;">Enter Employee # to see chart.</div>`; return; }
 
   const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
   const own = filterEntriesByEmp(all, empId);
 
-  const now = new Date();
   const weeks = [];
-  for (let i = 11; i >= 0; i--) {
+  for (let i = 7; i >= 0; i--) {
     const ws = startOfWeekLocal(new Date());
     ws.setDate(ws.getDate() - i * 7);
     const we = endOfWeekLocal(ws);
@@ -1502,6 +1503,64 @@ function renderEarningsChart() {
 }
 
 window.renderEarningsChart = renderEarningsChart;
+
+function renderComebackStats() {
+  const container = document.getElementById("comebackStatsCard");
+  if (!container) return;
+
+  const empId = getEmpId();
+  if (!empId) {
+    container.innerHTML = `<div class="muted small" style="padding:8px 0;">Enter Employee # to see comeback stats.</div>`;
+    return;
+  }
+
+  const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+  const own = filterEntriesByEmp(all, empId);
+  const comebacks = own.filter(e => e.isComeback);
+  const total = own.length;
+
+  if (!total) {
+    container.innerHTML = `<div class="muted small" style="padding:8px 0;">No entries yet.</div>`;
+    return;
+  }
+
+  const rate = Math.round((comebacks.length / total) * 100);
+  const cbHours = round1(comebacks.reduce((s, e) => s + Number(e.hours || 0), 0));
+  const cbEarnings = round2(comebacks.reduce((s, e) => s + Number(e.earnings || 0), 0));
+
+  const typeMap = new Map();
+  for (const e of comebacks) {
+    const t = e.type || e.typeText || "Unknown";
+    typeMap.set(t, (typeMap.get(t) || 0) + 1);
+  }
+  const topTypes = Array.from(typeMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  const rateColor = rate > 10 ? "var(--danger)" : rate > 5 ? "var(--warn, #f59e0b)" : "var(--ok, var(--primary))";
+
+  container.innerHTML = `
+    <div class="insightGrid" style="margin-bottom:8px;">
+      <div class="insightCell">
+        <div class="insightLabel">Total</div>
+        <div class="insightValue" style="color:${comebacks.length > 0 ? "var(--danger)" : "var(--primary)"}">${comebacks.length}</div>
+      </div>
+      <div class="insightCell">
+        <div class="insightLabel">Rate</div>
+        <div class="insightValue" style="color:${rateColor}">${rate}%</div>
+      </div>
+      <div class="insightCell">
+        <div class="insightLabel">Hours Lost</div>
+        <div class="insightValue">${formatHours(cbHours)}</div>
+      </div>
+      <div class="insightCell">
+        <div class="insightLabel">Pay Lost</div>
+        <div class="insightValue">${formatMoney(cbEarnings)}</div>
+      </div>
+    </div>
+    ${topTypes.length ? `<div class="insightTopEarner" style="color:var(--danger);">Top types: ${topTypes.map(([t, n]) => `<strong>${escapeHtml(t)}</strong> ×${n}`).join(" · ")}</div>` : ""}
+    ${!comebacks.length ? `<div class="muted small" style="margin-top:4px;">No comebacks logged. Keep it up! ✓</div>` : ""}
+  `;
+}
+window.renderComebackStats = renderComebackStats;
 
 /* ── Payday reminder ──────────────────────────────── */
 const LS_PAYDAY = "fr_payday_reminder";
@@ -1807,7 +1866,8 @@ function initBulkDelete() {
     const checked = [...(list?.querySelectorAll(".bulkCheck:checked") ?? [])];
     if (!checked.length) return;
     const n = checked.length;
-    if (!confirm(`Delete ${n} entr${n === 1 ? "y" : "ies"}? This cannot be undone.`)) return;
+    const confirmed = await showActionSheet({ title: `Delete ${n} entr${n === 1 ? "y" : "ies"}?`, message: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+    if (!confirmed) return;
 
     const ids = checked.map(cb => cb.closest(".bulkEntryRow")?.dataset.id).filter(Boolean);
     for (const id of ids) {
@@ -1896,7 +1956,8 @@ function initJobTypeBulkDelete() {
     const checked = [...(list?.querySelectorAll(".typeCheck:checked") ?? [])];
     if (!checked.length) return;
     const n = checked.length;
-    if (!confirm(`Delete ${n} job type${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    const confirmed = await showActionSheet({ title: `Delete ${n} job type${n === 1 ? "" : "s"}?`, message: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+    if (!confirmed) return;
 
     const rows = checked.map(cb => cb.closest(".typeRow")).filter(Boolean);
     const ids = rows.map(r => r.dataset.id).filter(Boolean);
