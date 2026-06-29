@@ -173,6 +173,14 @@ body[data-page="stats"] #spa-stats {
   padding-left: 16px;
   padding-right: 16px;
 }
+/* Stats page header subtitle */
+.statsHeaderSub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted, #6b7280);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
 /* Donut + legend row */
 .breakdownChart {
   display: flex;

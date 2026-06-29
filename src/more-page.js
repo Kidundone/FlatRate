@@ -2173,8 +2173,8 @@ const MORE_TOUR_STEPS = [
   /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
-    title: "More Has Three Tabs",
-    body: "Job Types is your job template library. History is every job you've ever logged. Settings holds your rate, pay stub, cloud backup, and account. Let me walk you through each one.",
+    title: "More → Three Sections",
+    body: "Job Types is your template library. History is every job logged. Settings holds your rate, pay stub, and account. For earnings by job type, check the Stats tab in the bottom nav.",
     action: "switch-tab:jobs",
   },
   {

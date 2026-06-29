@@ -3270,25 +3270,30 @@ const TOUR_STEPS = [
     body: "Hit Save and the job is locked in instantly — even offline. It queues on your device and syncs to the cloud the moment you're back online. Nothing gets lost.",
   },
   {
-    el: ".tabItem:last-child",
+    el: '.tabItem[data-spa-page="stats"]',
+    title: "Stats → Your Breakdown",
+    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range.",
+  },
+  {
+    el: '.tabItem[data-spa-page="more"]',
     title: "One More Thing →",
-    body: "Swing over to the More tab — that's where your full History, Job Types, Owe Me tracker, and Settings live. Let's go there now.",
+    body: "Swing over to More — that's where your Job Types library, full History, Owe Me tracker, and Settings live. Let's go there now.",
     action: "goto-more",
   },
   {
     el: "#vinSearchInput",
-    title: "Search by VIN",
-    body: "Type any part of a VIN to filter your history down to that vehicle. Super handy when you need to pull up everything done on one car.",
+    title: "Search Your Full History",
+    body: "Type a job name, RO number, VIN, or date — your full log filters in real time. Great for pulling up a specific car or disputing a flagged job.",
   },
   {
     el: ".hcEntriesList",
-    title: "History — Tap & Swipe",
-    body: "Tap any entry to edit it — form scrolls up pre-filled. Swipe left to reveal Delete. That's the whole app. You're ready to roll! 🛠️",
+    title: "Tap & Swipe",
+    body: "Tap any entry to edit it — the form scrolls up pre-filled. Swipe left to reveal Delete. That's the whole app. Go get paid. 🛠️",
   },
   {
     el: null,
     title: "Add Me to Your Home Screen 📱",
-    body: "Last thing — install Flatrate Buddy so it opens like a real app, works offline, and stays on your home screen. Tap the banner that pops up, or use your browser's 'Add to Home Screen' option.",
+    body: "Last thing — install Flatrate Buddy so it opens like a real app, works offline, and stays on your home screen. Tap the install banner or use your browser's 'Add to Home Screen' option.",
     last: true,
   },
 ];
@@ -4185,14 +4190,16 @@ function renderDonutSVG(types, total) {
       <text x="50" y="54" text-anchor="middle" font-size="10" fill="var(--muted,#6b7280)">No data</text>
     </svg>`;
   }
+  // 2px visual gap between segments
+  const GAP = types.length > 1 ? Math.min(3, C * 0.008) : 0;
   let arcs = "";
   let cum = 0;
   types.forEach((t, i) => {
     const color  = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
-    const segLen = (t.count / total) * C;
+    const segLen = Math.max(0, (t.count / total) * C - GAP);
     arcs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="14"
-      stroke-dasharray="${segLen.toFixed(2)} ${C.toFixed(2)}"
-      stroke-dashoffset="${(-cum).toFixed(2)}"
+      stroke-dasharray="${segLen.toFixed(2)} ${(C - segLen).toFixed(2)}"
+      stroke-dashoffset="${(-(cum + GAP / 2)).toFixed(2)}"
       transform="rotate(-90 50 50)"/>`;
     cum += segLen;
   });
@@ -4202,6 +4209,29 @@ function renderDonutSVG(types, total) {
     <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
     <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">jobs</text>
   </svg>`;
+}
+
+// ── Period label (shown as subtitle in Stats header) ────────────────────────
+function _statsPeriodLabel(period, customFrom, customTo) {
+  const fmt = d => new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const now = new Date();
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+  switch (period) {
+    case "today":         return "Today · " + fmt(dateKey(now));
+    case "yesterday":     return "Yesterday · " + fmt(dateKey(addDays(now, -1)));
+    case "week":          return "This Week";
+    case "lastWeek":      return "Last Week";
+    case "payPeriod":     { const [f, t] = _statsPayPeriodRange(0);  return `Pay Period · ${fmt(f)} – ${fmt(t)}`; }
+    case "lastPayPeriod": { const [f, t] = _statsPayPeriodRange(-1); return `Last Pay Period · ${fmt(f)} – ${fmt(t)}`; }
+    case "month":         return now.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    case "lastMonth":     return addDays(new Date(now.getFullYear(), now.getMonth() - 1, 1), 0).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    case "last30":        return "Last 30 Days";
+    case "last90":        return "Last 90 Days";
+    case "year":          return String(now.getFullYear());
+    case "all":           return "All Time";
+    case "custom":        return customFrom && customTo ? `${fmt(customFrom)} – ${fmt(customTo)}` : customFrom ? `From ${fmt(customFrom)}` : "Custom Range";
+    default:              return "";
+  }
 }
 
 // ── Period date-range helpers ────────────────────────────────────────────────
@@ -4266,6 +4296,10 @@ function renderBreakdownPage(period, customFrom, customTo) {
   window.__STATS_PERIOD__      = period;
   window.__STATS_CUSTOM_FROM__ = customFrom || window.__STATS_CUSTOM_FROM__;
   window.__STATS_CUSTOM_TO__   = customTo   || window.__STATS_CUSTOM_TO__;
+
+  // Update header subtitle
+  const subEl = document.getElementById("statsHeaderSub");
+  if (subEl) subEl.textContent = _statsPeriodLabel(period, window.__STATS_CUSTOM_FROM__, window.__STATS_CUSTOM_TO__);
 
   const empId = getEmpId();
   const own   = filterEntriesByEmp(normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []), empId);
