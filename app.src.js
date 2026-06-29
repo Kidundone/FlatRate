@@ -7193,13 +7193,14 @@ const JOB_TYPE_ALIASES = [
   // ── Customer-pay mini detail ──────────────────────────────────
   ["Customer Mini", /customer[\s-]*mini/i, /mini[\s-]*detail/i,
                     /detail[\s-]*mini/i,   /\bmini\b/i],
-  // ── Customer-pay full detail (incl. "no FPF", "complete") ────
+  // ── Customer-pay full detail ─────────────────────────────────
   ["Customer Full", /customer[\s-]*full/i, /customer[\s-]*detail/i,
                     /customer[\s-]*pay/i,  /detail[\s-]*customer/i,
-                    /full[\s-]*detail/i,   /no[\s-]*fpf/i,
+                    /full[\s-]*detail/i,
                     /detail.*complete/i,   /complete.*detail/i],
-  // ── Sold / delivery detail ───────────────────────────────────
-  ["Sold",          /\bsold\b/i],
+  // ── Sold / delivery detail (incl. FPF & no-FPF packages) ────
+  ["Sold",          /\bsold\b/i,          /\bfpf\b/i,
+                    /no[\s-]*fpf/i,        /detail.*fpf/i],
   // ── Dealer trade ─────────────────────────────────────────────
   ["Dealer Trade",  /dealer[\s-]*trade/i,  /\bdt\b/i],
   // ── Reclaim / SPF / Delivery ─────────────────────────────────
