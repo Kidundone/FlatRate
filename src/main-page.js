@@ -4119,10 +4119,34 @@ const BREAKDOWN_COLORS = [
   "#ef4444","#14b8a6","#f97316","#e879f9","#64748b",
 ];
 
+// Normalise free-text job types into canonical buckets.
+// Each entry: [canonical label, ...RegExp patterns that map to it].
+// Patterns are tested in order — first match wins.
+const JOB_TYPE_ALIASES = [
+  ["PDI",        /\bpdi\b/i,        /pdi[\s-]*clean/i,  /wash[\s&+]*wax/i],
+  ["Pre-Owned",  /pre[\s-]*owned?/i, /full[\s-]*detail/i, /preowned/i],
+  ["Re-Clean",   /re[\s-]*clean/i],
+  ["Reclaim",    /\breclaim\b/i],
+  ["Sold",       /\bsold\b/i],
+  ["DT",         /\bdt\b/i],
+  ["SPF",        /\bspf\b/i],
+  ["Delivery",   /\bdelivery\b/i],
+];
+
+function normalizeJobType(raw) {
+  const s = (raw || "").trim();
+  if (!s) return "Unknown";
+  for (const [canonical, ...patterns] of JOB_TYPE_ALIASES) {
+    if (patterns.some(p => p.test(s))) return canonical;
+  }
+  // Fallback: return as-is but with consistent title casing
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function computeTypeBreakdown(entries) {
   const map = new Map();
   for (const e of entries) {
-    const t = ((e.typeText || e.type || "").trim()) || "Unknown";
+    const t = normalizeJobType((e.typeText || e.type || "").trim());
     const cur = map.get(t) || { count: 0, hours: 0, earnings: 0 };
     map.set(t, {
       count:    cur.count    + 1,
