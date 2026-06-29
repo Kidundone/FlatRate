@@ -1408,7 +1408,7 @@ function renderInsights() {
 
   const typeMap = new Map();
   for (const e of weekEntries) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     const cur = typeMap.get(t) || { earnings: 0, count: 0 };
     typeMap.set(t, { earnings: round2(cur.earnings + (e.earnings || 0)), count: cur.count + 1 });
   }
@@ -1419,7 +1419,7 @@ function renderInsights() {
   const allComebacks = filterEntriesByEmp(allOwn, empId).filter(e => e.isComeback);
   const cbTypeMap = new Map();
   for (const e of allComebacks) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     cbTypeMap.set(t, (cbTypeMap.get(t) || 0) + 1);
   }
   const topCbType = Array.from(cbTypeMap.entries()).sort((a, b) => b[1] - a[1])[0];
@@ -1530,7 +1530,7 @@ function renderComebackStats() {
 
   const typeMap = new Map();
   for (const e of comebacks) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     typeMap.set(t, (typeMap.get(t) || 0) + 1);
   }
   const topTypes = Array.from(typeMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -1610,7 +1610,7 @@ async function buildWeekSummary() {
   const comebacks = weekEntries.filter(e => e.isComeback).length;
   const typeMap = new Map();
   for (const e of weekEntries) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     const cur = typeMap.get(t) || { earnings: 0, count: 0 };
     typeMap.set(t, { earnings: round2(cur.earnings + (e.earnings || 0)), count: cur.count + 1 });
   }

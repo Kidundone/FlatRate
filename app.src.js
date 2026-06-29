@@ -7183,14 +7183,31 @@ const BREAKDOWN_COLORS = [
 // Each entry: [canonical label, ...RegExp patterns that map to it].
 // Patterns are tested in order — first match wins.
 const JOB_TYPE_ALIASES = [
-  ["PDI",        /\bpdi\b/i,        /pdi[\s-]*clean/i,  /wash[\s&+]*wax/i],
-  ["Pre-Owned",  /pre[\s-]*owned?/i, /full[\s-]*detail/i, /preowned/i],
-  ["Re-Clean",   /re[\s-]*clean/i],
-  ["Reclaim",    /\breclaim\b/i],
-  ["Sold",       /\bsold\b/i],
-  ["DT",         /\bdt\b/i],
-  ["SPF",        /\bspf\b/i],
-  ["Delivery",   /\bdelivery\b/i],
+  // ── New-car inspections / prep ───────────────────────────────
+  ["PDI",           /\bpdi\b/i,            /pdi[\s-]*clean/i,      /wash[\s&+]*wax/i],
+  // ── Pre-owned / used-car full detail ─────────────────────────
+  ["Pre-Owned",     /pre[\s-]*owned?/i,    /preowned/i,
+                    /\bpo\b.*detail/i,      /detail.*\bpo\b/i],
+  // ── Re-clean / redelivery ────────────────────────────────────
+  ["Re-Clean",      /re[\s-]*clean/i],
+  // ── Customer-pay mini detail ──────────────────────────────────
+  ["Customer Mini", /customer[\s-]*mini/i, /mini[\s-]*detail/i,
+                    /detail[\s-]*mini/i,   /\bmini\b/i],
+  // ── Customer-pay full detail (incl. "no FPF", "complete") ────
+  ["Customer Full", /customer[\s-]*full/i, /customer[\s-]*detail/i,
+                    /customer[\s-]*pay/i,  /detail[\s-]*customer/i,
+                    /full[\s-]*detail/i,   /no[\s-]*fpf/i,
+                    /detail.*complete/i,   /complete.*detail/i],
+  // ── Sold / delivery detail ───────────────────────────────────
+  ["Sold",          /\bsold\b/i],
+  // ── Dealer trade ─────────────────────────────────────────────
+  ["Dealer Trade",  /dealer[\s-]*trade/i,  /\bdt\b/i],
+  // ── Reclaim / SPF / Delivery ─────────────────────────────────
+  ["Reclaim",       /\breclaim\b/i],
+  ["SPF",           /\bspf\b/i],
+  ["Delivery",      /\bdelivery\b/i],
+  // ── Misc ─────────────────────────────────────────────────────
+  ["Misc",          /\bmisc\b/i],
 ];
 
 function normalizeJobType(raw) {
@@ -8809,7 +8826,7 @@ function renderInsights() {
 
   const typeMap = new Map();
   for (const e of weekEntries) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     const cur = typeMap.get(t) || { earnings: 0, count: 0 };
     typeMap.set(t, { earnings: round2(cur.earnings + (e.earnings || 0)), count: cur.count + 1 });
   }
@@ -8820,7 +8837,7 @@ function renderInsights() {
   const allComebacks = filterEntriesByEmp(allOwn, empId).filter(e => e.isComeback);
   const cbTypeMap = new Map();
   for (const e of allComebacks) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     cbTypeMap.set(t, (cbTypeMap.get(t) || 0) + 1);
   }
   const topCbType = Array.from(cbTypeMap.entries()).sort((a, b) => b[1] - a[1])[0];
@@ -8931,7 +8948,7 @@ function renderComebackStats() {
 
   const typeMap = new Map();
   for (const e of comebacks) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     typeMap.set(t, (typeMap.get(t) || 0) + 1);
   }
   const topTypes = Array.from(typeMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -9011,7 +9028,7 @@ async function buildWeekSummary() {
   const comebacks = weekEntries.filter(e => e.isComeback).length;
   const typeMap = new Map();
   for (const e of weekEntries) {
-    const t = e.type || e.typeText || "Unknown";
+    const t = normalizeJobType(e.type || e.typeText || "");
     const cur = typeMap.get(t) || { earnings: 0, count: 0 };
     typeMap.set(t, { earnings: round2(cur.earnings + (e.earnings || 0)), count: cur.count + 1 });
   }

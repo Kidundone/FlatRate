@@ -4123,14 +4123,31 @@ const BREAKDOWN_COLORS = [
 // Each entry: [canonical label, ...RegExp patterns that map to it].
 // Patterns are tested in order — first match wins.
 const JOB_TYPE_ALIASES = [
-  ["PDI",        /\bpdi\b/i,        /pdi[\s-]*clean/i,  /wash[\s&+]*wax/i],
-  ["Pre-Owned",  /pre[\s-]*owned?/i, /full[\s-]*detail/i, /preowned/i],
-  ["Re-Clean",   /re[\s-]*clean/i],
-  ["Reclaim",    /\breclaim\b/i],
-  ["Sold",       /\bsold\b/i],
-  ["DT",         /\bdt\b/i],
-  ["SPF",        /\bspf\b/i],
-  ["Delivery",   /\bdelivery\b/i],
+  // ── New-car inspections / prep ───────────────────────────────
+  ["PDI",           /\bpdi\b/i,            /pdi[\s-]*clean/i,      /wash[\s&+]*wax/i],
+  // ── Pre-owned / used-car full detail ─────────────────────────
+  ["Pre-Owned",     /pre[\s-]*owned?/i,    /preowned/i,
+                    /\bpo\b.*detail/i,      /detail.*\bpo\b/i],
+  // ── Re-clean / redelivery ────────────────────────────────────
+  ["Re-Clean",      /re[\s-]*clean/i],
+  // ── Customer-pay mini detail ──────────────────────────────────
+  ["Customer Mini", /customer[\s-]*mini/i, /mini[\s-]*detail/i,
+                    /detail[\s-]*mini/i,   /\bmini\b/i],
+  // ── Customer-pay full detail (incl. "no FPF", "complete") ────
+  ["Customer Full", /customer[\s-]*full/i, /customer[\s-]*detail/i,
+                    /customer[\s-]*pay/i,  /detail[\s-]*customer/i,
+                    /full[\s-]*detail/i,   /no[\s-]*fpf/i,
+                    /detail.*complete/i,   /complete.*detail/i],
+  // ── Sold / delivery detail ───────────────────────────────────
+  ["Sold",          /\bsold\b/i],
+  // ── Dealer trade ─────────────────────────────────────────────
+  ["Dealer Trade",  /dealer[\s-]*trade/i,  /\bdt\b/i],
+  // ── Reclaim / SPF / Delivery ─────────────────────────────────
+  ["Reclaim",       /\breclaim\b/i],
+  ["SPF",           /\bspf\b/i],
+  ["Delivery",      /\bdelivery\b/i],
+  // ── Misc ─────────────────────────────────────────────────────
+  ["Misc",          /\bmisc\b/i],
 ];
 
 function normalizeJobType(raw) {
