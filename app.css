@@ -96,6 +96,136 @@ body[data-page="more"] #spa-more {
   transform: translateX(0);
 }
 
+/* ── Stats / Breakdown page ──────────────────────────────────────────────── */
+#spa-stats {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  background: var(--bg);
+  z-index: 10;
+  transform: translateX(100%);
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+body[data-page="stats"] #spa-stats {
+  transform: translateX(0);
+}
+.statsPageInner {
+  padding: 0 16px 24px;
+}
+.statsPeriodSeg {
+  margin-bottom: 20px;
+}
+/* Donut + legend row */
+.breakdownChart {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.brkDonutWrap {
+  flex-shrink: 0;
+}
+.brkLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.brkLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text1);
+}
+.brkLegendName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brkDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* Summary cells */
+.breakdownSummary {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.brkSumCell {
+  flex: 1;
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.brkSumVal {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.brkSumLabel {
+  font-size: 11px;
+  color: var(--muted, #6b7280);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+/* Per-type rows */
+.breakdownList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brkRow {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.brkRowBody {
+  flex: 1;
+  min-width: 0;
+}
+.brkRowName {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brkRowCount {
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  margin-top: 3px;
+}
+.brkRowRight {
+  text-align: right;
+  flex-shrink: 0;
+}
+.brkRowEarnings {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
+}
+.brkRowHours {
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  margin-top: 3px;
+}
+
 /* ── Floating details save bar ───────────────────── */
 /* Save button spacing when moved inside the Details panel */
 #detailsPanel .fr26BtnPrimary { margin-top: 16px; }

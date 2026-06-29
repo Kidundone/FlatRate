@@ -4112,3 +4112,139 @@ function checkPersonalRecords(allEntries, newEntry) {
   if (newRecord) setTimeout(() => toast(newRecord, 4500), 1800);
 }
 window.checkPersonalRecords = checkPersonalRecords;
+
+// ── Type Breakdown (Stats page) ──────────────────────────────────────────────
+const BREAKDOWN_COLORS = [
+  "#22c55e","#0095f6","#f59e0b","#a855f7",
+  "#ef4444","#14b8a6","#f97316","#e879f9","#64748b",
+];
+
+function computeTypeBreakdown(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    const t = ((e.typeText || e.type || "").trim()) || "Unknown";
+    const cur = map.get(t) || { count: 0, hours: 0, earnings: 0 };
+    map.set(t, {
+      count:    cur.count    + 1,
+      hours:    round1(cur.hours    + Number(e.hours    || 0)),
+      earnings: round2(cur.earnings + Number(e.earnings || 0)),
+    });
+  }
+  return Array.from(map.entries())
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function renderDonutSVG(types, total) {
+  const r = 36, C = 2 * Math.PI * r;
+  if (!total) {
+    return `<svg viewBox="0 0 100 100" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
+      <text x="50" y="54" text-anchor="middle" font-size="10" fill="var(--muted,#6b7280)">No data</text>
+    </svg>`;
+  }
+  let arcs = "";
+  let cum = 0;
+  types.forEach((t, i) => {
+    const color  = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
+    const segLen = (t.count / total) * C;
+    arcs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="14"
+      stroke-dasharray="${segLen.toFixed(2)} ${C.toFixed(2)}"
+      stroke-dashoffset="${(-cum).toFixed(2)}"
+      transform="rotate(-90 50 50)"/>`;
+    cum += segLen;
+  });
+  return `<svg viewBox="0 0 100 100" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
+    ${arcs}
+    <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
+    <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">jobs</text>
+  </svg>`;
+}
+
+function renderBreakdownPage(period) {
+  period = period || window.__STATS_PERIOD__ || "week";
+  window.__STATS_PERIOD__ = period;
+  const empId = getEmpId();
+  const own   = filterEntriesByEmp(normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []), empId);
+
+  let entries = own;
+  if (period === "today") {
+    const todayK = dateKey(new Date());
+    entries = own.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === todayK);
+  } else if (period === "week") {
+    const ws = startOfWeekLocal(new Date());
+    entries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  }
+
+  const types         = computeTypeBreakdown(entries);
+  const totalCount    = entries.length;
+  const totalHours    = round1(entries.reduce((s, e) => s + Number(e.hours    || 0), 0));
+  const totalEarnings = round2(entries.reduce((s, e) => s + Number(e.earnings || 0), 0));
+
+  const chartEl   = document.getElementById("breakdownChart");
+  const summaryEl = document.getElementById("breakdownSummary");
+  const listEl    = document.getElementById("breakdownList");
+  if (!chartEl || !listEl) return;
+
+  // Donut + legend
+  const legendHtml = types.slice(0, 7).map((t, i) => `
+    <div class="brkLegendItem">
+      <span class="brkDot" style="background:${BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length]}"></span>
+      <span class="brkLegendName">${escapeHtml(t.name)}</span>
+    </div>`).join("");
+
+  chartEl.innerHTML = `
+    <div class="brkDonutWrap">${renderDonutSVG(types, totalCount)}</div>
+    <div class="brkLegend">${legendHtml || '<span class="muted small">No entries</span>'}</div>
+  `;
+
+  // Summary cells
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">Jobs</div></div>
+      <div class="brkSumCell"><div class="brkSumVal">${totalHours}h</div><div class="brkSumLabel">Hours</div></div>
+      <div class="brkSumCell"><div class="brkSumVal">${formatMoney(totalEarnings)}</div><div class="brkSumLabel">Pay</div></div>
+    `;
+  }
+
+  // Breakdown rows
+  if (!types.length) {
+    listEl.innerHTML = '<div class="muted small" style="text-align:center;padding:32px 0;">No entries for this period.</div>';
+    return;
+  }
+  listEl.innerHTML = types.map((t, i) => {
+    const color = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
+    const pct   = totalCount > 0 ? Math.round((t.count / totalCount) * 100) : 0;
+    return `<div class="brkRow">
+      <span class="brkDot" style="background:${color};margin-top:3px;flex-shrink:0;"></span>
+      <div class="brkRowBody">
+        <div class="brkRowName">${escapeHtml(t.name)}</div>
+        <div class="brkRowCount">${t.count} of ${totalCount} jobs · ${pct}%</div>
+      </div>
+      <div class="brkRowRight">
+        <div class="brkRowEarnings">${formatMoney(t.earnings)}</div>
+        <div class="brkRowHours">${t.hours.toFixed(1)} hrs</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function initBreakdownPage() {
+  let period = "week";
+  const seg = document.getElementById("statsPeriodSeg");
+  if (seg) {
+    seg.querySelectorAll(".segBtn[data-period]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        seg.querySelectorAll(".segBtn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        period = btn.dataset.period;
+        renderBreakdownPage(period);
+      });
+    });
+  }
+  renderBreakdownPage(period);
+}
+
+window.__FR.initBreakdownPage   = initBreakdownPage;
+window.__FR.renderBreakdownPage = renderBreakdownPage;

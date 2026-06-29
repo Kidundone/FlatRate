@@ -23,7 +23,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.6dc28dd112.css">
+  <link rel="stylesheet" href="./app.111b0959d1.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -935,6 +935,35 @@
 
 
 <!-- ═══════════════════════════════════════════
+     STATS PAGE SECTION
+═══════════════════════════════════════════ -->
+<div id="spa-stats">
+  <header class="top">
+    <h1>Breakdown</h1>
+  </header>
+  <div class="statsPageInner">
+
+    <!-- Period selector -->
+    <div class="seg statsPeriodSeg" id="statsPeriodSeg">
+      <button type="button" class="segBtn" data-period="today">Today</button>
+      <button type="button" class="segBtn active" data-period="week">This Week</button>
+      <button type="button" class="segBtn" data-period="all">All Time</button>
+    </div>
+
+    <!-- Donut chart + legend -->
+    <div id="breakdownChart" class="breakdownChart"></div>
+
+    <!-- Summary cells -->
+    <div id="breakdownSummary" class="breakdownSummary"></div>
+
+    <!-- Per-type rows -->
+    <div id="breakdownList" class="breakdownList"></div>
+
+  </div>
+</div><!-- /#spa-stats -->
+
+
+<!-- ═══════════════════════════════════════════
      SHARED / GLOBAL OVERLAYS
 ═══════════════════════════════════════════ -->
 
@@ -943,6 +972,10 @@
   <button class="tabItem tabItem--active" data-spa-page="main" type="button">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/></svg>
     <span>Log</span>
+  </button>
+  <button class="tabItem" data-spa-page="stats" type="button">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M12 12 L12 2"/><path d="M12 12 L19 7"/></svg>
+    <span>Stats</span>
   </button>
   <button class="tabItem" data-spa-page="more" type="button">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
@@ -1020,7 +1053,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.b838a7a293.js" defer></script>
+<script src="./app.232758733e.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

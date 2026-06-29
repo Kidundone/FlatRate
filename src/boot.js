@@ -62,19 +62,18 @@ try { window.__FR.sb = sb(); } catch {} // bootAuth handles Supabase-not-ready g
 window.__FR.supabase = window.supabase;
 
 /* ─── SPA page switcher ─────────────────────────────────────────────────────
-   Switches between #spa-main and #spa-more without any page reload.
+   Switches between #spa-main, #spa-more, and #spa-stats without any page reload.
    Called by tab-bar buttons (data-spa-page attribute) and from JS (showSpaPage).
 ────────────────────────────────────────────────────────────────────────────── */
 let _moreSectionLoaded = false;
+let _statsPageLoaded   = false;
 
 function showSpaPage(name) {
-  const main = document.getElementById("spa-main");
-  const more = document.getElementById("spa-more");
+  const main  = document.getElementById("spa-main");
+  const more  = document.getElementById("spa-more");
+  const stats = document.getElementById("spa-stats");
   if (main) main.style.display = name === "main" ? "" : "none";
-  // #spa-more is controlled by CSS transform (body[data-page="more"] → translateX(0)).
-  // We deliberately never set display:none on #spa-more — iOS WKWebView permanently
-  // removes display:none subtrees from its touch hit-test tree, making every button
-  // inside it unresponsive even after the element becomes visible again.
+  // #spa-more and #spa-stats use CSS transforms — never display:none (iOS WKWebView bug).
   document.body.dataset.page = name;
   window.__PAGE__ = name;
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
@@ -84,8 +83,8 @@ function showSpaPage(name) {
     else t.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
-  // #spa-more is now its own scroll container (position:fixed, overflow-y:auto)
-  if (name === "more" && more) more.scrollTop = 0;
+  if (name === "more"  && more)  more.scrollTop  = 0;
+  if (name === "stats" && stats) stats.scrollTop = 0;
 
   // Load more-page data on first visit (deferred from boot to avoid
   // "Supabase not ready" errors). Refresh on every subsequent visit.
@@ -96,11 +95,19 @@ function showSpaPage(name) {
         .then(() => refreshMorePagePanels?.())
         .catch(logErr("moreData"));
     } else {
-      // Lightweight refresh: re-render panels with already-loaded entries
       refreshMorePagePanels?.().catch(logErr("moreRefresh"));
     }
-    // Fire More-page continuation tour if pending (fires every visit; startMoreTour guards itself)
     setTimeout(() => window.__FR?.startMoreTour?.(), 600);
+  }
+
+  // Stats / Breakdown page
+  if (name === "stats") {
+    if (!_statsPageLoaded) {
+      _statsPageLoaded = true;
+      setTimeout(() => window.__FR?.initBreakdownPage?.(), 150);
+    } else {
+      setTimeout(() => window.__FR?.renderBreakdownPage?.(window.__STATS_PERIOD__ || "week"), 100);
+    }
   }
 }
 window.__FR.showSpaPage = showSpaPage;
