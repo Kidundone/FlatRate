@@ -1,141 +1,83 @@
-# Flat Rate Log
+# Flatrate Buddy
 
-Flat Rate Log tracks flat-rate jobs, proof photos, OCR suggestions, review queues, and pay-stub comparison from a single-browser frontend backed by Supabase.
+> A PWA for automotive flat-rate technicians to log jobs, track earnings, catch short pays, and analyze their work — all from their phone.
 
-## Current Status
+**Live app:** [app.nellylabs.dev](https://app.nellylabs.dev)
 
-- Build tag: `weekend-stable`
-- Active entry data path: `supabase`
-- Active table: `work_logs`
-- Proof photo bucket: `proofs`
-- Feature mode: stabilization and hardening
+---
 
-## Runtime Rules
+## Status
 
-- Manual values always win.
-- OCR can suggest, but it never overwrites `ro_number` or `vin8` by itself.
-- OCR enrichment writes to `ocr_*` fields in `work_logs`.
-- A user must tap `Apply STK ...` or `Apply VIN ...` before OCR suggestions become live entry data.
-- Weak but partially readable images can land in `needs_review` instead of `failed`.
+**v1.3 Beta** — All features are free during the beta period. Paid plans are coming soon.
 
-## Quick Entry
+---
 
-The default main-page flow is intentionally small:
+## Features
 
-1. Enter hours
-2. Enter work done
-3. Attach a proof photo if you have one
-4. Save
+- **Job logging** — hours, job type, RO/STK number, earnings, VIN, optional photo
+- **Pay dashboard** — daily pay ring, week chart, goal tracking, catch-up target
+- **Stats tab** — donut chart breakdown by job type (PDI, Pre-Owned, Sold, Re-Clean, etc.) with count, hours, and pay per category; 13 period filters including custom date range and pay period
+- **Smart job-type normalization** — "pdi clean", "PDI", "Wash & Wax" → all grouped as PDI; "Full Detail on Pre-Owned Vehicle" → Pre-Owned; etc.
+- **Short-pay detection** — flags weeks where logged hours exceed what was paid
+- **OCR photo scan** — attach a repair order photo and the app extracts RO number and VIN automatically
+- **Payday summary** — tap to review a full breakdown of the current pay period
+- **Comeback tracking** — logs warranty returns and shows comeback rate
+- **Shift efficiency** — clock in/out to track actual vs. flat hours
+- **Cloud sync** — Supabase backend with row-level security; data synced across devices when signed in
+- **PDF & CSV export** — weekly summary PDF or full CSV download
+- **Offline support** — works offline; queues edits until reconnected
+- **PWA** — installable on iOS and Android home screen; push notifications for payday reminders
 
-RO/Stock, VIN, rate, and notes live behind the optional details panel so entry does not feel like paperwork.
-
-## Review Flow
-
-The More page is the cleanup and comparison surface:
-
-- `Needs Review`
-  Filters entries by proof presence, OCR waiting state, OCR failure, unapplied suggestions, and OCR mismatch.
-- `Apply suggestion`
-  One-tap controls let the user apply OCR stock/VIN suggestions only when they choose.
-- `Pay Stub Entry`
-  Compares paid totals against expected totals from logged entries.
-- `Missing Work`
-  Shows likely candidate entries for a shortfall. This is a heuristic because pay stubs only expose aggregate totals.
+---
 
 ## Source Layout
 
-The app is split into source modules under `src/`:
+All source files are under `src/`:
 
-- `src/classification-service.js`
-  OCR parsing, image quality gating, targeted region OCR, worker-backed Tesseract flow, and dealer classification helpers.
-- `src/data-service.js`
-  Supabase auth, `work_logs` reads/writes, OCR persistence helpers, payroll persistence, and row normalization.
-- `src/utils.js`
-  Shared date/math helpers, formatting, search/filter helpers, review-state helpers, and small cross-page utilities.
-- `src/photo-service.js`
-  Photo picking, downscaling, uploads, signed URL helpers, gallery rendering, and photo viewer behavior.
-- `src/main-page.js`
-  Quick Entry save flow, OCR suggestion apply controls, main entry list rendering, history, and exports.
-- `src/more-page.js`
-  Needs-review queue, pay-stub comparison, missing-work candidate view, exports, and More-page actions.
-- `src/boot.js`
-  Build metadata, startup sequencing, page wiring, and page-specific event binding.
+| File | Purpose |
+|---|---|
+| `src/boot.js` | Startup sequencing, SPA navigation, changelog/What's New, event wiring |
+| `src/main-page.js` | Quick entry form, hero dashboard, job history, tour, Stats tab (donut chart, period filters, job-type normalization) |
+| `src/more-page.js` | More tab: Insights, History/Export, Settings; payday summary; needs-review queue |
+| `src/data-service.js` | Supabase auth, IndexedDB stores, API reads/writes, offline queue |
+| `src/photo-service.js` | Photo picking, downscaling, uploads, OCR scan flow, gallery viewer |
+| `src/utils.js` | Date helpers, formatting, math, filter/search utilities |
 
-## Build Flow
+---
 
-Do not edit generated bundles directly.
+## Architecture
 
-1. Edit files in `src/`
-2. Run `node build.mjs`
-3. `build.mjs` concatenates `src/*.js` into generated `app.src.js`
-4. The same build writes a versioned `app.<hash>.js`
-5. `index.html` and `more.html` are updated to the newest bundle
-6. Older hashed bundles are removed automatically
+Single-page app (`index.html`) with three SPA sections:
 
-Generated artifacts:
+- `#spa-main` — Log tab (default)
+- `#spa-stats` — Stats tab
+- `#spa-more` — More tab
 
-- `app.src.js`
-  Readable generated source bundle
-- `app.<hash>.js`
-  Deployable bundle referenced by the HTML entry points
+Navigation uses CSS `transform: translateX` (never `display:none`) to avoid iOS WKWebView hit-test bugs.
 
-## Supabase Fields
+**Build:** `build.mjs` bundles `src/*.js` via esbuild → hashed `app.<hash>.js` + `app.<hash>.css` → copied to `www/`.
 
-Primary `work_logs` fields used by the app:
+**Data:** IndexedDB for local storage; Supabase (`work_logs` table) for cloud sync when signed in.
 
-- `id`
-- `user_id`
-- `employee_number`
-- `work_date`
-- `category`
-- `ro_number`
-- `stock`
-- `description`
-- `flat_hours`
-- `cash_amount`
-- `location`
-- `vin`
-- `vin8`
-- `photo_path`
-- `dealer`
-- `brand`
-- `store_code`
-- `campus`
-- `created_at`
-- `updated_at`
+**Pay periods:** bi-weekly, anchored to Mon Jan 6 2025.
 
-OCR and review fields:
+---
 
-- `ocr_status`
-- `ocr_error`
-- `ocr_quality_warning`
-- `ocr_text_raw`
-- `ocr_sheet_type`
-- `ocr_ro_suggestion`
-- `ocr_stock_suggestion`
-- `ocr_vin_suggestion`
-- `ocr_vin8_suggestion`
-- `ocr_work_suggestion`
-- `ocr_confidence`
-- `ocr_processed_at`
-
-## Demo Flow
-
-Use this repeatable story:
-
-1. Quick entry: hours + work done + optional photo
-2. Save the entry
-3. OCR enriches the saved photo in the background
-4. Review totals on the main page
-5. Compare the pay stub on the More page
-6. Open the missing-work candidates and show the proof-backed entries
-
-## Local Run
+## Build
 
 ```bash
 node build.mjs
-open index.html
 ```
+
+Then open `index.html` locally or deploy the `www/` folder to Cloudflare Pages.
+
+---
+
+## Deploy
+
+Hosted on Cloudflare Pages at `app.nellylabs.dev`. Push to `main` triggers automatic deploy.
+
+---
 
 ## License
 

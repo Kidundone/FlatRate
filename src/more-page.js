@@ -203,9 +203,8 @@ async function startCheckout(plan) {
 }
 
 function requirePro(action) {
-  if (isPro()) return true;
-  showUpgradeModal();
-  return false;
+  // Beta: all features free — never gate
+  return true;
 }
 
 /* ── Exports (pro-gated) ─────────────────────────────────────────── */

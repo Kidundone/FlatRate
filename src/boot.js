@@ -708,19 +708,11 @@ async function runOnce() {
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();
 
-    // Upgrade modal
-    document.getElementById("upgradeMonthlyBtn")?.addEventListener("click", () => startCheckout?.("monthly"));
-    document.getElementById("upgradeYearlyBtn")?.addEventListener("click",  () => startCheckout?.("yearly"));
+    // Beta modal close
     document.getElementById("upgradeCloseBtn")?.addEventListener("click",   () => hideUpgradeModal?.());
     document.getElementById("upgradeModal")?.addEventListener("click", (e) => {
       if (e.target?.id === "upgradeModal") hideUpgradeModal?.();
     });
-    // Show upgrade banner if user lands with ?upgraded=1 from Stripe success
-    if (new URLSearchParams(location.search).get("upgraded") === "1") {
-      await loadSubscription?.().catch(logErr("loadSubscription"));
-      toast?.("You're now on Pro — exports unlocked!");
-      history.replaceState({}, "", location.pathname);
-    }
     // PWA shortcut deep-links: ?tab=history or ?tab=settings
     const _tabParam = new URLSearchParams(location.search).get("tab");
     if (_tabParam === "history" || _tabParam === "settings") {
@@ -784,11 +776,12 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.3-beta";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
-  "1.3": [
+  "1.3-beta": [
+    "Beta mode — all features free while we build with you 🧪",
     "New Stats tab — job type breakdown with donut chart 📊",
     "13 period filters: today, pay period, custom date range, and more",
     "Smart job-type merging: PDI, Pre-Owned, Re-Clean, Sold auto-grouped",
@@ -814,7 +807,7 @@ function showWhatsNew(version) {
   const items = CHANGELOG[version] || [];
   if (!items.length) return;
   list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
-  if (verLbl) verLbl.textContent = "v" + version;
+  if (verLbl) verLbl.textContent = version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
   modal.style.display = "flex";
 }
 
