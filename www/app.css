@@ -113,10 +113,65 @@ body[data-page="stats"] #spa-stats {
   transform: translateX(0);
 }
 .statsPageInner {
-  padding: 0 16px 24px;
+  padding: 0 0 24px;
 }
-.statsPeriodSeg {
-  margin-bottom: 20px;
+/* Horizontal scrollable period chips */
+.statsChipsWrap {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 16px 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-bottom: 8px;
+}
+.statsChipsWrap::-webkit-scrollbar { display: none; }
+.statsChip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--surface2, #1e2d42);
+  background: transparent;
+  color: var(--text2, #8a9bb8);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.statsChip.active {
+  background: var(--primary, #22c55e);
+  border-color: var(--primary, #22c55e);
+  color: #fff;
+}
+/* Custom date range */
+.statsCustomRange {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 12px;
+  flex-wrap: wrap;
+}
+.statsDateInput {
+  flex: 1;
+  min-width: 120px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+.statsDateSep {
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.statsDateApply {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+/* Inner content padding for chart/list */
+#breakdownChart, #breakdownSummary, #breakdownList {
+  padding-left: 16px;
+  padding-right: 16px;
 }
 /* Donut + legend row */
 .breakdownChart {

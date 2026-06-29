@@ -23,7 +23,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.111b0959d1.css">
+  <link rel="stylesheet" href="./app.8e2973858c.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -943,11 +943,29 @@
   </header>
   <div class="statsPageInner">
 
-    <!-- Period selector -->
-    <div class="seg statsPeriodSeg" id="statsPeriodSeg">
-      <button type="button" class="segBtn" data-period="today">Today</button>
-      <button type="button" class="segBtn active" data-period="week">This Week</button>
-      <button type="button" class="segBtn" data-period="all">All Time</button>
+    <!-- Period chips — horizontal scroll -->
+    <div class="statsChipsWrap" id="statsPeriodSeg">
+      <button type="button" class="statsChip" data-period="today">Today</button>
+      <button type="button" class="statsChip" data-period="yesterday">Yesterday</button>
+      <button type="button" class="statsChip active" data-period="week">This Week</button>
+      <button type="button" class="statsChip" data-period="lastWeek">Last Week</button>
+      <button type="button" class="statsChip" data-period="payPeriod">This Pay Period</button>
+      <button type="button" class="statsChip" data-period="lastPayPeriod">Last Pay Period</button>
+      <button type="button" class="statsChip" data-period="month">This Month</button>
+      <button type="button" class="statsChip" data-period="lastMonth">Last Month</button>
+      <button type="button" class="statsChip" data-period="last30">Last 30 Days</button>
+      <button type="button" class="statsChip" data-period="last90">Last 90 Days</button>
+      <button type="button" class="statsChip" data-period="year">This Year</button>
+      <button type="button" class="statsChip" data-period="all">All Time</button>
+      <button type="button" class="statsChip" data-period="custom">Custom…</button>
+    </div>
+
+    <!-- Custom date range (hidden until Custom is picked) -->
+    <div id="statsCustomRange" class="statsCustomRange" style="display:none;">
+      <input type="date" id="statsFromDate" class="fr26Input statsDateInput" />
+      <span class="statsDateSep">→</span>
+      <input type="date" id="statsToDate" class="fr26Input statsDateInput" />
+      <button type="button" class="fr26BtnPrimary statsDateApply" id="statsDateApply">Go</button>
     </div>
 
     <!-- Donut chart + legend -->
@@ -1053,7 +1071,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.de0bcc34b8.js" defer></script>
+<script src="./app.af3dfa361d.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

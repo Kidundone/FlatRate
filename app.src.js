@@ -7246,20 +7246,74 @@ function renderDonutSVG(types, total) {
   </svg>`;
 }
 
-function renderBreakdownPage(period) {
+// ── Period date-range helpers ────────────────────────────────────────────────
+// Returns [fromKey, toKey] where null means "no bound".
+// fromKey / toKey are "YYYY-MM-DD" strings comparable with < / >.
+function _statsPayPeriodRange(offset) {
+  // Bi-weekly anchor: Jan 6 2025 (Monday). Adjust if your shop uses a different start.
+  const ANCHOR   = new Date("2025-01-06T00:00:00");
+  const MS_PERIOD = 14 * 86400000;
+  const now       = new Date();
+  const periods   = Math.floor((now - ANCHOR) / MS_PERIOD) + offset;
+  const start     = new Date(ANCHOR.getTime() + periods * MS_PERIOD);
+  const end       = new Date(start.getTime() + 13 * 86400000);
+  return [dateKey(start), dateKey(end)];
+}
+
+function _statsDateRange(period, customFrom, customTo) {
+  const now    = new Date();
+  const todayK = dateKey(now);
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+
+  switch (period) {
+    case "today":         return [todayK, todayK];
+    case "yesterday": {   const y = addDays(now, -1); const yk = dateKey(y); return [yk, yk]; }
+    case "week":          return [dateKey(startOfWeekLocal(now)), null];
+    case "lastWeek": {
+      const ws = startOfWeekLocal(addDays(now, -7));
+      return [dateKey(ws), dateKey(addDays(ws, 6))];
+    }
+    case "payPeriod":     return _statsPayPeriodRange(0);
+    case "lastPayPeriod": return _statsPayPeriodRange(-1);
+    case "month": {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1);
+      return [dateKey(s), null];
+    }
+    case "lastMonth": {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0);
+      return [dateKey(s), dateKey(e)];
+    }
+    case "last30":        return [dateKey(addDays(now, -29)), todayK];
+    case "last90":        return [dateKey(addDays(now, -89)), todayK];
+    case "year":          return [dateKey(new Date(now.getFullYear(), 0, 1)), null];
+    case "all":           return [null, null];
+    case "custom":        return [customFrom || null, customTo || null];
+    default:              return [null, null];
+  }
+}
+
+function _statsFilterByRange(entries, from, to) {
+  return entries.filter(e => {
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt) || "";
+    if (from && dk < from) return false;
+    if (to   && dk > to)   return false;
+    return true;
+  });
+}
+
+// ── Main render ──────────────────────────────────────────────────────────────
+function renderBreakdownPage(period, customFrom, customTo) {
   period = period || window.__STATS_PERIOD__ || "week";
-  window.__STATS_PERIOD__ = period;
+  window.__STATS_PERIOD__      = period;
+  window.__STATS_CUSTOM_FROM__ = customFrom || window.__STATS_CUSTOM_FROM__;
+  window.__STATS_CUSTOM_TO__   = customTo   || window.__STATS_CUSTOM_TO__;
+
   const empId = getEmpId();
   const own   = filterEntriesByEmp(normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []), empId);
 
-  let entries = own;
-  if (period === "today") {
-    const todayK = dateKey(new Date());
-    entries = own.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === todayK);
-  } else if (period === "week") {
-    const ws = startOfWeekLocal(new Date());
-    entries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
-  }
+  const [from, to] = _statsDateRange(period, window.__STATS_CUSTOM_FROM__, window.__STATS_CUSTOM_TO__);
+  const entries    = _statsFilterByRange(own, from, to);
 
   const types         = computeTypeBreakdown(entries);
   const totalCount    = entries.length;
@@ -7283,7 +7337,6 @@ function renderBreakdownPage(period) {
     <div class="brkLegend">${legendHtml || '<span class="muted small">No entries</span>'}</div>
   `;
 
-  // Summary cells
   if (summaryEl) {
     summaryEl.innerHTML = `
       <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">Jobs</div></div>
@@ -7292,7 +7345,6 @@ function renderBreakdownPage(period) {
     `;
   }
 
-  // Breakdown rows
   if (!types.length) {
     listEl.innerHTML = '<div class="muted small" style="text-align:center;padding:32px 0;">No entries for this period.</div>';
     return;
@@ -7316,17 +7368,31 @@ function renderBreakdownPage(period) {
 
 function initBreakdownPage() {
   let period = "week";
-  const seg = document.getElementById("statsPeriodSeg");
+  const seg        = document.getElementById("statsPeriodSeg");
+  const customWrap = document.getElementById("statsCustomRange");
+  const fromEl     = document.getElementById("statsFromDate");
+  const toEl       = document.getElementById("statsToDate");
+  const applyBtn   = document.getElementById("statsDateApply");
+
   if (seg) {
-    seg.querySelectorAll(".segBtn[data-period]").forEach(btn => {
+    seg.querySelectorAll(".statsChip[data-period]").forEach(btn => {
       btn.addEventListener("click", () => {
-        seg.querySelectorAll(".segBtn").forEach(b => b.classList.remove("active"));
+        seg.querySelectorAll(".statsChip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         period = btn.dataset.period;
-        renderBreakdownPage(period);
+        // Show/hide custom range picker
+        if (customWrap) customWrap.style.display = period === "custom" ? "flex" : "none";
+        if (period !== "custom") renderBreakdownPage(period);
       });
     });
   }
+
+  if (applyBtn && fromEl && toEl) {
+    applyBtn.addEventListener("click", () => {
+      renderBreakdownPage("custom", fromEl.value, toEl.value);
+    });
+  }
+
   renderBreakdownPage(period);
 }
 
