@@ -5038,7 +5038,9 @@ function cleanEmpId(empId){
 }
 
 function normalizeTypeName(name){
-  return String(name || "").trim();
+  const raw = String(name || "").trim();
+  // Merge aliases before storing (normalizeJobType is hoisted — safe to call here)
+  return normalizeJobType(raw) || raw;
 }
 
 function normalizeTypeLower(name){
