@@ -399,11 +399,8 @@ async function runOnce() {
       checkDuplicates?.();
       updateSaveEnabled();
     });
-    document.getElementById("typeText")?.addEventListener("blur", async () => {
-      const name = document.getElementById("typeText")?.value || "";
-      if (!String(name || "").trim()) return;
-      await maybeSaveTypeNameOnly?.(name);
-    });
+    // Type name is saved only on form submit (via upsertTypeDefaults), not on blur,
+    // so partial/in-progress text doesn't pollute the job type library.
 
     const syncClearTypeBtn = () => {
       const typeEl = document.getElementById("typeText");
