@@ -9,7 +9,7 @@
   --text: #fff;
   --text2: rgba(255,255,255,.72);
   --muted: #7a7a9a;
-  --muted2: #3a3a5a;
+  --muted2: rgba(255,255,255,.32);
 
   --primary: #22c55e;
   --primary-dark: #16a34a;
@@ -2404,6 +2404,7 @@ a.btn {
 [data-theme="light"] .hcStatVal { color: var(--text); }
 [data-theme="light"] .hcStatLabel { color: var(--muted); }
 [data-theme="light"] .k { color: var(--muted); }
+[data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
 
 /* ── Short-pay trend ─────────────────────────────── */
 .ptSummary {
@@ -3043,7 +3044,7 @@ body.compact .list    { gap: 1px; }
   width: 46px;
   height: 46px;
   border-radius: 22%;
-  background: #0b1220;
+  background: #0b1220; /* light override below */
   border: 2px solid var(--primary);
   display: flex;
   align-items: center;
