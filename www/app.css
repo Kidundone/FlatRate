@@ -301,6 +301,59 @@ body[data-page="stats"] #spa-stats {
   margin-top: 3px;
 }
 
+/* ── Monthly trend bar chart (Stats page) ───────────────────────────── */
+.breakdownMonthly { margin-bottom: 16px; }
+.mnthTrend {
+  background: var(--surface2);
+  border-radius: var(--r-lg);
+  padding: 14px 16px 10px;
+}
+.mnthTrendTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 10px;
+}
+.mnthBarsScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.mnthBarsWrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding-bottom: 24px; /* room for labels */
+  min-width: min-content;
+}
+.mnthBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.mnthBarAmt {
+  font-size: 8px;
+  color: var(--muted);
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.mnthBar {
+  width: 30px;
+  min-height: 4px;
+  background: var(--primary);
+  border-radius: 4px 4px 0 0;
+  opacity: 0.75;
+}
+.mnthBarLabel {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
 /* ── Floating details save bar ───────────────────── */
 /* Save button spacing when moved inside the Details panel */
 #detailsPanel .fr26BtnPrimary { margin-top: 16px; }

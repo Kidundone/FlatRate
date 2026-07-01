@@ -571,6 +571,75 @@ function renderHeroChart(entries, weekStart) {
   const labelsRow = document.getElementById("heroChartLabels");
   if (!svg || !labelsRow) return;
 
+  // ── Year mode: 12 monthly bars ──────────────────────────────────────
+  const heroMode = window.__RANGE_MODE__ || rangeMode || "day";
+  if (heroMode === "year") {
+    const navNow = navRefDate();
+    const yr = navNow.getFullYear();
+    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const curMonth = (new Date()).getFullYear() === yr ? (new Date()).getMonth() : 11;
+    const buckets = monthNames.map((lbl, mo) => {
+      const prefix = `${yr}-${String(mo + 1).padStart(2, "0")}`;
+      const moEntries = entries.filter(e => (e.dayKey || "").startsWith(prefix));
+      const dollars = moEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
+      return { label: lbl, prefix, dollars, isCurrent: mo === curMonth };
+    });
+    const max = Math.max(...buckets.map(b => b.dollars), 1);
+    const W = 300, H = 56, n = 12;
+    const barW = (W - (n + 1) * 3) / n;
+    const gap  = 3;
+    const isLight = document.documentElement.dataset.theme === "light";
+    const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
+    const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+    svg.innerHTML = "";
+    buckets.forEach((b, i) => {
+      const x = gap + i * (barW + gap);
+      const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
+      const y = H - barH;
+      const color = b.isCurrent ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", x.toFixed(1));
+      rect.setAttribute("y", y.toFixed(1));
+      rect.setAttribute("width", barW.toFixed(1));
+      rect.setAttribute("height", barH.toFixed(1));
+      rect.setAttribute("rx", "3");
+      rect.setAttribute("fill", color);
+      rect.style.transformOrigin = `${(x + barW / 2).toFixed(1)}px ${H}px`;
+      rect.style.transform = "scaleY(0)";
+      rect.style.transition = `transform 380ms cubic-bezier(.34,1.56,.64,1) ${i * 35}ms`;
+      svg.appendChild(rect);
+    });
+    requestAnimationFrame(() => {
+      svg.querySelectorAll("rect").forEach(r => { r.style.transform = "scaleY(1)"; });
+    });
+    labelsRow.innerHTML = buckets.map(b =>
+      `<span class="heroChartLabel${b.isCurrent ? " heroChartLabel--now" : ""}">${b.label}</span>`
+    ).join("");
+    window.__heroEntries = entries;
+    svg.querySelectorAll("rect").forEach((rect, i) => {
+      rect.style.cursor = "pointer";
+      rect.addEventListener("click", () => {
+        const b = buckets[i];
+        const moEntries = (window.__heroEntries || []).filter(e => (e.dayKey || "").startsWith(b.prefix));
+        const hrs = moEntries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
+        const cnt = moEntries.length;
+        const setT = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setT("hcsHours", hrs > 0 ? round1(hrs) : "0");
+        setT("hcsJobs", String(cnt));
+        setT("hcsPay", b.dollars > 0 ? formatMoney(b.dollars) : "$0");
+        setT("hcsAvg", cnt > 0 ? formatMoney(round2(b.dollars / cnt)) : "—");
+        setT("hcRangeLabel", `${b.label} ${yr}`);
+        svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === i ? "1" : "0.45"; });
+        labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === i); });
+      });
+    });
+    // Default: highlight most recent month with data
+    let lastIdx = -1;
+    buckets.forEach((b, i) => { if (b.dollars > 0) lastIdx = i; });
+    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.click();
+    return;
+  }
+
   const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const today = new Date();
   const todayKey = todayKeyLocal();
@@ -4300,6 +4369,43 @@ function _statsFilterByRange(entries, from, to) {
   });
 }
 
+// ── Monthly trend bar chart ───────────────────────────────────────────────────
+function _renderMonthlyTrendHtml(entries) {
+  const bucketMap = new Map();
+  entries.forEach(e => {
+    if (!e.dayKey || e.dayKey.length < 7) return;
+    const mo = e.dayKey.slice(0, 7); // "YYYY-MM"
+    const cur = bucketMap.get(mo) || { key: mo, dollars: 0, count: 0 };
+    cur.dollars += Number(e.earnings || 0);
+    cur.count++;
+    bucketMap.set(mo, cur);
+  });
+  const buckets = [...bucketMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => ({
+      ...v,
+      label: (() => {
+        const d = new Date(k + "-15");
+        return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      })(),
+    }));
+  if (buckets.length < 2) return ""; // no chart for single month
+  const maxD = Math.max(...buckets.map(b => b.dollars), 1);
+  const H = 64; // bar area height in px
+  const bars = buckets.map(b => {
+    const barH = b.dollars > 0 ? Math.max(4, Math.round((b.dollars / maxD) * H)) : 4;
+    return `<div class="mnthBarCol">
+      <div class="mnthBarAmt">${formatMoney(Math.round(b.dollars))}</div>
+      <div class="mnthBar" style="height:${barH}px;"></div>
+      <div class="mnthBarLabel">${b.label}</div>
+    </div>`;
+  }).join("");
+  return `<div class="mnthTrend">
+    <div class="mnthTrendTitle">Monthly Earnings</div>
+    <div class="mnthBarsScroll"><div class="mnthBarsWrap">${bars}</div></div>
+  </div>`;
+}
+
 // ── Main render ──────────────────────────────────────────────────────────────
 function renderBreakdownPage(period, customFrom, customTo) {
   period = period || window.__STATS_PERIOD__ || "week";
@@ -4322,10 +4428,23 @@ function renderBreakdownPage(period, customFrom, customTo) {
   const totalHours    = round1(entries.reduce((s, e) => s + Number(e.hours    || 0), 0));
   const totalEarnings = round2(entries.reduce((s, e) => s + Number(e.earnings || 0), 0));
 
-  const chartEl   = document.getElementById("breakdownChart");
-  const summaryEl = document.getElementById("breakdownSummary");
-  const listEl    = document.getElementById("breakdownList");
+  const chartEl    = document.getElementById("breakdownChart");
+  const summaryEl  = document.getElementById("breakdownSummary");
+  const listEl     = document.getElementById("breakdownList");
+  const monthlyEl  = document.getElementById("breakdownMonthly");
   if (!chartEl || !listEl) return;
+
+  // ── Monthly trend (multi-month periods only) ─────────────────────────
+  const showMonthly = ["year", "all", "last90", "last30", "custom"].includes(period);
+  if (monthlyEl) {
+    if (showMonthly && entries.length > 0) {
+      monthlyEl.innerHTML = _renderMonthlyTrendHtml(entries);
+      monthlyEl.style.display = "";
+    } else {
+      monthlyEl.innerHTML = "";
+      monthlyEl.style.display = "none";
+    }
+  }
 
   // Donut + legend
   const legendHtml = types.slice(0, 7).map((t, i) => `
