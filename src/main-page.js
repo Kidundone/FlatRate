@@ -441,9 +441,17 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   // Sub line — show week total
   const subEl = document.getElementById("heroSubLine");
   if (subEl) {
-    subEl.textContent = weekDollars > 0
-      ? `${formatMoney(weekDollars)} this week`
-      : todayCount > 0 ? `${todayCount} job${todayCount !== 1 ? "s" : ""} today` : "";
+    subEl.style.fontStyle = "";
+    subEl.style.opacity = "";
+    if (weekDollars > 0) {
+      subEl.textContent = `${formatMoney(weekDollars)} this week`;
+    } else if (todayCount > 0) {
+      subEl.textContent = `${todayCount} job${todayCount !== 1 ? "s" : ""} today`;
+    } else {
+      subEl.textContent = "Log a job to see your earnings here";
+      subEl.style.fontStyle = "italic";
+      subEl.style.opacity = "0.55";
+    }
   }
 
   // Pace line

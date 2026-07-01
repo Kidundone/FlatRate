@@ -429,9 +429,16 @@ function renderPayStubComparison() {
   const loggedHrs = ctx.expected.hours;
   const delta = round2(checkAmt - loggedPay);
 
+  // Format date key (YYYY-MM-DD) as friendly "Jun 29" style
+  const fmtPeriodDate = (key) => {
+    const d = parseDateInputValue(key);
+    return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : key;
+  };
   const periodLabel = ctx.biweekly
-    ? `${ctx.weekStartKey} → ${ctx.weekEnd} (2 weeks)`
-    : `${ctx.weekStartKey}${ctx.weekEnd ? ` → ${ctx.weekEnd}` : ""}`;
+    ? `${fmtPeriodDate(ctx.weekStartKey)} – ${fmtPeriodDate(ctx.weekEnd)} (2 wks)`
+    : ctx.weekEnd
+      ? `${fmtPeriodDate(ctx.weekStartKey)} – ${fmtPeriodDate(ctx.weekEnd)}`
+      : fmtPeriodDate(ctx.weekStartKey);
   summaryEl.textContent = `Period: ${periodLabel}`;
 
   // Update week 2 label if biweekly
@@ -584,7 +591,7 @@ function renderPayTrend() {
 
   const empId = getEmpId();
   if (!empId) {
-    container.innerHTML = `<div class="muted small" style="padding:14px 16px;">Enter Employee # to see pay trend.</div>`;
+    container.innerHTML = `<div class="muted small" style="padding:14px 16px;">Set your Employee # in <button type="button" class="linkBtn" onclick="document.querySelector('.moreTab[data-tab=\\'settings\\']')?.click()">Settings →</button></div>`;
     return;
   }
 
@@ -1386,7 +1393,7 @@ function renderInsights() {
 
   const empId = getEmpId();
   if (!empId) {
-    card.innerHTML = `<div class="muted small" style="padding:12px 0;">Enter Employee # to see insights.</div>`;
+    card.innerHTML = `<div class="muted small" style="padding:12px 0;">Set your Employee # in <a href="#" style="color:var(--primary);" onclick="event.preventDefault();document.querySelector('[data-tab=settings]')?.click()">Settings</a> to see insights.</div>`;
     return;
   }
 

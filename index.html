@@ -23,7 +23,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.3edd8f9e4c.css">
+  <link rel="stylesheet" href="./app.be74998455.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -71,7 +71,7 @@
 <div id="spa-main">
 
 <header>
-  <h1>Flatrate Buddy</h1>
+  <h1><span class="headerIcon">🔧</span>Flatrate Buddy</h1>
   <div class="u-row" style="gap:10px;align-items:center;">
     <span id="headerTodayTotal" class="headerTotal"></span>
     <span id="offlineDot" class="offlineDot" style="display:none;" title="Offline"></span>
@@ -225,7 +225,7 @@
         <button id="comebackChipBtn" class="fr26Chip fr26ChipComeback" type="button">Comeback</button>
         <button id="repeatLastBtn" class="fr26Chip" type="button">Repeat Last</button>
         <button id="toggleDetailsBtn" class="fr26Chip" type="button">More</button>
-        <button id="clearBtn" class="fr26Chip fr26ChipGhost" type="button">Clear</button>
+        <button id="clearBtn" class="fr26Chip fr26ChipGhost fr26ChipDanger" type="button">Clear</button>
         <button id="cancelEditBtn" class="fr26Chip fr26ChipGhost" type="button" style="display:none;">Cancel Edit</button>
       </div>
 
@@ -517,19 +517,19 @@
       </section>
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Short-Pay History</summary>
+          <summary class="moreCardHeader moreSectionSummary">⚠️ Short-Pay History</summary>
           <div id="payTrendCard"></div>
         </details>
       </section>
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">8-Week Earnings</summary>
+          <summary class="moreCardHeader moreSectionSummary">📈 8-Week Earnings</summary>
           <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
         </details>
       </section>
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Comeback Impact</summary>
+          <summary class="moreCardHeader moreSectionSummary">🔁 Comeback Impact</summary>
           <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
         </details>
       </section>
@@ -583,6 +583,7 @@
         </div>
         <div class="moreDivider"></div>
         <div id="authForm">
+          <p class="authHint">Sign in to back up your data and sync across devices.</p>
           <div class="authFields">
             <input id="authEmail" type="email" placeholder="Email" class="moreInput" />
             <input id="authPassword" type="password" placeholder="Password" class="moreInput" style="margin-top:8px;" />
@@ -943,7 +944,8 @@
   </header>
   <div class="statsPageInner">
 
-    <!-- Period chips — horizontal scroll -->
+    <!-- Period chips — horizontal scroll with right fade hint -->
+    <div class="statsChipsOuter">
     <div class="statsChipsWrap" id="statsPeriodSeg">
       <button type="button" class="statsChip" data-period="today">Today</button>
       <button type="button" class="statsChip" data-period="yesterday">Yesterday</button>
@@ -959,6 +961,7 @@
       <button type="button" class="statsChip" data-period="all">All Time</button>
       <button type="button" class="statsChip" data-period="custom">Custom…</button>
     </div>
+    </div><!-- /.statsChipsOuter -->
 
     <!-- Custom date range (hidden until Custom is picked) -->
     <div id="statsCustomRange" class="statsCustomRange" style="display:none;">
@@ -1071,7 +1074,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.fd6dc06ed2.js" defer></script>
+<script src="./app.a606165db7.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

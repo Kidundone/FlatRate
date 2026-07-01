@@ -749,7 +749,12 @@ window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   _deferredInstallPrompt = e;
   const banner = document.getElementById("installBanner");
-  if (banner) banner.style.display = "";
+  if (banner) {
+    banner.style.display = "";
+    // Hide cloud nudge when install banner is showing — don't stack two banners
+    const nudge = document.querySelector(".cloudNudge");
+    if (nudge) nudge.style.display = "none";
+  }
 });
 
 document.addEventListener("click", async (e) => {

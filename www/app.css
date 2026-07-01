@@ -116,6 +116,18 @@ body[data-page="stats"] #spa-stats {
   padding: 0 0 24px;
 }
 /* Horizontal scrollable period chips */
+/* Fix #9: Fade right edge to hint scrollability */
+.statsChipsOuter {
+  position: relative;
+}
+.statsChipsOuter::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 12px;
+  width: 48px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--bg));
+}
 .statsChipsWrap {
   display: flex;
   gap: 8px;
@@ -2064,10 +2076,10 @@ a.btn {
 }
 
 .moreResultMono {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  padding: 4px 16px 0;
+  font-family: inherit;
+  padding: 4px 16px 6px;
 }
 
 /* Danger */
@@ -4127,3 +4139,41 @@ body.compact .list    { gap: 1px; }
 .whatsNewList { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; }
 .whatsNewList li { display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--text1); line-height:1.4; }
 .whatsNewList li::before { content:"✓"; color:var(--primary); font-weight:800; flex-shrink:0; margin-top:1px; }
+
+/* ── UX Polish fixes ────────────────────────────────────────── */
+
+/* Fix #1: Save button — always looks actionable */
+.fr26PrimaryAction { padding: 10px 14px 12px; }
+.fr26BtnPrimary { box-shadow: 0 4px 20px rgba(34,197,94,.35); }
+
+/* Fix #5: Clear chip — danger tint so it's not confused with positive actions */
+.fr26ChipDanger {
+  color: var(--danger) !important;
+  border-color: rgba(239,68,68,.4) !important;
+}
+.fr26ChipDanger:active { background: rgba(239,68,68,.10) !important; }
+
+/* Fix #11: Stats header — make "Breakdown" smaller, just a label not a hero h1 */
+#spa-stats header h1 { font-size: 18px; font-weight: 700; }
+
+/* Fix #15: Accordion rows in History — add descriptive sub-text color */
+.moreSectionSummary { cursor: pointer; }
+.moreSectionSummary::marker { color: var(--primary); }
+
+/* Fix #16: Auth form — add a hint label so fields don't look broken */
+.authHint {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 0 0 10px;
+}
+
+/* Fix #19: Standardize .btn border-radius to match fr26BtnPrimary */
+.btn { border-radius: var(--r-md); }
+
+/* Fix #20: Header title styling */
+header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
+
+/* Light theme: stats chips fade */
+[data-theme="light"] .statsChipsOuter::after {
+  background: linear-gradient(to right, transparent, var(--bg));
+}
