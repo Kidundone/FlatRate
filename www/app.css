@@ -1,3 +1,4 @@
+/* ── Design tokens — dark (default) ─────────────────────────────────────── */
 :root {
   --bg: #07070f;
   --surface: #0e0e1a;
@@ -7,6 +8,7 @@
   --stroke2: rgba(255,255,255,.13);
 
   --text: #fff;
+  --text1: #fff;
   --text2: rgba(255,255,255,.72);
   --muted: #7a7a9a;
   --muted2: rgba(255,255,255,.32);
@@ -28,6 +30,44 @@
 
   --ease: cubic-bezier(.25,.46,.45,.94);
   --ease-bounce: cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ── Light tokens — system auto (CSS level, no JS needed) ───────────────── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface2: #e5e5ea;
+    --surface3: #d1d1d6;
+    --stroke: rgba(0,0,0,.12);
+    --stroke2: rgba(0,0,0,.18);
+    --text: #000000;
+    --text1: #000000;
+    --text2: rgba(0,0,0,.60);
+    --muted: #3c3c43;
+    --muted2: rgba(60,60,67,.60);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
+  }
+}
+
+/* ── Explicit overrides (user setting or JS-set) ─────────────────────────── */
+[data-theme="dark"] {
+  --bg: #07070f;
+  --surface: #0e0e1a;
+  --surface2: #141426;
+  --surface3: #1c1c30;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
+  --text: #fff;
+  --text1: #fff;
+  --text2: rgba(255,255,255,.72);
+  --muted: #7a7a9a;
+  --muted2: rgba(255,255,255,.32);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
 }
 
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -2470,6 +2510,30 @@ a.btn {
 [data-theme="light"] .hcStatLabel { color: var(--muted); }
 [data-theme="light"] .k { color: var(--muted); }
 [data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
+
+/* ── System light mode — same rules without needing JS to set data-theme ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) header { background: rgba(240,242,245,.94); border-bottom-color: rgba(0,0,0,.10); }
+  :root:not([data-theme="dark"]) .tabBar { background: rgba(255,255,255,.97); border-top-color: rgba(0,0,0,.10); }
+  :root:not([data-theme="dark"]) .card { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  :root:not([data-theme="dark"]) .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+  :root:not([data-theme="dark"]) .moreTabBar { background: #ffffff; border-bottom-color: rgba(0,0,0,.08); }
+  :root:not([data-theme="dark"]) .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
+  :root:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(34,197,94,.3); }
+  :root:not([data-theme="dark"]) .hcGoalBarTrack { background: rgba(0,0,0,.12); }
+  :root:not([data-theme="dark"]) .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+  :root:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root:not([data-theme="dark"]) input::placeholder, :root:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
+  :root:not([data-theme="dark"]) .fr26HourBtn { background: #fff; color: var(--text); border-color: rgba(0,0,0,.18); }
+  :root:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
+  :root:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
+  :root:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  :root:not([data-theme="dark"]) select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root:not([data-theme="dark"]) .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root:not([data-theme="dark"]) .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
+  :root:not([data-theme="dark"]) .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
+}
 
 /* ── Short-pay trend ─────────────────────────────── */
 .ptSummary {
