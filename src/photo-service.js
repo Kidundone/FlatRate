@@ -688,7 +688,11 @@ async function scanPhotoAndPrefillForm(file) {
       btn.textContent = j;
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        if (typeEl) typeEl.value = j;
+        if (typeEl) {
+          typeEl.value = j;
+          typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+          typeEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
         hideAlts();
         updateEarningsPreview?.();
         document.getElementById("hours")?.focus();
@@ -739,6 +743,8 @@ async function scanPhotoAndPrefillForm(file) {
       const ranked = _rankJobsForUser(jobs, empId);
       const bestJob = ranked[0];
       typeEl.value = bestJob;
+      typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      typeEl.dispatchEvent(new Event("change", { bubbles: true }));
       filled.push(`Job: ${bestJob}`);
       // Show remaining jobs as tappable alternative chips
       const alts = ranked.slice(1);

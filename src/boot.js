@@ -463,6 +463,8 @@ async function runOnce() {
 
     // Smart hour chips are rendered dynamically by renderSmartHourChips() in main-page.js
     // with inline click handlers — no static wiring needed here.
+    // Render fallback chips immediately so the row isn't blank before entries load.
+    renderSmartHourChips?.([]);
 
     // ── Custom hour chips ──────────────────────────────────────────────────
     const LS_CUSTOM_CHIPS = "fr_custom_hour_chips";
