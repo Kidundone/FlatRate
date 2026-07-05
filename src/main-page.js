@@ -14,7 +14,7 @@ function saveDraft() {
     ref: document.getElementById("ref")?.value || "",
     vin8: document.getElementById("vin8")?.value || "",
     rate: document.querySelector('input[name="rate"]')?.value || "",
-    notes: document.querySelector('textarea[name="notes"]')?.value || "",
+    notes: document.querySelector('#notesInline, textarea[name="notes"]')?.value || "",
     isComeback: !!(document.getElementById("isComeback")?.checked),
     refType: currentRefType,
     detailsOpen: document.getElementById("detailsPanel")?.style.display !== "none",
@@ -51,7 +51,7 @@ function restoreDraft() {
     const refEl   = document.getElementById("ref");
     const vinEl   = document.getElementById("vin8");
     const rateEl  = document.querySelector('input[name="rate"]');
-    const notesEl = document.querySelector('textarea[name="notes"]');
+    const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
     const cbEl    = document.getElementById("isComeback");
 
     if (draft.hours   && hoursEl) { hoursEl.value = draft.hours; hoursEl.dataset.touched = "1"; }
@@ -162,7 +162,7 @@ function startEditEntry(entry) {
   const typeEl = document.getElementById("typeText");
   const hoursEl = document.getElementById("hours");
   const rateEl = document.querySelector('input[name="rate"]');
-  const notesEl = document.querySelector('textarea[name="notes"]');
+  const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
 
   if (empInputEl && entry.empId) {
     empInputEl.value = entry.empId;
@@ -269,7 +269,7 @@ function handleClear(ev, options = {}) {
   const typeEl = document.getElementById("typeText");
   const hoursEl = document.getElementById("hours");
   const rateEl = document.querySelector('input[name="rate"]');
-  const notesEl = document.querySelector('textarea[name="notes"]');
+  const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
 
   if (refEl) refEl.value = "";
   if (vinEl) vinEl.value = "";
@@ -637,6 +637,91 @@ function renderHeroChart(entries, weekStart) {
     let lastIdx = -1;
     buckets.forEach((b, i) => { if (b.dollars > 0) lastIdx = i; });
     if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.click();
+    return;
+  }
+
+  // ── Month mode: weekly bars within the current month ──────────────────
+  if (heroMode === "month") {
+    const navNow = navRefDate();
+    const monthStart = startOfMonthLocal(navNow);
+    const monthEnd   = endOfMonthLocal(navNow);
+    const isLight = document.documentElement.dataset.theme === "light";
+    const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
+    const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+
+    // Walk week starts that overlap this month
+    const wkBuckets = [];
+    let wk = startOfWeekLocal(monthStart);
+    const monthEndKey = dateKey(monthEnd);
+    const todayDk = todayKeyLocal();
+    while (dateKey(wk) <= monthEndKey) {
+      const wkEnd = endOfWeekLocal(wk);
+      const wkDollars = entries.reduce((s, e) => {
+        const dk = e.dayKey || dayKeyFromISO(e.createdAt);
+        if (dk < dateKey(wk) || dk > dateKey(wkEnd)) return s;
+        if (dk < dateKey(monthStart) || dk > monthEndKey) return s;
+        return s + (Number(e.earnings ?? e.dollars ?? 0) || 0);
+      }, 0);
+      const wkEntries = entries.filter(e => {
+        const dk = e.dayKey || dayKeyFromISO(e.createdAt);
+        return dk >= dateKey(wk) && dk <= dateKey(wkEnd) && dk >= dateKey(monthStart) && dk <= monthEndKey;
+      });
+      const isCurrentWk = todayDk >= dateKey(wk) && todayDk <= dateKey(wkEnd);
+      wkBuckets.push({ label: `Wk${wkBuckets.length + 1}`, wkStart: dateKey(wk), wkEnd: dateKey(wkEnd), dollars: wkDollars, entries: wkEntries, isCurrent: isCurrentWk });
+      const next = new Date(wk);
+      next.setDate(next.getDate() + 7);
+      wk = next;
+    }
+
+    const n = wkBuckets.length;
+    const max = Math.max(...wkBuckets.map(b => b.dollars), 1);
+    const W = 300, H = 56;
+    const barW = (W - (n + 1) * 6) / n;
+    const gap  = 6;
+    svg.innerHTML = "";
+    wkBuckets.forEach((b, i) => {
+      const x = gap + i * (barW + gap);
+      const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
+      const y = H - barH;
+      const color = b.isCurrent ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", x.toFixed(1));
+      rect.setAttribute("y", y.toFixed(1));
+      rect.setAttribute("width", barW.toFixed(1));
+      rect.setAttribute("height", barH.toFixed(1));
+      rect.setAttribute("rx", "4");
+      rect.setAttribute("fill", color);
+      rect.style.transformOrigin = `${(x + barW / 2).toFixed(1)}px ${H}px`;
+      rect.style.transform = "scaleY(0)";
+      rect.style.transition = `transform 420ms cubic-bezier(.34,1.56,.64,1) ${i * 80}ms`;
+      svg.appendChild(rect);
+    });
+    requestAnimationFrame(() => {
+      svg.querySelectorAll("rect").forEach(r => { r.style.transform = "scaleY(1)"; });
+    });
+    labelsRow.innerHTML = wkBuckets.map(b =>
+      `<span class="heroChartLabel${b.isCurrent ? " heroChartLabel--now" : ""}">${b.label}</span>`
+    ).join("");
+    window.__heroEntries = entries;
+    svg.querySelectorAll("rect").forEach((rect, i) => {
+      rect.style.cursor = "pointer";
+      rect.addEventListener("click", () => {
+        const b = wkBuckets[i];
+        const hrs = b.entries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
+        const cnt = b.entries.length;
+        const setT = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setT("hcsHours", hrs > 0 ? round1(hrs) : "0");
+        setT("hcsJobs", String(cnt));
+        setT("hcsPay", b.dollars > 0 ? formatMoney(b.dollars) : "$0");
+        setT("hcsAvg", cnt > 0 ? formatMoney(round2(b.dollars / cnt)) : "—");
+        setT("hcRangeLabel", b.label);
+        svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === i ? "1" : "0.45"; });
+        labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === i); });
+      });
+    });
+    // Default: highlight current week
+    const curIdx = wkBuckets.findIndex(b => b.isCurrent);
+    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.click();
     return;
   }
 
@@ -1402,7 +1487,7 @@ async function handleSave(ev) {
     const typeEl = document.getElementById("typeText");
     const hoursEl = document.getElementById("hours");
     const rateEl = document.querySelector('input[name="rate"]');
-    const notesEl = document.querySelector('textarea[name="notes"]');
+    const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
 
     const ref = (refEl?.value || "").trim();
     const vin8 = (vinEl?.value || "").trim().toUpperCase();
@@ -3192,6 +3277,36 @@ async function refreshUI(entriesOverride){
   const week = computeWeek(entries, ws);
   // Hero chart (needs week data, render early)
   renderHeroChart(entries, ws);
+
+  // ── Month vs last month comparison ─────────────────────────────────────
+  if (mode === "month") {
+    const navNow2 = navRefDate();
+    const thisMonStart = startOfMonthLocal(navNow2);
+    const thisMonEnd   = endOfMonthLocal(navNow2);
+    const prevMonStart = new Date(thisMonStart.getFullYear(), thisMonStart.getMonth() - 1, 1);
+    const prevMonEnd   = endOfMonthLocal(prevMonStart);
+    const thisMon = entries
+      .filter(e => e.dayKey >= dateKey(thisMonStart) && e.dayKey <= dateKey(thisMonEnd))
+      .reduce((s, e) => s + (Number(e.earnings || 0)), 0);
+    const prevMon = entries
+      .filter(e => e.dayKey >= dateKey(prevMonStart) && e.dayKey <= dateKey(prevMonEnd))
+      .reduce((s, e) => s + (Number(e.earnings || 0)), 0);
+    const paceEl2 = document.getElementById("heroPaceLine");
+    if (paceEl2) {
+      if (prevMon > 0) {
+        const diff = round2(thisMon - prevMon);
+        const sign = diff >= 0 ? "+" : "";
+        const arrow = diff >= 0 ? "↑" : "↓";
+        paceEl2.textContent = `vs last month: ${sign}${formatMoney(diff)} ${arrow}`;
+        paceEl2.style.display = "";
+      } else if (thisMon > 0) {
+        paceEl2.textContent = `${formatMoney(thisMon)} this month`;
+        paceEl2.style.display = "";
+      } else {
+        paceEl2.style.display = "none";
+      }
+    }
+  }
 
   setText("weekHours", round1(week.hours));
   setText("weekDollars", formatMoney(week.dollars));

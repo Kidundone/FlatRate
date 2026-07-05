@@ -182,6 +182,13 @@
                  autocapitalize="characters" spellcheck="false" class="fr26Input" />
         </div>
 
+        <div class="fr26Row fr26RowNotes">
+          <label class="fr26Label" for="notesInline">Notes</label>
+          <input id="notesInline" name="notesInline" type="text"
+                 placeholder="Optional — anything that will matter later"
+                 inputmode="text" autocomplete="off" class="fr26Input fr26NotesInput" />
+        </div>
+
         <div class="fr26Row fr26RowDate">
           <label class="fr26Label" for="entryDate">Date</label>
           <input id="entryDate" name="entryDate" type="date" class="fr26Input" />
@@ -242,11 +249,6 @@
             <label class="fr26Label" for="rateInput">Rate ($/hr)</label>
             <input id="rateInput" name="rate" type="number" inputmode="decimal"
                    min="0" step="0.01" value="15" class="fr26Input" />
-          </div>
-          <div class="fr26Row">
-            <label class="fr26Label" for="notesBox">Notes</label>
-            <textarea id="notesBox" name="notes"
-                      placeholder="Anything that will matter later…" class="fr26Textarea"></textarea>
           </div>
           <div class="fr26Row">
             <label class="fr26Check">
@@ -1077,7 +1079,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.0123cad089.js" defer></script>
+<script src="./app.b005e56640.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

@@ -601,6 +601,7 @@ async function runOnce() {
     );
     document.querySelector('input[name="rate"]')?.addEventListener("input", () => debouncedSaveDraft?.());
     document.querySelector('textarea[name="notes"]')?.addEventListener("input", () => debouncedSaveDraft?.());
+    document.getElementById("notesInline")?.addEventListener("input", () => debouncedSaveDraft?.());
     document.getElementById("isComeback")?.addEventListener("change", () => debouncedSaveDraft?.());
     restoreDraft?.();
     // Seed date picker to today on load (type="date" has no way to set a dynamic default in HTML)
