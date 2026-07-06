@@ -602,7 +602,7 @@ function renderPayTrend() {
   // Build week set from all worked entries, plus any saved stubs
   const weekKeys = new Set();
   own.forEach(e => {
-    const wsk = e.weekStartKey || (e.dayKey ? dateKey(startOfWeekLocal(new Date(e.dayKey))) : null);
+    const wsk = e.weekStartKey || (e.dayKey ? dateKey(startOfWeekFromDateKey(e.dayKey)) : null);
     if (wsk) weekKeys.add(wsk);
   });
   Object.keys(stubMap).forEach(k => weekKeys.add(k));
@@ -1278,7 +1278,7 @@ async function exportDisputeReport(weekKey) {
     // Bucket by week-start derived from the entry's actual day
     const wk = singleWeek
       ? weekKey
-      : (e.weekStartKey || dateKey(startOfWeekLocal(new Date(entryDay))));
+      : (e.weekStartKey || dateKey(startOfWeekFromDateKey(entryDay)));
     if (!weekMap.has(wk)) weekMap.set(wk, []);
     weekMap.get(wk).push(e);
   }

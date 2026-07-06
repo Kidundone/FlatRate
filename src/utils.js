@@ -55,7 +55,6 @@ function getDefaultRate() {
 // ---- Page detect (GLOBAL) ----
 const PAGE = location.pathname.includes("more") ? "more" : "main";
 window.__PAGE__ = PAGE;
-console.log("PAGE MODE:", PAGE);
 const IS_MAIN = PAGE === "main";
 const IS_MORE = PAGE === "more";
 
@@ -305,7 +304,9 @@ function getStoreMap(storeName) {
 }
 
 function getWeekEnding(dateStr) {
-  const d = new Date(dateStr);
+  // Parse "YYYY-MM-DD" as LOCAL time — new Date("YYYY-MM-DD") parses as UTC
+  // midnight, which shifts the day-of-week for anyone west of UTC.
+  const d = parseDateInputValue(dateStr) || new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "";
 
   const day = d.getDay(); // 0=Sun
@@ -313,7 +314,7 @@ function getWeekEnding(dateStr) {
 
   d.setDate(d.getDate() + diff);
 
-  return d.toISOString().slice(0,10);
+  return dateKey(d);
 }
 
 function normalizeEntries(entries) {
@@ -869,8 +870,8 @@ function showActionSheet({ title, message, confirmLabel = "Confirm", danger = fa
     overlay.innerHTML = `
       <div class="asCard" role="dialog" aria-modal="true">
         <div class="asHandle"></div>
-        ${title   ? `<div class="asTitle">${title}</div>`     : ""}
-        ${message ? `<div class="asMsg">${message}</div>`     : ""}
+        ${title   ? `<div class="asTitle">${escapeHtml(title)}</div>`     : ""}
+        ${message ? `<div class="asMsg">${escapeHtml(message)}</div>`     : ""}
         <button type="button" class="asConfirm${danger ? " asDanger" : ""}">${confirmLabel}</button>
         <button type="button" class="asCancel">${cancelLabel}</button>
       </div>`;

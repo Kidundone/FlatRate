@@ -441,7 +441,7 @@ async function apiListLogs(empId) {
 async function apiCreateLog(payload, sourceEntry = null) {
   const uid = await requireUserId(sb());
   if (!uid) throw new Error("Sign in required");
-  const empId = String(document.getElementById("empId").value || "").trim();
+  const empId = getEmpId();
   if (!empId) throw new Error("Employee # required");
 
   const insertRow = {
@@ -731,7 +731,7 @@ function mapServerLogToEntry(r) {
     updatedAt: r.updated_at || r.updatedAt || createdAt,
     createdAtMs: Date.parse(createdAt) || Date.now(),
     dayKey,
-    weekStartKey: dateKey(startOfWeekLocal(new Date(dayKey))),
+    weekStartKey: dayKey ? dateKey(startOfWeekFromDateKey(dayKey)) : "",
     refType,
     ref,
     ro: r.ro_number || "",
@@ -876,7 +876,7 @@ async function backfillDayKeysForEmp(empId){
     const fixed = dayKeyFromISO(e.createdAt);
     if (!fixed) continue;
     e.dayKey = fixed;
-    e.weekStartKey = dateKey(startOfWeekLocal(new Date(fixed)));
+    e.weekStartKey = dateKey(startOfWeekFromDateKey(fixed));
     await put(STORES.entries, e);
   }
   return needsFix.length;

@@ -1933,7 +1933,18 @@ function maybeShowOnboarding() {
       if (empInput) { empInput.value = empVal; empInput.dispatchEvent(new Event("input")); }
       localStorage.setItem("fr_emp_id", empVal);
     }
-    if (rateVal > 0) saveSettings({ defaultRate: rateVal });
+    if (rateVal > 0) {
+      saveSettings({ defaultRate: rateVal });
+      // Sync the form's rate input — it was seeded with the old default at
+      // boot, so without this the earnings preview keeps showing $15/hr
+      // until the next reload.
+      const rateInput = document.querySelector('input[name="rate"]');
+      if (rateInput) {
+        rateInput.value = String(rateVal);
+        rateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      updateEarningsPreview?.();
+    }
     localStorage.setItem("fr_onboard_done", "1");
     modal.style.display = "none";
     setTimeout(() => startTour(), 400);
@@ -2899,7 +2910,7 @@ function renderList(entries, mode){
           <div class="itemLeft">
             <div class="itemHeadline">
               <input type="checkbox" data-select-id="${entryId}" ${e.selected ? "checked" : ""} class="itemCheck" />
-              ${typeBadgeHtml(escapeHtml(e.type || e.typeText || "—"))}
+              ${typeBadgeHtml(e.type || e.typeText || "—")}
               ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
               ${checkShortPay(e, entries) ? `<span class="shortPayFlag" data-action="review-pay" title="Possible short pay — tap to review">⚠ LOW</span>` : ""}
               <span class="itemRef mono">${refLabel}: ${refVal}</span>
@@ -3044,7 +3055,7 @@ function renderList(entries, mode){
     const weekMap = new Map();
     for (const e of capped) {
       const dk = e.dayKey || dayKeyFromISO(e.createdAt) || "?";
-      const wk = e.weekStartKey || dateKey(startOfWeekLocal(new Date(dk)));
+      const wk = e.weekStartKey || (dk !== "?" ? dateKey(startOfWeekFromDateKey(dk)) : "?");
       if (!weekMap.has(wk)) weekMap.set(wk, new Map());
       const dayMap = weekMap.get(wk);
       if (!dayMap.has(dk)) dayMap.set(dk, []);

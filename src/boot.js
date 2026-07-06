@@ -837,6 +837,10 @@ if (_seenVer !== APP_VERSION) {
 
 /* ── Test notification button ───────────────────── */
 document.getElementById("testNotifBtn")?.addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    window.__FR?.toast?.("Notifications aren't supported in this browser");
+    return;
+  }
   const perm = await Notification.requestPermission?.().catch(() => "denied");
   if (perm === "denied") {
     window.__FR?.toast?.("Notifications blocked — enable them in browser settings");

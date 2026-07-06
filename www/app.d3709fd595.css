@@ -2,6 +2,7 @@
 :root {
   --bg: #07070f;
   --surface: #0e0e1a;
+  --card-bg: var(--surface); /* resolves per-theme; was referenced but never defined */
   --surface2: #141426;
   --surface3: #1c1c30;
   --stroke: rgba(255,255,255,.07);
@@ -4228,6 +4229,8 @@ body.compact .list    { gap: 1px; }
 /* ── What's New / Payday Summary modal sheet ────── */
 .whatsNewSheet {
   background: var(--card-bg);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-lg);
   border-radius: 16px;
   padding: 20px 20px 24px;
   max-width: 420px;

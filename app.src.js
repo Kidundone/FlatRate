@@ -731,7 +731,7 @@ async function apiListLogs(empId) {
 async function apiCreateLog(payload, sourceEntry = null) {
   const uid = await requireUserId(sb());
   if (!uid) throw new Error("Sign in required");
-  const empId = String(document.getElementById("empId").value || "").trim();
+  const empId = getEmpId();
   if (!empId) throw new Error("Employee # required");
 
   const insertRow = {
@@ -1021,7 +1021,7 @@ function mapServerLogToEntry(r) {
     updatedAt: r.updated_at || r.updatedAt || createdAt,
     createdAtMs: Date.parse(createdAt) || Date.now(),
     dayKey,
-    weekStartKey: dateKey(startOfWeekLocal(new Date(dayKey))),
+    weekStartKey: dayKey ? dateKey(startOfWeekFromDateKey(dayKey)) : "",
     refType,
     ref,
     ro: r.ro_number || "",
@@ -1166,7 +1166,7 @@ async function backfillDayKeysForEmp(empId){
     const fixed = dayKeyFromISO(e.createdAt);
     if (!fixed) continue;
     e.dayKey = fixed;
-    e.weekStartKey = dateKey(startOfWeekLocal(new Date(fixed)));
+    e.weekStartKey = dateKey(startOfWeekFromDateKey(fixed));
     await put(STORES.entries, e);
   }
   return needsFix.length;
@@ -1363,7 +1363,6 @@ function getDefaultRate() {
 // ---- Page detect (GLOBAL) ----
 const PAGE = location.pathname.includes("more") ? "more" : "main";
 window.__PAGE__ = PAGE;
-console.log("PAGE MODE:", PAGE);
 const IS_MAIN = PAGE === "main";
 const IS_MORE = PAGE === "more";
 
@@ -1613,7 +1612,9 @@ function getStoreMap(storeName) {
 }
 
 function getWeekEnding(dateStr) {
-  const d = new Date(dateStr);
+  // Parse "YYYY-MM-DD" as LOCAL time — new Date("YYYY-MM-DD") parses as UTC
+  // midnight, which shifts the day-of-week for anyone west of UTC.
+  const d = parseDateInputValue(dateStr) || new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "";
 
   const day = d.getDay(); // 0=Sun
@@ -1621,7 +1622,7 @@ function getWeekEnding(dateStr) {
 
   d.setDate(d.getDate() + diff);
 
-  return d.toISOString().slice(0,10);
+  return dateKey(d);
 }
 
 function normalizeEntries(entries) {
@@ -2177,8 +2178,8 @@ function showActionSheet({ title, message, confirmLabel = "Confirm", danger = fa
     overlay.innerHTML = `
       <div class="asCard" role="dialog" aria-modal="true">
         <div class="asHandle"></div>
-        ${title   ? `<div class="asTitle">${title}</div>`     : ""}
-        ${message ? `<div class="asMsg">${message}</div>`     : ""}
+        ${title   ? `<div class="asTitle">${escapeHtml(title)}</div>`     : ""}
+        ${message ? `<div class="asMsg">${escapeHtml(message)}</div>`     : ""}
         <button type="button" class="asConfirm${danger ? " asDanger" : ""}">${confirmLabel}</button>
         <button type="button" class="asCancel">${cancelLabel}</button>
       </div>`;
@@ -4999,7 +5000,18 @@ function maybeShowOnboarding() {
       if (empInput) { empInput.value = empVal; empInput.dispatchEvent(new Event("input")); }
       localStorage.setItem("fr_emp_id", empVal);
     }
-    if (rateVal > 0) saveSettings({ defaultRate: rateVal });
+    if (rateVal > 0) {
+      saveSettings({ defaultRate: rateVal });
+      // Sync the form's rate input — it was seeded with the old default at
+      // boot, so without this the earnings preview keeps showing $15/hr
+      // until the next reload.
+      const rateInput = document.querySelector('input[name="rate"]');
+      if (rateInput) {
+        rateInput.value = String(rateVal);
+        rateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      updateEarningsPreview?.();
+    }
     localStorage.setItem("fr_onboard_done", "1");
     modal.style.display = "none";
     setTimeout(() => startTour(), 400);
@@ -5965,7 +5977,7 @@ function renderList(entries, mode){
           <div class="itemLeft">
             <div class="itemHeadline">
               <input type="checkbox" data-select-id="${entryId}" ${e.selected ? "checked" : ""} class="itemCheck" />
-              ${typeBadgeHtml(escapeHtml(e.type || e.typeText || "—"))}
+              ${typeBadgeHtml(e.type || e.typeText || "—")}
               ${e.isComeback ? `<span class="comebackBadge">CB</span>` : ""}
               ${checkShortPay(e, entries) ? `<span class="shortPayFlag" data-action="review-pay" title="Possible short pay — tap to review">⚠ LOW</span>` : ""}
               <span class="itemRef mono">${refLabel}: ${refVal}</span>
@@ -6110,7 +6122,7 @@ function renderList(entries, mode){
     const weekMap = new Map();
     for (const e of capped) {
       const dk = e.dayKey || dayKeyFromISO(e.createdAt) || "?";
-      const wk = e.weekStartKey || dateKey(startOfWeekLocal(new Date(dk)));
+      const wk = e.weekStartKey || (dk !== "?" ? dateKey(startOfWeekFromDateKey(dk)) : "?");
       if (!weekMap.has(wk)) weekMap.set(wk, new Map());
       const dayMap = weekMap.get(wk);
       if (!dayMap.has(dk)) dayMap.set(dk, []);
@@ -8305,7 +8317,7 @@ function renderPayTrend() {
   // Build week set from all worked entries, plus any saved stubs
   const weekKeys = new Set();
   own.forEach(e => {
-    const wsk = e.weekStartKey || (e.dayKey ? dateKey(startOfWeekLocal(new Date(e.dayKey))) : null);
+    const wsk = e.weekStartKey || (e.dayKey ? dateKey(startOfWeekFromDateKey(e.dayKey)) : null);
     if (wsk) weekKeys.add(wsk);
   });
   Object.keys(stubMap).forEach(k => weekKeys.add(k));
@@ -8981,7 +8993,7 @@ async function exportDisputeReport(weekKey) {
     // Bucket by week-start derived from the entry's actual day
     const wk = singleWeek
       ? weekKey
-      : (e.weekStartKey || dateKey(startOfWeekLocal(new Date(entryDay))));
+      : (e.weekStartKey || dateKey(startOfWeekFromDateKey(entryDay)));
     if (!weekMap.has(wk)) weekMap.set(wk, []);
     weekMap.get(wk).push(e);
   }
@@ -10894,6 +10906,10 @@ if (_seenVer !== APP_VERSION) {
 
 /* ── Test notification button ───────────────────── */
 document.getElementById("testNotifBtn")?.addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    window.__FR?.toast?.("Notifications aren't supported in this browser");
+    return;
+  }
   const perm = await Notification.requestPermission?.().catch(() => "denied");
   if (perm === "denied") {
     window.__FR?.toast?.("Notifications blocked — enable them in browser settings");
