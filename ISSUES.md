@@ -1,6 +1,11 @@
 # Flat-Rate PWA — Pre-Launch Audit
 _Generated 2026-06-21. Every issue is sourced from reading the actual code._
 
+> **Status update 2026-07-15:** All 11 issues verified fixed in current source.
+> #1–#10 resolved in code; #11 (admin passcode) documented as an obscurity-only
+> gate with a TODO to move it server-side. Dead `PAGE`/`IS_MAIN`/`IS_MORE`
+> constants from #6 removed from `src/utils.js`.
+
 ---
 
 ## 🔴 Critical — breaks core functionality

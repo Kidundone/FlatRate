@@ -708,11 +708,16 @@ async function runOnce() {
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();
 
-    // Beta modal close
+    // Upgrade modal: close + checkout buttons
     document.getElementById("upgradeCloseBtn")?.addEventListener("click",   () => hideUpgradeModal?.());
+    document.getElementById("upgradeDismissBtn")?.addEventListener("click", () => hideUpgradeModal?.());
     document.getElementById("upgradeModal")?.addEventListener("click", (e) => {
       if (e.target?.id === "upgradeModal") hideUpgradeModal?.();
     });
+    document.getElementById("upgradeMonthlyBtn")?.addEventListener("click", () => startCheckout?.("monthly"));
+    document.getElementById("upgradeYearlyBtn")?.addEventListener("click",  () => startCheckout?.("yearly"));
+    // Returning from Stripe Checkout
+    window.__FR?.handleCheckoutReturn?.();
     // PWA shortcut deep-links: ?tab=history or ?tab=settings
     const _tabParam = new URLSearchParams(location.search).get("tab");
     if (_tabParam === "history" || _tabParam === "settings") {

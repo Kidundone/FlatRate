@@ -673,6 +673,14 @@
             <span class="moreToggleTrack"></span>
           </label>
         </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Team</div>
+            <div class="moreRowSub">Create or join a shop — managers see team jobs</div>
+          </div>
+          <a href="./team.html" class="btn" style="text-decoration:none;">Open</a>
+        </div>
       </section>
 
       <!-- Notifications -->
@@ -919,26 +927,53 @@
     </div>
   </div>
 
-  <!-- Beta modal (replaces upgrade modal during beta) -->
-  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Beta Access">
+  <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true -->
+  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Flatrate Buddy Pro">
     <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <span style="font-size:26px;">🧪</span>
-        <div>
-          <h2 style="margin:0;font-size:22px;font-weight:800;">You're in Beta</h2>
-          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:var(--primary-ghost,rgba(34,197,94,.12));padding:2px 8px;border-radius:99px;">Free Access</span>
+
+      <!-- Beta content -->
+      <div id="upgradeBetaContent">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:26px;">🧪</span>
+          <div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;">You're in Beta</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:var(--primary-ghost,rgba(34,197,94,.12));padding:2px 8px;border-radius:99px;">Free Access</span>
+          </div>
         </div>
+        <p style="margin:12px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;">Flatrate Buddy is currently in beta. <strong>All features are completely free</strong> while we're testing and improving the app with real techs like you.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Weekly PDF reports</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job breakdown &amp; stats</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export &amp; photo storage</strong> — free during beta</span></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;">Paid plans are coming soon. Beta users will get early access and a discount. 🙌</p>
+        <button id="upgradeCloseBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;">Got it — let's go!</button>
       </div>
-      <p style="margin:12px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;">Flatrate Buddy is currently in beta. <strong>All features are completely free</strong> while we're testing and improving the app with real techs like you.</p>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> — free during beta</span></div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> — free during beta</span></div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Weekly PDF reports</strong> — free during beta</span></div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job breakdown &amp; stats</strong> — free during beta</span></div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export &amp; photo storage</strong> — free during beta</span></div>
+
+      <!-- Pricing content (shown when __BILLING__.live is true) -->
+      <div id="upgradePricingContent" style="display:none;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:26px;">⚡</span>
+          <div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;">Flatrate Buddy Pro</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:var(--primary-ghost,rgba(34,197,94,.12));padding:2px 8px;border-radius:99px;">Protect Your Pay</span>
+          </div>
+        </div>
+        <p style="margin:12px 0 16px;color:var(--muted);font-size:14px;line-height:1.5;">Unlock the tools that catch short pays and back you up in a dispute.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> &amp; payday summaries</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Dispute-ready PDF reports</strong></span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export</strong> &amp; full history</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> &amp; photo proof storage</span></div>
+        </div>
+        <button id="upgradeMonthlyBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:8px;"></button>
+        <button id="upgradeYearlyBtn" class="btn" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:12px;"></button>
+        <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;">Cancel anytime. Secure checkout via Stripe.</p>
+        <button id="upgradeDismissBtn" class="btn" type="button" style="width:100%;font-size:14px;padding:12px;">Not now</button>
       </div>
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;">Paid plans are coming soon. Beta users will get early access and a discount. 🙌</p>
-      <button id="upgradeCloseBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;">Got it — let's go!</button>
+
     </div>
   </div>
 
@@ -1078,6 +1113,13 @@
     url: "https://lfnydhidbwfyfjafazdy.supabase.co",
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
   };
+  // Billing: flip live to true to end the beta and gate Pro features.
+  // Labels must match the Stripe prices behind STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY.
+  window.__BILLING__ = {
+    live: false,
+    monthlyLabel: "$4.99 / month",
+    yearlyLabel: "$49 / year — 2 months free"
+  };
 </script>
 <!-- Level-up overlay (rank system) -->
 <div id="levelUpOverlay" class="levelUpOverlay" style="display:none;" aria-live="assertive">
@@ -1090,7 +1132,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.9359adc5b1.js" defer></script>
+<script src="./app.94f7e5cadc.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

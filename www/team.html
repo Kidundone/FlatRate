@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flatrate Buddy — Team</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1c1c1e; --surface2: #242427; --surface3: #2c2c2f;
+      --stroke: rgba(255,255,255,.09); --stroke2: rgba(255,255,255,.16);
+      --text: #fff; --muted: #a8a8a8; --muted2: #6b6b6b;
+      --primary: #0095f6; --accent: #29d9a5; --danger: #ed4956;
+      --r: 12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
+    a { color: var(--primary); text-decoration: none; }
+    .main { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat { background: var(--surface); border: 1px solid var(--stroke); border-radius: var(--r); padding: 14px 18px; flex: 1; min-width: 110px; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted2); margin-bottom: 4px; }
+    .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -.5px; }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.primary { color: var(--primary); }
+
+    .card { background: var(--surface); border: 1px solid var(--stroke); border-radius: var(--r); padding: 20px; margin-bottom: 18px; }
+    .card h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .card p.sub { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .input { background: var(--surface2); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 14px; padding: 11px 14px; outline: none; width: 100%; }
+    .input:focus { border-color: var(--primary); }
+
+    .btn { padding: 10px 18px; border-radius: var(--r); border: 1px solid var(--stroke2); background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: var(--surface3); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { opacity: .88; }
+    .btn.danger { color: var(--danger); }
+    .btn:disabled { opacity: .5; cursor: default; }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    select.filter-sel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer; }
+
+    .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--stroke); margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: var(--surface); border-bottom: 1px solid var(--stroke2); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted2); white-space: nowrap; }
+    td { padding: 11px 14px; border-bottom: 1px solid var(--stroke); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: var(--surface2); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    th.num { text-align: right; }
+    .cell-muted { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+    .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+    .badge-manager { background: rgba(0,149,246,.15); color: var(--primary); }
+    .badge-tech    { background: rgba(41,217,165,.15); color: var(--accent); }
+
+    .invite-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px dashed var(--stroke2); border-radius: var(--r); padding: 8px 14px; font-weight: 800; letter-spacing: .2em; font-size: 16px; cursor: pointer; }
+    .invite-chip small { letter-spacing: 0; font-weight: 500; color: var(--muted2); }
+
+    .empty { text-align: center; padding: 40px 24px; color: var(--muted); }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--stroke2); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin: 60px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .auth-gate { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+    .auth-card { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 18px; padding: 36px; width: 340px; display: flex; flex-direction: column; gap: 14px; }
+    .auth-title { font-size: 20px; font-weight: 700; text-align: center; }
+    .auth-sub { font-size: 13px; color: var(--muted); text-align: center; }
+    .err { font-size: 12px; color: var(--danger); display: none; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div></div>
+
+<!-- Sign-in gate (shares the app's session) -->
+<div id="authGate" class="auth-gate" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-title">Team Dashboard</div>
+    <div class="auth-sub">Sign in with your Flatrate Buddy account.</div>
+    <input id="gateEmail" class="input" type="email" placeholder="Email" autocomplete="email" />
+    <input id="gatePass" class="input" type="password" placeholder="Password" autocomplete="current-password" />
+    <div id="gateErr" class="err" style="text-align:center;"></div>
+    <button id="gateSignIn" class="btn primary" type="button">Sign In</button>
+    <a href="./index.html" style="text-align:center;font-size:13px;">← Back to app</a>
+  </div>
+</div>
+
+<!-- No shop yet: create or join -->
+<div id="setupView" class="main" style="display:none;">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Team</div>
+      <div class="page-sub">Create a shop for your team, or join one with an invite code.</div>
+    </div>
+    <a href="./index.html" class="btn">← App</a>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Create a shop</h2>
+      <p class="sub">You'll be the manager and get an invite code to share with your techs.</p>
+      <div class="field"><label>Shop name</label><input id="createShopName" class="input" placeholder="Northside Auto" /></div>
+      <div class="field"><label>Your name</label><input id="createDisplayName" class="input" placeholder="Nelly" /></div>
+      <div id="createErr" class="err"></div>
+      <button id="createShopBtn" class="btn primary" type="button">Create Shop</button>
+    </div>
+    <div class="card">
+      <h2>Join a shop</h2>
+      <p class="sub">Ask your manager for the 6-character invite code.</p>
+      <div class="field"><label>Invite code</label><input id="joinCode" class="input" placeholder="AB12CD" style="text-transform:uppercase;letter-spacing:.15em;" maxlength="6" /></div>
+      <div class="field"><label>Your name</label><input id="joinDisplayName" class="input" placeholder="Nelly" /></div>
+      <div id="joinErr" class="err"></div>
+      <button id="joinShopBtn" class="btn primary" type="button">Join Shop</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shop view -->
+<div id="shopView" class="main" style="display:none;">
+  <div class="page-header">
+    <div>
+      <div class="page-title" id="shopName"></div>
+      <div class="page-sub" id="shopSub"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <a href="./index.html" class="btn">← App</a>
+      <button id="leaveBtn" class="btn danger" type="button">Leave</button>
+    </div>
+  </div>
+
+  <div id="inviteRow" style="display:none;margin-bottom:22px;">
+    <span class="invite-chip" id="inviteChip" title="Tap to copy">
+      <span id="inviteCode"></span><small>tap to copy</small>
+    </span>
+  </div>
+
+  <!-- Manager-only content -->
+  <div id="managerView" style="display:none;">
+    <div class="toolbar">
+      <select id="rangeSel" class="filter-sel">
+        <option value="thisWeek">This week</option>
+        <option value="lastWeek">Last week</option>
+        <option value="days30">Last 30 days</option>
+      </select>
+      <span class="cell-muted" id="rangeLabel"></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Techs</div><div class="stat-value" id="statTechs">–</div></div>
+      <div class="stat"><div class="stat-label">Jobs</div><div class="stat-value primary" id="statJobs">–</div></div>
+      <div class="stat"><div class="stat-label">Flat Hours</div><div class="stat-value" id="statHours">–</div></div>
+      <div class="stat"><div class="stat-label">Earnings</div><div class="stat-value accent" id="statPay">–</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tech</th><th>Role</th><th class="num">Jobs</th><th class="num">Hours</th><th class="num">Earnings</th></tr></thead>
+        <tbody id="memberRows"></tbody>
+      </table>
+    </div>
+
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:10px;">Recent jobs</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Tech</th><th>RO #</th><th>Job</th><th class="num">Hours</th><th class="num">Pay</th></tr></thead>
+        <tbody id="logRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tech (non-manager) content -->
+  <div id="techView" style="display:none;">
+    <div class="card">
+      <h2>You're on the team ✓</h2>
+      <p class="sub">Your manager can see the jobs you log in Flatrate Buddy — your proof of work is shared automatically. Keep logging jobs in the app as usual.</p>
+      <a href="./index.html" class="btn primary" style="display:inline-block;">Open the app</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__SUPABASE_CONFIG__ = {
+    url: "https://lfnydhidbwfyfjafazdy.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4"
+  };
+</script>
+<script src="./vendor/supabase.js"></script>
+<script>
+(function () {
+  const cfg = window.__SUPABASE_CONFIG__;
+  const db  = window.supabase.createClient(cfg.url, cfg.anonKey);
+
+  let UID = null;
+  let SHOP = null;      // { id, name, invite_code? }
+  let MY_ROLE = null;   // 'manager' | 'tech'
+  let MEMBERS = [];     // roster
+
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on) => { $(id).style.display = on ? "" : "none"; };
+  const money = (n) => "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  function dateKey(d) {
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${dd}`;
+  }
+  function startOfWeek(d) { // Monday
+    const x = new Date(d); const day = (x.getDay() + 6) % 7;
+    x.setDate(x.getDate() - day); x.setHours(0,0,0,0); return x;
+  }
+  function rangeFor(mode) {
+    const now = new Date();
+    if (mode === "lastWeek") {
+      const ws = startOfWeek(now); ws.setDate(ws.getDate() - 7);
+      const we = new Date(ws); we.setDate(we.getDate() + 6);
+      return [dateKey(ws), dateKey(we)];
+    }
+    if (mode === "days30") {
+      const from = new Date(now); from.setDate(from.getDate() - 29);
+      return [dateKey(from), dateKey(now)];
+    }
+    const ws = startOfWeek(now);
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    return [dateKey(ws), dateKey(we)];
+  }
+
+  /* ── Auth ── */
+  async function init() {
+    const { data } = await db.auth.getSession();
+    show("loading", false);
+    if (!data?.session) { show("authGate", true); return; }
+    UID = data.session.user.id;
+    await loadShop();
+  }
+
+  $("gateSignIn").addEventListener("click", async () => {
+    const errEl = $("gateErr"); errEl.style.display = "none";
+    const { data, error } = await db.auth.signInWithPassword({
+      email: $("gateEmail").value.trim(),
+      password: $("gatePass").value,
+    });
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    UID = data.user.id;
+    show("authGate", false);
+    await loadShop();
+  });
+  $("gatePass").addEventListener("keydown", e => { if (e.key === "Enter") $("gateSignIn").click(); });
+
+  /* ── Shop state ── */
+  async function loadShop() {
+    const { data: mem, error } = await db.from("shop_members").select("shop_id, role").eq("user_id", UID).maybeSingle();
+    if (error || !mem) { show("setupView", true); show("shopView", false); return; }
+    MY_ROLE = mem.role;
+
+    const { data: shop } = await db.from("shops").select("*").eq("id", mem.shop_id).maybeSingle();
+    if (!shop) { show("setupView", true); return; }
+    SHOP = shop;
+
+    const { data: roster } = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", shop.id);
+    MEMBERS = roster || [];
+
+    show("setupView", false);
+    show("shopView", true);
+    $("shopName").textContent = shop.name;
+    $("shopSub").textContent = `${MEMBERS.length} member${MEMBERS.length === 1 ? "" : "s"} · you're a ${MY_ROLE}`;
+
+    const isMgr = MY_ROLE === "manager";
+    show("inviteRow", isMgr);
+    show("managerView", isMgr);
+    show("techView", !isMgr);
+    if (isMgr) {
+      $("inviteCode").textContent = shop.invite_code || "";
+      await renderTeam();
+    }
+  }
+
+  $("inviteChip").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(SHOP?.invite_code || ""); $("inviteChip").querySelector("small").textContent = "copied!"; }
+    catch { /* older browsers */ }
+    setTimeout(() => { $("inviteChip").querySelector("small").textContent = "tap to copy"; }, 1500);
+  });
+
+  /* ── Create / join ── */
+  $("createShopBtn").addEventListener("click", async () => {
+    const errEl = $("createErr"); errEl.style.display = "none";
+    const btn = $("createShopBtn"); btn.disabled = true;
+    const { error } = await db.rpc("create_shop", {
+      p_name: $("createShopName").value.trim(),
+      p_display_name: $("createDisplayName").value.trim() || null,
+    });
+    btn.disabled = false;
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    await loadShop();
+  });
+
+  $("joinShopBtn").addEventListener("click", async () => {
+    const errEl = $("joinErr"); errEl.style.display = "none";
+    const btn = $("joinShopBtn"); btn.disabled = true;
+    const { error } = await db.rpc("join_shop", {
+      p_code: $("joinCode").value.trim().toUpperCase(),
+      p_display_name: $("joinDisplayName").value.trim() || null,
+    });
+    btn.disabled = false;
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    await loadShop();
+  });
+
+  $("leaveBtn").addEventListener("click", async () => {
+    if (!SHOP) return;
+    if (!confirm(`Leave ${SHOP.name}?`)) return;
+    await db.from("shop_members").delete().eq("shop_id", SHOP.id).eq("user_id", UID);
+    SHOP = null; MY_ROLE = null;
+    show("shopView", false);
+    await loadShop();
+  });
+
+  /* ── Manager team view ── */
+  $("rangeSel").addEventListener("change", renderTeam);
+
+  async function renderTeam() {
+    const [from, to] = rangeFor($("rangeSel").value);
+    $("rangeLabel").textContent = `${from} → ${to}`;
+
+    const ids = MEMBERS.map(m => m.user_id);
+    const { data: logs, error } = await db
+      .from("work_logs")
+      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount")
+      .in("user_id", ids)
+      .gte("work_date", from)
+      .lte("work_date", to)
+      .or("is_deleted.is.null,is_deleted.eq.false")
+      .order("work_date", { ascending: false })
+      .limit(500);
+    if (error) { $("memberRows").innerHTML = `<tr><td colspan="5" class="empty">${esc(error.message)}</td></tr>`; return; }
+
+    const nameOf = (uid) => {
+      const m = MEMBERS.find(x => x.user_id === uid);
+      return m?.display_name || (logs.find(l => l.user_id === uid)?.employee_number ? "Tech #" + logs.find(l => l.user_id === uid).employee_number : "Tech");
+    };
+
+    // Per-member rollup
+    const agg = new Map();
+    for (const m of MEMBERS) agg.set(m.user_id, { jobs: 0, hours: 0, pay: 0, role: m.role });
+    for (const l of (logs || [])) {
+      const a = agg.get(l.user_id); if (!a) continue;
+      a.jobs++; a.hours += Number(l.flat_hours || 0); a.pay += Number(l.cash_amount || 0);
+    }
+
+    let tJobs = 0, tHours = 0, tPay = 0;
+    const rows = [];
+    for (const [uid, a] of agg) {
+      tJobs += a.jobs; tHours += a.hours; tPay += a.pay;
+      rows.push(`<tr>
+        <td>${esc(nameOf(uid))}${uid === UID ? ' <span class="cell-muted">(you)</span>' : ""}</td>
+        <td><span class="badge badge-${a.role}">${a.role}</span></td>
+        <td class="num">${a.jobs}</td>
+        <td class="num">${a.hours.toFixed(1)}</td>
+        <td class="num">${money(a.pay)}</td>
+      </tr>`);
+    }
+    $("memberRows").innerHTML = rows.join("") || `<tr><td colspan="5" class="empty">No members yet</td></tr>`;
+
+    $("statTechs").textContent = MEMBERS.length;
+    $("statJobs").textContent = tJobs;
+    $("statHours").textContent = tHours.toFixed(1);
+    $("statPay").textContent = money(tPay);
+
+    $("logRows").innerHTML = (logs || []).slice(0, 50).map(l => `<tr>
+      <td class="cell-muted">${esc(l.work_date)}</td>
+      <td>${esc(nameOf(l.user_id))}</td>
+      <td class="cell-muted">${esc(l.ro_number || "—")}</td>
+      <td>${esc(l.description || l.category || "—")}</td>
+      <td class="num">${Number(l.flat_hours || 0).toFixed(1)}</td>
+      <td class="num">${money(l.cash_amount)}</td>
+    </tr>`).join("") || `<tr><td colspan="6" class="empty">No jobs logged in this range</td></tr>`;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

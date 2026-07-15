@@ -160,9 +160,24 @@ function isPro() {
   return window.CURRENT_PLAN === "pro";
 }
 
+function billingLive() {
+  return !!window.__BILLING__?.live;
+}
+
 function showUpgradeModal() {
   const modal = document.getElementById("upgradeModal");
-  if (modal) modal.style.display = "flex";
+  if (!modal) return;
+  const beta    = document.getElementById("upgradeBetaContent");
+  const pricing = document.getElementById("upgradePricingContent");
+  if (beta)    beta.style.display    = billingLive() ? "none" : "";
+  if (pricing) pricing.style.display = billingLive() ? "" : "none";
+  if (billingLive()) {
+    const m = document.getElementById("upgradeMonthlyBtn");
+    const y = document.getElementById("upgradeYearlyBtn");
+    if (m) m.textContent = window.__BILLING__?.monthlyLabel || "Monthly";
+    if (y) y.textContent = window.__BILLING__?.yearlyLabel || "Yearly";
+  }
+  modal.style.display = "flex";
 }
 
 function hideUpgradeModal() {
@@ -203,9 +218,31 @@ async function startCheckout(plan) {
 }
 
 function requirePro(action) {
-  // Beta: all features free — never gate
-  return true;
+  // Beta (__BILLING__.live === false): all features free — never gate.
+  if (!billingLive()) return true;
+  if (isPro()) return true;
+  showUpgradeModal();
+  return false;
 }
+
+// Back from Stripe Checkout (?upgraded=1): refresh plan, confirm, clean URL.
+async function handleCheckoutReturn() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("upgraded") !== "1") return;
+  params.delete("upgraded");
+  const qs = params.toString();
+  history.replaceState({}, "", location.pathname + (qs ? `?${qs}` : ""));
+  try {
+    // Webhook can lag a moment behind the redirect — retry briefly.
+    for (let i = 0; i < 5; i++) {
+      await window.__FR?.loadSubscription?.();
+      if (isPro()) break;
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  } catch {}
+  toast?.(isPro() ? "⚡ Welcome to Pro — you're all set!" : "Payment received — Pro unlocks in a moment.");
+}
+(window.__FR = window.__FR || {}).handleCheckoutReturn = handleCheckoutReturn;
 
 /* ── Exports (pro-gated) ─────────────────────────────────────────── */
 

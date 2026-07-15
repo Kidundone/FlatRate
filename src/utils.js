@@ -52,11 +52,8 @@ function getDefaultRate() {
 }
 
 /* ── Page detect (GLOBAL) ─────────────────────────────────────────────────── */
-// ---- Page detect (GLOBAL) ----
-const PAGE = location.pathname.includes("more") ? "more" : "main";
-window.__PAGE__ = PAGE;
-const IS_MAIN = PAGE === "main";
-const IS_MORE = PAGE === "more";
+// Initial value only — boot.js showSpaPage() keeps window.__PAGE__ current.
+window.__PAGE__ = location.pathname.includes("more") ? "more" : "main";
 
 let rangeMode = "day";
 let currentRefType = "RO";
