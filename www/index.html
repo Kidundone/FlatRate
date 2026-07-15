@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.d3709fd595.css">
+  <link rel="stylesheet" href="./app.cd2dbaa676.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -110,6 +110,7 @@
     <div class="heroAmt" id="heroPayAmt">$0</div>
     <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
+    <div class="heroPayPeriodLine" id="heroPayPeriodLine" style="display:none;"></div>
     <div class="heroPaceWarn" id="heroPaceWarn" style="display:none;"></div>
     <div id="heroEfficiency" class="heroEfficiency" style="display:none;"></div>
     <div id="heroRecords" class="heroRecords" style="display:none;"></div>
@@ -798,6 +799,7 @@
             <button class="exportBtn" type="button" id="exportCsvBtn"><div class="exportBtnIcon">CSV</div><div class="exportBtnLabel">Export CSV</div></button>
             <button class="exportBtn" type="button" id="exportJsonBtn"><div class="exportBtnIcon">JSON</div><div class="exportBtnLabel">Export JSON</div></button>
             <button class="exportBtn" type="button" id="exportAuditBtn"><div class="exportBtnIcon">PDF</div><div class="exportBtnLabel">Audit Report</div></button>
+            <button class="exportBtn" type="button" id="exportDisputeBtn"><div class="exportBtnIcon">⚖</div><div class="exportBtnLabel">Dispute PDF</div></button>
             <button class="exportBtn" type="button" id="repairBtn"><div class="exportBtnIcon">Fix</div><div class="exportBtnLabel">Repair Data</div></button>
           </div>
         </details>
@@ -1132,7 +1134,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.83e04aa369.js" defer></script>
+<script src="./app.1436687f77.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

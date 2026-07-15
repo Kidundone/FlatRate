@@ -468,6 +468,40 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     }
   }
 
+  // Pay period projection
+  const ppLineEl = document.getElementById("heroPayPeriodLine");
+  if (ppLineEl) {
+    const [ppStart, ppEnd] = _statsPayPeriodRange(0);
+    const empId2 = getEmpId();
+    const ppEntries = (allEntries || []).filter(e => {
+      if (empId2 && cleanEmpId(e.empId) !== cleanEmpId(empId2)) return false;
+      const dk = e.dayKey || dayKeyFromISO(e.createdAt || "");
+      return dk >= ppStart && (!ppEnd || dk <= ppEnd);
+    });
+    const ppEarned = ppEntries.reduce((s, e) => s + Number(e.earnings || 0), 0);
+    if (ppEarned > 0) {
+      const ppStartDate = new Date(ppStart + "T12:00:00");
+      const ppEndDate   = ppEnd ? new Date(ppEnd + "T12:00:00") : new Date(ppStartDate.getTime() + 13 * 86400000);
+      const totalDays   = Math.round((ppEndDate - ppStartDate) / 86400000) + 1;
+      const now2        = new Date();
+      const daysIn      = Math.max(1, Math.round((now2 - ppStartDate) / 86400000) + 1);
+      const daysLeft    = Math.max(0, totalDays - daysIn);
+      const daysWorkedPP = new Set(ppEntries.map(e => e.dayKey || dayKeyFromISO(e.createdAt || ""))).size;
+      if (daysLeft === 0) {
+        ppLineEl.textContent = `Pay period total: ${formatMoney(ppEarned)}`;
+        ppLineEl.style.display = "";
+      } else if (daysWorkedPP > 0) {
+        const proj = round2(ppEarned + (ppEarned / daysWorkedPP) * daysLeft);
+        ppLineEl.textContent = `Pay period: ${formatMoney(ppEarned)} → ~${formatMoney(proj)}`;
+        ppLineEl.style.display = "";
+      } else {
+        ppLineEl.style.display = "none";
+      }
+    } else {
+      ppLineEl.style.display = "none";
+    }
+  }
+
   // Goal celebration + milestone check
   if (flaggedHours > 0) {
     const pct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
@@ -1506,6 +1540,21 @@ async function handleSave(ev) {
         confirmLabel: "Save Anyway",
       });
       if (!ok) return;
+    }
+
+    // Warn if hours are much higher than the stored average for this job type
+    if (typeName && hoursVal > 0 && hoursVal <= 24) {
+      const storedT = await findTypeByName?.(cleanEmpId?.(empId), typeName);
+      const usualHrs = Number(storedT?.lastHours);
+      if (usualHrs > 0 && hoursVal > usualHrs * 2.5) {
+        const ratio = (hoursVal / usualHrs).toFixed(1);
+        const ok = await showActionSheet({
+          title: `${typeName}: ${hoursVal} hrs?`,
+          message: `Your usual time for this job is ${usualHrs} hrs — that's ${ratio}× your normal. Double-check before saving.`,
+          confirmLabel: "Save Anyway",
+        });
+        if (!ok) return;
+      }
     }
 
     if (!isEditing) {
