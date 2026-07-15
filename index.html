@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.cd2dbaa676.css">
+  <link rel="stylesheet" href="./app.4af5c8d76c.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -141,6 +141,24 @@
   <section class="card fr26">
     <form id="logForm" class="fr26Form">
 
+      <!-- ── Scan hero ─────────────────────────────────────── -->
+      <div class="scanHeroWrap">
+        <button id="scanRoHeroBtn" type="button" class="scanHeroBtn">
+          <svg class="scanHeroIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="scanHeroLabel">Scan Repair Order</span>
+          <span class="scanHeroSub">Tap to fill form with camera</span>
+        </button>
+        <div class="scanHeroAlt">
+          <button id="scanPickLibraryBtn" type="button" class="scanAltBtn">Library</button>
+          <button id="scanPickFileBtn" type="button" class="scanAltBtn">Files</button>
+        </div>
+      </div>
+      <div id="photoScanStatus" class="fr26ScanStatus" style="display:none;"></div>
+      <div id="scanJobAlternatives" class="fr26ScanJobAlts" style="display:none;"></div>
+
       <div class="fr26EmployeeBar">
         <label class="fr26EmployeeLabel" for="empId">Emp #</label>
         <input id="empId" inputmode="numeric" placeholder="12345" autocomplete="off" class="fr26Input fr26InputCompact" />
@@ -216,29 +234,16 @@
 
       </section>
 
-      <details id="photoPanel" class="fr26Group fr26OptionalGroup">
-        <summary class="fr26OptionalSummary">
-          <span>Add Photo</span>
-          <span id="photoSummaryState" class="fr26OptionalMeta">No photo</span>
-        </summary>
-        <div class="fr26OptionalBody">
-          <div class="fr26PhotoActions">
-            <button id="btnPickPhoto" class="btn" type="button">Library</button>
-            <input id="photoPicker" type="file" style="display:none">
-            <button id="btnTakePhoto" class="btn" type="button">Camera</button>
-            <input id="photoCamera" type="file" style="display:none">
-            <button id="btnPickFile" class="btn" type="button">Files</button>
-            <input id="photoFile" type="file" style="display:none">
-          </div>
-          <div id="photoPickedLabel" class="fr26InlineStatus">No photo</div>
-          <button id="btnSaveToRoll" type="button" class="btn fr26BtnSaveRoll" style="display:none;">⬇ Save to Camera Roll</button>
-          <div id="photoScanStatus" class="fr26ScanStatus" style="display:none;"></div>
-          <div id="scanJobAlternatives" class="fr26ScanJobAlts" style="display:none;"></div>
-          <div id="photoUploadTarget" class="fr26Hint mono">
-            Bucket: <span id="photoBucketName">proofs</span> · <span id="photoPathPreview">—</span>
-          </div>
-        </div>
-      </details>
+      <!-- Hidden file inputs (wired by JS, triggered by scan hero buttons) -->
+      <input id="photoPicker" type="file" style="display:none">
+      <input id="photoCamera" type="file" style="display:none">
+      <input id="photoFile"   type="file" style="display:none">
+      <!-- Photo status / save-to-roll (shown after a photo is picked) -->
+      <div id="photoPickedLabel" class="fr26InlineStatus" style="display:none;"></div>
+      <button id="btnSaveToRoll" type="button" class="btn fr26BtnSaveRoll" style="display:none;">⬇ Save to Camera Roll</button>
+      <div id="photoUploadTarget" class="fr26Hint mono" style="display:none;">
+        Bucket: <span id="photoBucketName">proofs</span> · <span id="photoPathPreview">—</span>
+      </div>
 
       <div class="fr26QuickTools">
         <button id="comebackChipBtn" class="fr26Chip fr26ChipComeback" type="button">Comeback</button>
@@ -1134,7 +1139,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.9b7c8a0c95.js" defer></script>
+<script src="./app.344c627a08.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

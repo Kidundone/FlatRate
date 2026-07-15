@@ -1345,6 +1345,72 @@ a.btn {
 
 .fr26PhotoActions .btn { width: 100%; }
 
+/* ── Scan hero ─────────────────────────────────────────────────────── */
+.scanHeroWrap {
+  padding: 14px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scanHeroBtn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 18px rgba(34,197,94,.30);
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+}
+.scanHeroBtn:active {
+  transform: scale(.97);
+  box-shadow: 0 2px 8px rgba(34,197,94,.20);
+}
+.scanHeroIcon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  opacity: .95;
+}
+.scanHeroLabel {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+  display: block;
+}
+.scanHeroSub {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: .75;
+  display: block;
+  margin-top: 1px;
+}
+.scanHeroAlt {
+  display: flex;
+  gap: 8px;
+}
+.scanAltBtn {
+  flex: 1;
+  padding: 7px 0;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background .1s;
+}
+.scanAltBtn:active { background: var(--surface3); }
+
 .fr26InlineStatus {
   padding: 0 16px 12px;
   color: var(--muted);

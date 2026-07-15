@@ -8,6 +8,16 @@ function setPhotoUploadTarget(path) {
 }
 
 function setPhotoSummaryState(text) {
+  // Update the scan hero button sub-label to reflect current state
+  const subEl = document.querySelector(".scanHeroSub");
+  if (subEl) {
+    if (!text || text === "No photo") {
+      subEl.textContent = "Tap to fill form with camera";
+    } else {
+      subEl.textContent = text;
+    }
+  }
+  // Legacy element (no-op if removed)
   const summaryEl = document.getElementById("photoSummaryState");
   if (summaryEl) summaryEl.textContent = text || "No photo";
 }
@@ -159,6 +169,11 @@ function wirePhotoPickers() {
   btnPick?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
   btnFile?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
 
+  // Scan hero buttons (prominent top-of-form UI)
+  document.getElementById("scanRoHeroBtn")?.addEventListener("click", (e) => { e.preventDefault(); inCamera.click(); });
+  document.getElementById("scanPickLibraryBtn")?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
+  document.getElementById("scanPickFileBtn")?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
+
   // Change handlers (this is what you’re missing/broken)
   const handlePhotoChange = (input, label) => async () => {
     const file = input.files?.[0] || null;
@@ -166,6 +181,12 @@ function wirePhotoPickers() {
     setPhotoSummaryState("Scanning…");
     await new Promise(r => setTimeout(r, 0)); // yield so UI updates
     setSelectedPhoto(file, label);
+    // Show picked label
+    const pickedLabel = document.getElementById("photoPickedLabel");
+    if (pickedLabel) {
+      pickedLabel.textContent = `Selected: ${label} (${Math.round(file.size / 1024)} KB)`;
+      pickedLabel.style.display = "";
+    }
     // Show "Save to Camera Roll" button only for camera shots
     const saveRollBtn = document.getElementById("btnSaveToRoll");
     if (saveRollBtn) saveRollBtn.style.display = label === "camera" ? "" : "none";
