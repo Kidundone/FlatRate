@@ -399,6 +399,8 @@ async function runOnce() {
       const name = document.getElementById("typeText")?.value || "";
       await maybeAutofillFromType?.(name);
       await updateTypeHoursChip(name);
+      // Re-render smart chips tuned to this job type
+      renderSmartHourChips?.([], name);
       updateEarningsPreview?.();
       checkDuplicates?.();
       updateSaveEnabled();
@@ -450,9 +452,16 @@ async function runOnce() {
       if (typeStrip) typeStrip.hidden = true;
     });
     let _filterT = null;
+    let _chipT = null;
     document.getElementById("typeText")?.addEventListener("input", () => {
       clearTimeout(_filterT);
       _filterT = setTimeout(filterTypeChips, 100);
+      // Re-render smart chips for the current type (debounced 300ms)
+      clearTimeout(_chipT);
+      _chipT = setTimeout(() => {
+        const name = document.getElementById("typeText")?.value || "";
+        renderSmartHourChips?.([], name);
+      }, 300);
     });
 
     syncClearTypeBtn();

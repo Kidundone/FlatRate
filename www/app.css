@@ -1121,6 +1121,19 @@ a.btn {
 }
 .fr26QuickHours::-webkit-scrollbar { display: none; }
 
+/* Label shown when chips are tuned to a specific job type */
+.fr26ChipHint {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: .03em;
+  opacity: .75;
+  white-space: nowrap;
+  padding-right: 2px;
+}
+
 .fr26HourBtn {
   flex: 0 0 auto;
   min-width: 64px;

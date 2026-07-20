@@ -2,6 +2,9 @@ let EDITING_ID = null; // null = creating new
 let EDITING_ENTRY = null;
 let isSaving = false;
 
+// Cached entries for context-aware chip rendering
+let _smartChipEntries = [];
+
 /* ── Form draft (survives accidental refresh) ── */
 const LS_DRAFT = "fr_form_draft";
 let _draftTimer = null;
@@ -558,40 +561,81 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
 
 /**
  * Build quick-hour chips from the tech's own entry history.
- * Shows their most-used hour values (up to 8), sorted by frequency then value.
- * Falls back to [0.5, 1.0, 2.0] for brand-new users with no history.
+ * When forType is provided, chips are tuned to that specific job type.
+ * Falls back to global most-used hours, then [0.5, 1.0, 2.0] for new users.
  */
-function renderSmartHourChips(entries) {
+function renderSmartHourChips(entries, forType) {
   const container = document.getElementById("smartHourChips");
   if (!container) return;
 
+  // Cache entries so we can re-render when job type changes
+  if (Array.isArray(entries) && entries.length > 0) _smartChipEntries = entries;
+  const allEntries = _smartChipEntries;
+
   const empId = getEmpId();
-  const myEntries = (Array.isArray(entries) ? entries : [])
+  const myEntries = allEntries
     .filter(e => !empId || cleanEmpId(e.empId) === cleanEmpId(empId));
 
-  // Count frequency of each rounded hour value
-  const freq = {};
-  for (const e of myEntries) {
-    const h = round1(Number(e.hours));
-    if (Number.isFinite(h) && h > 0) freq[h] = (freq[h] || 0) + 1;
+  const typeKey = (forType || "").trim().toLowerCase();
+  let vals = [];
+  let isTypeSpecific = false;
+
+  // If a job type is active, try type-specific chips first
+  if (typeKey) {
+    const typeEntries = myEntries.filter(e =>
+      (e.type || e.typeName || "").trim().toLowerCase() === typeKey
+    );
+    if (typeEntries.length >= 2) {
+      const freq = {};
+      for (const e of typeEntries) {
+        const h = round1(Number(e.hours));
+        if (Number.isFinite(h) && h > 0) freq[h] = (freq[h] || 0) + 1;
+      }
+      vals = Object.keys(freq)
+        .map(Number)
+        .sort((a, b) => freq[b] - freq[a] || a - b)
+        .slice(0, 6);
+      isTypeSpecific = vals.length > 0;
+    }
   }
 
-  let vals = Object.keys(freq)
-    .map(Number)
-    .sort((a, b) => freq[b] - freq[a] || a - b) // most-used first, tie-break by value
-    .slice(0, 8); // cap at 8 chips
+  // Fall back to global most-used hours
+  if (vals.length === 0) {
+    const freq = {};
+    for (const e of myEntries) {
+      const h = round1(Number(e.hours));
+      if (Number.isFinite(h) && h > 0) freq[h] = (freq[h] || 0) + 1;
+    }
+    vals = Object.keys(freq)
+      .map(Number)
+      .sort((a, b) => freq[b] - freq[a] || a - b)
+      .slice(0, 8);
+  }
 
   // New user fallback
   if (vals.length === 0) vals = [0.5, 1.0, 2.0];
 
-  // Sort final display order: ascending by value (most-used is indicated by the job chip)
+  // Sort ascending for display
   vals.sort((a, b) => a - b);
 
+  // Sync selected state with current hours value
+  const currentHours = document.getElementById("hours")?.value?.trim() || "";
+
   container.innerHTML = "";
+
+  // Label so user knows chips are tuned to this job
+  if (isTypeSpecific) {
+    const hint = document.createElement("span");
+    hint.className = "fr26ChipHint";
+    hint.textContent = "for this job ↓";
+    container.appendChild(hint);
+  }
+
   for (const val of vals) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "fr26HourBtn";
+    if (currentHours === String(val)) btn.classList.add("selected");
     btn.dataset.hoursQuick = String(val);
     btn.textContent = String(val);
     btn.addEventListener("click", (e) => {
