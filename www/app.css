@@ -939,6 +939,31 @@ a.btn {
   border-bottom: 1px solid var(--stroke);
   background: var(--surface2);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
+  transition: max-height 250ms var(--ease), opacity 200ms var(--ease), padding 250ms var(--ease);
+}
+/* When empId is already set, collapse the bar to a subtle indicator */
+.fr26EmployeeBar.empSet {
+  grid-template-columns: 1fr;
+  padding: 5px 16px;
+}
+.fr26EmployeeBar.empSet .fr26EmployeeLabel { display: none; }
+.fr26EmployeeBar.empSet .fr26Input {
+  font-size: 11px;
+  height: 22px;
+  opacity: 0.45;
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fr26EmployeeBar.empSet .fr26Input:focus {
+  opacity: 1;
+  background: var(--surface3);
+  border: 1.5px solid var(--stroke);
+  padding: 6px 10px;
+  height: auto;
 }
 
 .fr26EmployeeLabel {
@@ -4388,6 +4413,56 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 [data-theme="light"] .statsChipsOuter::after {
   background: linear-gradient(to right, transparent, var(--bg));
 }
+
+/* ── Recent Job Type Quick-Tap Chips ────────────────────────────── */
+.recentTypeChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.recentTypeChips:empty { display: none; }
+.recentTypeChips::-webkit-scrollbar { display: none; }
+
+.recentTypeChip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border-radius: var(--r-md);
+  background: rgba(34,197,94,.12);
+  border: 1.5px solid rgba(34,197,94,.28);
+  cursor: pointer;
+  transition: background 120ms var(--ease), transform 100ms var(--ease-bounce), border-color 120ms;
+  max-width: 140px;
+}
+.recentTypeChip:active { transform: scale(.91); background: rgba(34,197,94,.22); }
+.recentTypeChipName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.recentTypeChipHours {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+@keyframes recentChipPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.recentTypeChip.tapped { animation: recentChipPop 260ms cubic-bezier(.34,1.56,.64,1); }
 
 /* ── Snappy Polish Pack ─────────────────────────────────────────── */
 

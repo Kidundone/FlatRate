@@ -568,6 +568,7 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   }
   updateClockInDisplay?.();
   renderSmartHourChips(allEntries);
+  renderRecentTypeChips(allEntries);
 }
 
 /**
@@ -575,6 +576,88 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
  * When forType is provided, chips are tuned to that specific job type.
  * Falls back to global most-used hours, then [0.5, 1.0, 2.0] for new users.
  */
+
+/**
+ * Render the "recent job types" one-tap row above the type input.
+ * Shows last 3 unique job types with their stored default hours.
+ * Tapping fills type + hours + fires earnings preview.
+ */
+function renderRecentTypeChips(entries) {
+  const container = document.getElementById("recentTypeChips");
+  if (!container) return;
+
+  const empId = getEmpId();
+  const myEntries = Array.isArray(entries)
+    ? entries.filter(e => !empId || cleanEmpId(e.empId) === cleanEmpId(empId))
+    : [];
+
+  // Get last 3 unique types in recency order
+  const seen = new Set();
+  const recentTypes = [];
+  for (const e of myEntries) {
+    const name = (e.type || e.typeName || e.type_name || "").trim();
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    recentTypes.push(name);
+    if (recentTypes.length >= 3) break;
+  }
+
+  container.innerHTML = "";
+  if (!recentTypes.length) return;
+
+  for (const typeName of recentTypes) {
+    // Look up stored hours for this type
+    const stored = _savedTypes?.find?.(t =>
+      (t.name || "").trim().toLowerCase() === typeName.toLowerCase()
+    );
+    const storedHours = stored?.lastHours || stored?.hours || null;
+
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "recentTypeChip";
+    chip.setAttribute("aria-label", `Quick-fill: ${typeName}`);
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "recentTypeChipName";
+    nameEl.textContent = typeName;
+    chip.appendChild(nameEl);
+
+    if (storedHours && Number(storedHours) > 0) {
+      const hrsEl = document.createElement("span");
+      hrsEl.className = "recentTypeChipHours";
+      hrsEl.textContent = `${storedHours}h`;
+      chip.appendChild(hrsEl);
+    }
+
+    chip.addEventListener("click", (e) => {
+      e.preventDefault();
+      // Fill type
+      const typeEl = document.getElementById("typeText");
+      if (typeEl) {
+        typeEl.value = typeName;
+        typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      // Fill hours if stored
+      if (storedHours && Number(storedHours) > 0) {
+        setQuickHoursValue(String(storedHours));
+      }
+      updateEarningsPreview?.();
+      restoreLastWorkType?.();
+
+      // Tap animation
+      chip.classList.remove("tapped");
+      void chip.offsetWidth;
+      chip.classList.add("tapped");
+      setTimeout(() => chip.classList.remove("tapped"), 300);
+    });
+
+    container.appendChild(chip);
+  }
+}
+
+let _savedTypes = [];
+window.__FR.renderRecentTypeChips = function(e) { renderRecentTypeChips(e); };
+
 function renderSmartHourChips(entries, forType) {
   const container = document.getElementById("smartHourChips");
   if (!container) return;
@@ -2406,9 +2489,14 @@ async function syncTypesFromEntries(entriesRaw, empIdRaw = getEmpId()) {
 let _typeRenderTimer = null;
 function scheduleTypeRender() {
   clearTimeout(_typeRenderTimer);
-  _typeRenderTimer = setTimeout(() => {
+  _typeRenderTimer = setTimeout(async () => {
     renderTypeDatalist().catch(() => {});
     renderTypesListInMore().catch(() => {});
+    // Keep _savedTypes fresh so renderRecentTypeChips can show stored hours
+    try {
+      const empId = getEmpId();
+      if (empId) _savedTypes = await loadTypesSorted(empId) || [];
+    } catch {}
   }, 80);
 }
 

@@ -381,6 +381,17 @@ async function runOnce() {
       el?.addEventListener("change", updateSaveEnabled);
     });
 
+    // Collapse empId bar when already set; expand on focus
+    function syncEmpIdBarState() {
+      const bar = document.querySelector(".fr26EmployeeBar");
+      if (!bar) return;
+      const empId = getEmpId?.();
+      bar.classList.toggle("empSet", !!(empId && String(empId).trim().length > 0));
+    }
+    syncEmpIdBarState();
+    document.getElementById("empId")?.addEventListener("blur", syncEmpIdBarState);
+    document.getElementById("empId")?.addEventListener("change", syncEmpIdBarState);
+
     // ── Type-hours chip: shows stored hours for the current job type ──────
     async function updateTypeHoursChip(name) {
       const chip = document.getElementById("typeHoursChip");

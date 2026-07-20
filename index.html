@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.fdc9be6fec.css">
+  <link rel="stylesheet" href="./app.3899d50fc2.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -183,7 +183,11 @@
         </div>
 
         <div class="fr26Row">
-          <label class="fr26Label" for="typeText">Work Done</label>
+          <div class="fr26LabelRow">
+            <label class="fr26Label" for="typeText">Work Done</label>
+          </div>
+          <!-- Recent job type quick-tap chips -->
+          <div id="recentTypeChips" class="recentTypeChips" aria-label="Recent job types"></div>
           <div class="fr26InlineField">
             <input name="typeText" id="typeText"
                    placeholder="Describe the work" inputmode="text"
@@ -210,18 +214,6 @@
           <input id="ref" name="ref" placeholder="Optional"
                  inputmode="text" autocomplete="off"
                  autocapitalize="characters" spellcheck="false" class="fr26Input" />
-        </div>
-
-        <div class="fr26Row fr26RowNotes">
-          <label class="fr26Label" for="notesInline">Notes</label>
-          <input id="notesInline" name="notesInline" type="text"
-                 placeholder="Optional — anything that will matter later"
-                 inputmode="text" autocomplete="off" class="fr26Input fr26NotesInput" />
-        </div>
-
-        <div class="fr26Row fr26RowDate">
-          <label class="fr26Label" for="entryDate">Date</label>
-          <input id="entryDate" name="entryDate" type="date" class="fr26Input" />
         </div>
 
         <div class="fr26PrimaryAction">
@@ -256,6 +248,16 @@
       <section id="detailsPanel" class="fr26Details" style="display:none;">
         <div class="fr26Group">
           <div class="fr26GroupHeader">More Details</div>
+          <div class="fr26Row fr26RowNotes">
+            <label class="fr26Label" for="notesInline">Notes</label>
+            <input id="notesInline" name="notesInline" type="text"
+                   placeholder="Optional — anything that will matter later"
+                   inputmode="text" autocomplete="off" class="fr26Input fr26NotesInput" />
+          </div>
+          <div class="fr26Row fr26RowDate">
+            <label class="fr26Label" for="entryDate">Date</label>
+            <input id="entryDate" name="entryDate" type="date" class="fr26Input" />
+          </div>
           <div class="fr26Row">
             <label class="fr26Label" for="vin8">VIN (last 8)</label>
             <input id="vin8" name="vin8" placeholder="1A2B3C4D" maxlength="8"
@@ -1139,7 +1141,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.17b4765522.js" defer></script>
+<script src="./app.4cd366b1f5.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
