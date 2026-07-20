@@ -556,7 +556,7 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     }
   }
   updateClockInDisplay?.();
-  renderSmartHourChips(entries);
+  renderSmartHourChips(allEntries);
 }
 
 /**
