@@ -2,13 +2,13 @@
 // Cache names:
 //   fr-assets-HASH  — immutable hashed JS/CSS (rotated each build)
 //   fr-pages-v1     — HTML pages (network-first; stable name, entries replaced)
-const ASSETS_CACHE = "fr-assets-51587d6fa8";
+const ASSETS_CACHE = "fr-assets-48c2dfe454";
 const PAGES_CACHE  = "fr-pages-v1";
 
 // Hashed asset URLs for this build
 const HASHED_ASSETS = [
-  "./app.51587d6fa8.js",
-  "./app.3899d50fc2.css",
+  "./app.48c2dfe454.js",
+  "./app.bf4b2f1625.css",
 ];
 
 // Static assets cached for offline use (icons, manifest)
