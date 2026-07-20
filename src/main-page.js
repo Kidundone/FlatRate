@@ -275,6 +275,8 @@ function handleClear(ev, options = {}) {
   if (vinEl) vinEl.value = "";
   if (typeEl) typeEl.value = preservedType;
   if (hoursEl) { hoursEl.value = ""; hoursEl.dataset.touched = ""; }
+  // Deselect all hour chips when form clears
+  document.querySelectorAll("[data-hours-quick]").forEach(b => b.classList.remove("selected"));
   if (rateEl) { rateEl.value = String(getDefaultRate()); rateEl.dataset.touched = ""; }
   // Hide type-hours chip when form clears (it'll reappear when a type is picked)
   const typeChipEl = document.getElementById("typeHoursChip");
@@ -438,12 +440,14 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     if (subEl2) subEl2.textContent = subTxt;
   }
 
-  // Sub line — show week total
+  // Sub line — show week total + today job count
   const subEl = document.getElementById("heroSubLine");
   if (subEl) {
     subEl.style.fontStyle = "";
     subEl.style.opacity = "";
-    if (weekDollars > 0) {
+    if (weekDollars > 0 && todayCount > 0) {
+      subEl.textContent = `${formatMoney(weekDollars)} this week · ${todayCount} job${todayCount !== 1 ? "s" : ""} today`;
+    } else if (weekDollars > 0) {
       subEl.textContent = `${formatMoney(weekDollars)} this week`;
     } else if (todayCount > 0) {
       subEl.textContent = `${todayCount} job${todayCount !== 1 ? "s" : ""} today`;

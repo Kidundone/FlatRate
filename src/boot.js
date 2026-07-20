@@ -266,6 +266,10 @@ async function runOnce() {
       hoursInput.addEventListener("input", () => {
         hoursInput.dataset.touched = "1";
         if (num(hoursInput.value) > 0) restoreLastWorkType?.();
+        // Keep chip selected state in sync with whatever is typed
+        const raw = hoursInput.value.trim();
+        document.querySelectorAll("[data-hours-quick]").forEach(b =>
+          b.classList.toggle("selected", b.getAttribute("data-hours-quick") === raw));
       });
       hoursInput.addEventListener("blur", () => {
         const v = round1(num(hoursInput.value));

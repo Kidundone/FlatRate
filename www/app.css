@@ -1123,25 +1123,27 @@ a.btn {
 
 .fr26HourBtn {
   flex: 0 0 auto;
-  min-width: 60px;
-  height: 42px;
-  padding: 0 4px;
-  border: 1px solid var(--stroke2);
-  border-radius: 10px;
-  background: var(--surface2);
-  color: var(--muted2);
-  font-size: 14px;
-  font-weight: 500;
+  min-width: 64px;
+  height: 44px;
+  padding: 0 8px;
+  border: 1.5px solid var(--stroke2);
+  border-radius: 12px;
+  background: var(--surface3);
+  color: var(--text2);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 100ms var(--ease), border-color 100ms var(--ease), color 100ms var(--ease);
+  transition: background 100ms var(--ease), border-color 100ms var(--ease), color 100ms var(--ease), transform 100ms var(--ease-bounce);
 }
 
-.fr26HourBtn:active { transform: scale(.94); transition-duration: 60ms; }
+.fr26HourBtn:active { transform: scale(.88); transition-duration: 60ms; }
 
 .fr26HourBtn.selected {
-  background: rgba(34, 197, 94, .12);
-  border-color: rgba(34, 197, 94, .4);
+  background: rgba(34, 197, 94, .18);
+  border-color: var(--primary);
+  border-width: 2px;
   color: var(--primary);
+  font-weight: 700;
 }
 
 /* Custom hour chips */
@@ -2539,7 +2541,8 @@ a.btn {
 [data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
 [data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8; }
 [data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
-[data-theme="light"] .fr26HourBtn { background: #fff; color: var(--text); border-color: rgba(0,0,0,.18); }
+[data-theme="light"] .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
+[data-theme="light"] .fr26HourBtn.selected { background: rgba(34,197,94,.15); border-color: var(--primary); color: var(--primary-dark); }
 [data-theme="light"] .fr26HourBtn:hover { background: var(--surface3); }
 [data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
 [data-theme="light"] .fr26Check span { color: var(--text); }
@@ -2592,7 +2595,8 @@ a.btn {
   :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
   :root:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
   :root:not([data-theme="dark"]) input::placeholder, :root:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
-  :root:not([data-theme="dark"]) .fr26HourBtn { background: #fff; color: var(--text); border-color: rgba(0,0,0,.18); }
+  :root:not([data-theme="dark"]) .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
+  :root:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(34,197,94,.15); border-color: var(--primary); color: var(--primary-dark); }
   :root:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
   :root:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
   :root:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
