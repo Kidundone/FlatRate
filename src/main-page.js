@@ -137,7 +137,14 @@ function setQuickHoursValue(value) {
   hoursEl.dispatchEvent(new Event("input", { bubbles: true }));
   hoursEl.dispatchEvent(new Event("change", { bubbles: true }));
   document.querySelectorAll("[data-hours-quick]").forEach((btn) => {
-    btn.classList.toggle("selected", btn.getAttribute("data-hours-quick") === next);
+    const isSelected = btn.getAttribute("data-hours-quick") === next;
+    btn.classList.toggle("selected", isSelected);
+    if (isSelected) {
+      btn.classList.remove("chipPop");
+      void btn.offsetWidth;
+      btn.classList.add("chipPop");
+      setTimeout(() => btn.classList.remove("chipPop"), 320);
+    }
   });
 }
 
@@ -395,9 +402,13 @@ function updateEarningsPreview() {
   if (hours > 0 && rate > 0) {
     el.innerHTML = `= ${formatMoney(round2(hours * rate))} <span class="epRate">@ ${formatMoney(rate)}/hr</span>`;
     el.classList.add("hasValue");
+    el.classList.remove("pop");
+    void el.offsetWidth;
+    el.classList.add("pop");
+    setTimeout(() => el.classList.remove("pop"), 300);
   } else {
     el.innerHTML = "";
-    el.classList.remove("hasValue");
+    el.classList.remove("hasValue", "pop");
   }
 }
 
@@ -1205,6 +1216,24 @@ function flashSaveBtn() {
   setTimeout(() => btn.classList.remove("btn-success"), 440);
 }
 
+function shakeEl(el) {
+  if (!el) return;
+  el.classList.remove("shake", "invalid");
+  void el.offsetWidth;
+  el.classList.add("shake", "invalid");
+  el.focus?.({ preventScroll: true });
+  setTimeout(() => el.classList.remove("shake", "invalid"), 600);
+}
+
+function shakeHourChips() {
+  const c = document.getElementById("smartHourChips");
+  if (!c) return;
+  c.classList.remove("shake");
+  void c.offsetWidth;
+  c.classList.add("shake");
+  setTimeout(() => c.classList.remove("shake"), 600);
+}
+
 function animateHeroNumber(el, to) {
   if (!el) return;
   // Always count up from 0 on first render of each page session
@@ -1590,8 +1619,8 @@ async function handleSave(ev) {
     const notes = (notesEl?.value || "").trim();
     const keepLastWork = shouldKeepLastWork() && !isEditing;
 
-    if (!typeName) { toast("Type required"); return; }
-    if (!hoursVal || hoursVal <= 0) { toast("Hours must be > 0"); return; }
+    if (!typeName) { shakeEl(typeEl); toast("Add a job type ↑"); return; }
+    if (!hoursVal || hoursVal <= 0) { shakeEl(hoursEl); shakeHourChips(); toast("Pick or enter hours ↑"); return; }
     if (hoursVal > 24) {
       const ok = await showActionSheet({
         title: `${hoursVal} hours?`,
@@ -1737,7 +1766,17 @@ async function handleSave(ev) {
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
     document.getElementById("photoCamera") && (document.getElementById("photoCamera").value = "");
     document.getElementById("photoFile") && (document.getElementById("photoFile").value = "");
-    focusHoursInput();
+    // Auto-focus: if type was preserved (keepLastWork), focus hours next;
+    // if type was cleared, focus type field so user can start typing immediately
+    requestAnimationFrame(() => {
+      const typeEl = document.getElementById("typeText");
+      const hoursEl = document.getElementById("hours");
+      if (typeEl && !typeEl.value.trim()) {
+        typeEl.focus({ preventScroll: true });
+      } else if (hoursEl) {
+        hoursEl.focus({ preventScroll: true });
+      }
+    });
   } catch (err) {
     console.error("Save failed", err);
     const errStr = String(err?.message || "") + String(err?.code || "");

@@ -82,6 +82,14 @@ function showSpaPage(name) {
     if (active) t.setAttribute("aria-current", "page");
     else t.removeAttribute("aria-current");
   });
+  // Page-enter animation
+  const pageEl = name === "main" ? main : name === "more" ? more : name === "stats" ? stats : null;
+  if (pageEl) {
+    pageEl.classList.remove("spaPageIn");
+    void pageEl.offsetWidth;
+    pageEl.classList.add("spaPageIn");
+    setTimeout(() => pageEl.classList.remove("spaPageIn"), 260);
+  }
   window.scrollTo(0, 0);
   if (name === "more"  && more)  more.scrollTop  = 0;
   if (name === "stats" && stats) stats.scrollTop = 0;
