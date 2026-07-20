@@ -1,23 +1,22 @@
-# Flat-Rate Tracker — iOS Launch Checklist
+# FR Buddy — iOS Launch Checklist
+
+**App name:** FR Buddy | **Bundle ID:** `dev.nellylabs.flatrate` | **Capacitor:** v8
 
 ## Prerequisites
-- Mac with Xcode 15+ installed
-- Apple Developer account ($99/yr) at developer.apple.com
-- Node.js installed (`node -v` to confirm)
+- Mac with Xcode 15+ installed (free from App Store)
+- Apple ID signed in to Xcode → Settings → Accounts
+  - Free account: sideload to your own phone (re-sign every 7 days)
+  - Paid account ($99/yr at developer.apple.com): keep it installed + submit to App Store
+- iPhone plugged in via USB and trusted on your Mac
 
 ---
 
-## 1. Install dependencies (one time)
+## 1. Sync the latest build into the iOS project
 ```bash
 cd ~/flat-rate-log
-npm install
-```
-
-## 2. Build and sync to iOS
-```bash
 npm run cap:ios
 ```
-This runs `node build.mjs`, syncs web assets to the `ios/` folder, and opens Xcode.
+This runs `node build.mjs`, syncs web assets into `ios/`, and opens Xcode automatically.
 
 ---
 
@@ -42,11 +41,16 @@ Xcode should add these automatically, but confirm they exist:
 
 ---
 
-## 4. Test on a real device
-1. Connect iPhone via USB
-2. Select your device in the Xcode toolbar (top left dropdown)
-3. Press ▶ Run
-4. On first run: iPhone → Settings → General → VPN & Device Management → trust your developer certificate
+## 4. Trust the cert and run on your iPhone
+1. Connect iPhone via USB, select it in the Xcode toolbar (top left)
+2. Press **⌘R** to build and install (~2 min first time)
+3. If you see "Untrusted Developer" on your phone:
+   - iPhone → **Settings → General → VPN & Device Management**
+   - Tap your Apple ID → **Trust** → confirm
+4. Re-open FR Buddy — it runs normally from here on
+
+### Enable notifications
+Go to **More → Notifications** in the app and tap Allow when prompted.
 
 ---
 
@@ -60,9 +64,9 @@ Xcode should add these automatically, but confirm they exist:
 ## 6. App Store Connect (appstoreconnect.apple.com)
 1. **My Apps → +** → New App
    - Platform: iOS
-   - Name: Flat-Rate Tracker
+   - Name: FR Buddy
    - Bundle ID: `dev.nellylabs.flatrate`
-   - SKU: `flatrate-tracker-1`
+   - SKU: `flatrate-buddy-1`
 2. Category: **Productivity**
 3. Add screenshots (minimum: iPhone 6.5" and 5.5")
 4. Description tip: "Log flat-rate hours job by job, track your weekly earnings, and catch short pay before payday. Works offline on the shop floor."

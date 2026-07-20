@@ -386,7 +386,23 @@ async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
     .createSignedUrl(photoPath, expiresIn);
 
   if (error) throw error;
-  return data?.signedUrl || null;
+  const signedUrl = data?.signedUrl || null;
+
+  // On native Capacitor iOS, WKWebView can't load external https:// images via <img src>.
+  // Fetch through the native HTTP stack and return a local blob URL instead.
+  if (signedUrl && window.Capacitor?.isNativePlatform?.()) {
+    try {
+      const resp = await fetch(signedUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      return URL.createObjectURL(blob);
+    } catch (fetchErr) {
+      console.warn("[photo] native blob fallback failed:", fetchErr?.message || fetchErr);
+      // Fall through to signed URL — may still work on some devices
+    }
+  }
+
+  return signedUrl;
 }
 
 const LS_EMP = "fr_emp_id";

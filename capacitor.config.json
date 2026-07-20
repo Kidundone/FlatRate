@@ -1,6 +1,6 @@
 {
   "appId": "dev.nellylabs.flatrate",
-  "appName": "Flat-Rate Tracker",
+  "appName": "FR Buddy",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
