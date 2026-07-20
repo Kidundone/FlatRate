@@ -478,6 +478,9 @@ async function runOnce() {
     // with inline click handlers — no static wiring needed here.
     // Render fallback chips immediately so the row isn't blank before entries load.
     renderSmartHourChips?.([]);
+    // Initialize hero to empty state so "Log a job to see your earnings here" shows
+    // even before entries load (refreshUI skips when there are no entries).
+    updateHeroSection?.(0, 0, 0, 0, 0, 0, []);
 
     // ── Custom hour chips ──────────────────────────────────────────────────
     const LS_CUSTOM_CHIPS = "fr_custom_hour_chips";

@@ -1446,12 +1446,23 @@ async function saveEntry(entry, options = {}) {
         || err?.name === "NetworkError"
         || errMsg.includes("network")
         || errMsg.includes("fetch");
-      if (isTimeout || isNetworkErr) {
+      // Auth errors (not signed in) → save locally and queue for later sync
+      const isAuthErr = errMsg === "Sign in required"
+        || errMsg.toLowerCase().includes("sign in")
+        || errMsg.toLowerCase().includes("jwt")
+        || errMsg.toLowerCase().includes("unauthorized")
+        || errMsg.toLowerCase().includes("not authenticated");
+      if (isTimeout || isNetworkErr || isAuthErr) {
         const localEntry = { ...entry, _pending: true };
         CURRENT_ENTRIES = syncStateEntries([localEntry, ...(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])]);
         queuePendingEntry(entry, payload);
         setEditingEntry(null);
-        toast(isTimeout ? "Connection slow — saved locally, will sync" : "Saved offline — syncs when back online");
+        const msg = isAuthErr
+          ? "Saved locally — sign in to back up to cloud"
+          : isTimeout
+          ? "Connection slow — saved locally, will sync"
+          : "Saved offline — syncs when back online";
+        toast(msg);
         handleClear(null, { preserveType: options.preserveType, typeValue: options.preservedType });
         return;
       }
