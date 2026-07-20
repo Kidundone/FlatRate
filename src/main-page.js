@@ -569,7 +569,6 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   updateClockInDisplay?.();
   renderSmartHourChips(allEntries);
   renderRecentTypeChips(allEntries);
-  renderHeroWeekBars(allEntries);
 }
 
 /**
@@ -658,115 +657,6 @@ function renderRecentTypeChips(entries) {
 
 let _savedTypes = [];
 window.__FR.renderRecentTypeChips = function(e) { renderRecentTypeChips(e); };
-
-/**
- * Render Mon–Sun mini-bar chart in the hero showing daily earnings this week.
- * Bars grow as entries are added. Hidden when no entries exist this week.
- */
-function renderHeroWeekBars(allEntries) {
-  const container = document.getElementById("heroWeekBars");
-  const inner     = document.getElementById("heroWeekBarsInner");
-  const metaEl    = document.getElementById("heroWeekBarsMeta");
-  if (!container || !inner) return;
-
-  const empId = getEmpId();
-  const entries = (allEntries || []).filter(e =>
-    !empId || cleanEmpId(e.empId) === cleanEmpId(empId)
-  );
-
-  // Build Mon–Sun keys for current week
-  const today    = new Date();
-  const todayKey = todayKeyLocal();
-  const dow      = today.getDay(); // 0=Sun
-  const mondayOffset = dow === 0 ? -6 : 1 - dow;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
-
-  const DAY_LABELS = ["M","T","W","T","F","S","S"];
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
-    return { key, label: DAY_LABELS[i], isToday: key === todayKey, isFuture: key > todayKey };
-  });
-
-  // Sum earnings per day key
-  const byDay = {};
-  for (const e of entries) {
-    const dk  = e.dayKey || dayKeyFromISO(e.createdAt || "");
-    if (!dk) continue;
-    byDay[dk] = (byDay[dk] || 0) + Number(e.earnings || 0);
-  }
-
-  const weekTotal = weekDays.reduce((s, d) => s + (byDay[d.key] || 0), 0);
-
-  // Last week total for comparison
-  const lastMonday = new Date(monday);
-  lastMonday.setDate(monday.getDate() - 7);
-  const lastSunday = new Date(monday);
-  lastSunday.setDate(monday.getDate() - 1);
-  const lastWeekTotal = entries.reduce((s, e) => {
-    const dk = e.dayKey || dayKeyFromISO(e.createdAt || "");
-    if (!dk) return s;
-    const d = new Date(dk + "T12:00:00");
-    return (d >= lastMonday && d <= lastSunday) ? s + Number(e.earnings || 0) : s;
-  }, 0);
-
-  // Hide when nothing earned this week
-  if (weekTotal <= 0) {
-    container.style.display = "none";
-    return;
-  }
-  container.style.display = "";
-
-  const maxDay = Math.max(...weekDays.map(d => byDay[d.key] || 0), 1);
-  const BAR_MAX = 44;
-
-  inner.innerHTML = "";
-  for (const day of weekDays) {
-    const amt  = byDay[day.key] || 0;
-    const barH = day.isFuture || amt === 0 ? 2 : Math.max(3, Math.round((amt / maxDay) * BAR_MAX));
-
-    const col = document.createElement("div");
-    col.className = "heroWeekBarCol";
-
-    // Dollar label above bar
-    const amtEl = document.createElement("div");
-    amtEl.className = "heroWeekBarAmt";
-    amtEl.textContent = amt > 0 ? (amt >= 1000 ? `$${(amt/1000).toFixed(1)}k` : `$${Math.round(amt)}`) : "";
-    col.appendChild(amtEl);
-
-    // Bar fill
-    const fill = document.createElement("div");
-    const cls = ["heroWeekBarFill"];
-    if (day.isToday)      cls.push("today", "grow");
-    else if (amt > 0)     cls.push("filled", "grow");
-    fill.className = cls.join(" ");
-    fill.style.height = barH + "px";
-    col.appendChild(fill);
-
-    // Day label
-    const lbl = document.createElement("div");
-    lbl.className = "heroWeekBarLabel" + (day.isToday ? " today" : "");
-    lbl.textContent = day.label;
-    col.appendChild(lbl);
-
-    inner.appendChild(col);
-  }
-
-  // Meta: week total + vs last week
-  if (metaEl) {
-    if (lastWeekTotal > 0) {
-      const diff = weekTotal - lastWeekTotal;
-      const sign = diff >= 0 ? "+" : "";
-      const arrow = diff >= 0 ? "↑" : "↓";
-      metaEl.textContent = `This week ${formatMoney(weekTotal)} · ${arrow} ${sign}${formatMoney(diff)} vs last week`;
-    } else {
-      metaEl.textContent = `This week: ${formatMoney(weekTotal)}`;
-    }
-  }
-}
-window.__FR.renderHeroWeekBars = function(e) { renderHeroWeekBars(e); };
 
 function renderSmartHourChips(entries, forType) {
   const container = document.getElementById("smartHourChips");
@@ -1057,36 +947,68 @@ function renderHeroChart(entries, weekStart) {
     svg.querySelectorAll("rect").forEach(r => { r.style.transform = "scaleY(1)"; });
   });
 
-  labelsRow.innerHTML = buckets.map(b =>
-    `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">${b.label}</span>`
-  ).join("");
+  // Dollar amounts above day labels + tappable labels
+  labelsRow.innerHTML = buckets.map(b => {
+    const amtTxt = b.dollars > 0
+      ? (b.dollars >= 1000 ? `$${(b.dollars/1000).toFixed(1)}k` : `$${Math.round(b.dollars)}`)
+      : "";
+    return `<span class="heroChartLabel${b.isToday ? " heroChartLabel--now" : ""}">` +
+      `<span class="heroChartLabelAmt">${amtTxt}</span>${b.label}</span>`;
+  }).join("");
 
-  // Tappable bars — show day stats on click
+  // Vs-last-week meta line
+  const metaEl = document.getElementById("heroChartMeta");
+  if (metaEl) {
+    const wsDate = new Date(weekStart);
+    const lastWkStart = new Date(wsDate); lastWkStart.setDate(wsDate.getDate() - 7);
+    const lastWkEnd   = new Date(wsDate); lastWkEnd.setDate(wsDate.getDate() - 1);
+    const thisWkTotal = buckets.reduce((s, b) => s + b.dollars, 0);
+    const lastWkTotal = entries.reduce((s, e) => {
+      const dk = e.dayKey || dayKeyFromISO(e.createdAt || "");
+      if (!dk) return s;
+      const d = new Date(dk + "T12:00:00");
+      return (d >= lastWkStart && d <= lastWkEnd) ? s + Number(e.earnings ?? e.dollars ?? 0) : s;
+    }, 0);
+    if (thisWkTotal > 0 && lastWkTotal > 0) {
+      const diff = thisWkTotal - lastWkTotal;
+      const arrow = diff >= 0 ? "↑" : "↓";
+      const sign  = diff >= 0 ? "+" : "";
+      metaEl.textContent = `${arrow} ${sign}${formatMoney(diff)} vs last week`;
+      metaEl.style.display = "";
+    } else {
+      metaEl.style.display = "none";
+    }
+  }
+
+  // Tappable bars + labels — show day stats and filter entries list
   function showDayStats(bucket, idx) {
-    const hrsEl  = document.getElementById("hcsHours");
-    const jobsEl = document.getElementById("hcsJobs");
-    const payEl  = document.getElementById("hcsPay");
-    const avgEl  = document.getElementById("hcsAvg");
+    const hrsEl   = document.getElementById("hcsHours");
+    const jobsEl  = document.getElementById("hcsJobs");
+    const payEl   = document.getElementById("hcsPay");
+    const avgEl   = document.getElementById("hcsAvg");
     const labelEl = document.getElementById("hcRangeLabel");
     if (!hrsEl || !jobsEl || !payEl) return;
 
-    const dayEntries = buckets[idx] ? (window.__heroEntries || []).filter(e => {
+    const dayEntries = (window.__heroEntries || []).filter(e => {
       const k = e.dayKey || dayKeyFromISO(e.createdAt);
       return k === bucket.key;
-    }) : [];
+    });
     const hrs = dayEntries.reduce((s, e) => s + (Number(e.flat_hours ?? e.hours ?? 0) || 0), 0);
     const cnt = dayEntries.length;
     hrsEl.textContent  = hrs > 0 ? round1(hrs) : "0";
-    jobsEl.textContent = cnt > 0 ? String(cnt) : "0";
+    jobsEl.textContent = String(cnt);
     payEl.textContent  = bucket.dollars > 0 ? formatMoney(bucket.dollars) : "$0";
     if (avgEl) avgEl.textContent = cnt > 0 ? formatMoney(round2(bucket.dollars / cnt)) : "—";
     if (labelEl) labelEl.textContent = bucket.isToday ? "Today" : bucket.label;
 
-    // Highlight selected bar, dim others
+    // Update entries list for the tapped day
+    renderRangeEntries(dayEntries, "day");
+
+    // Highlight selected bar + label, dim others
     svg.querySelectorAll("rect").forEach((r, i) => {
       r.style.opacity = i === idx ? "1" : "0.45";
     });
-    labelsRow.querySelectorAll("span").forEach((s, i) => {
+    labelsRow.querySelectorAll("span.heroChartLabel").forEach((s, i) => {
       s.classList.toggle("heroChartLabel--now", i === idx);
     });
   }
@@ -1094,10 +1016,14 @@ function renderHeroChart(entries, weekStart) {
   // Store entries for tap handler access
   window.__heroEntries = entries;
 
-  // Wire click on each bar
+  // Wire click on bars
   svg.querySelectorAll("rect").forEach((rect, i) => {
     rect.style.cursor = "pointer";
     rect.addEventListener("click", () => showDayStats(buckets[i], i));
+  });
+  // Wire click on labels too
+  labelsRow.querySelectorAll("span.heroChartLabel").forEach((s, i) => {
+    s.addEventListener("click", () => showDayStats(buckets[i], i));
   });
 
   // Default: show today — only in day mode so Week/Month/All stats aren't overwritten
