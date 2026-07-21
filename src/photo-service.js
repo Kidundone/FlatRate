@@ -403,7 +403,10 @@ async function openPhoto(row) {
 function closePhotoModal(){
   const shell = document.getElementById("photoModal");
   const img = document.getElementById("photoImg");
-  if (img) img.src = "";
+  if (img) {
+    if (img.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
+    img.src = "";
+  }
   if (shell) {
     shell.classList.remove("open");
     shell.style.display = "";
@@ -534,6 +537,11 @@ async function openPhotoViewer(e){
 function closePhotoViewer(){
   const shell = document.getElementById("photoViewer");
   if (!shell) return;
+  const img = document.getElementById("photoFull");
+  if (img) {
+    if (img.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
+    img.src = "";
+  }
   shell.classList.remove("open");
   shell.style.display = "none";
 }

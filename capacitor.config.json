@@ -5,6 +5,16 @@
   "server": {
     "androidScheme": "https"
   },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "backgroundColor": "#000000"
+  },
+  "android": {
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
   "plugins": {
     "Haptics": {},
     "LocalNotifications": {

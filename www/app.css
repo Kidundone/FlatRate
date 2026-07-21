@@ -550,6 +550,9 @@ main {
   border-radius: var(--r-xl);
   padding: 16px;
   margin-bottom: 16px;
+  /* Scope layout recalculation to this card — prevents a change inside from
+     forcing a full-page reflow on every render cycle */
+  contain: layout style;
 }
 
 .card--tight { padding: 12px; }
@@ -580,6 +583,11 @@ main {
   overflow: hidden;
   position: relative;
   touch-action: pan-y;
+  /* content-visibility: skip render for off-screen items (big win for long lists).
+     contain-intrinsic-size gives the browser a height estimate for accurate scrollbar. */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 76px;
+  contain: layout style paint;
 }
 
 .itemInner {

@@ -3188,7 +3188,7 @@ function renderList(entries, mode){
             </div>
             ${buildEntryMetaHtml(e)}
             ${e.notes ? `<div class="itemNotes">${hl(e.notes)}</div>` : ""}
-            ${hasPhoto ? `<div class="entryThumbWrap"><img class="entryThumb" data-photo-path="${escapeHtml(photoPath)}" alt="Proof" /></div>` : ""}
+            ${hasPhoto ? `<div class="entryThumbWrap"><img class="entryThumb" decoding="async" data-photo-path="${escapeHtml(photoPath)}" alt="Proof" /></div>` : ""}
           </div>
           <div class="itemRight">
             <div class="itemPay">${formatMoney(e.earnings)}</div>
