@@ -14,9 +14,9 @@
   --muted: #7a7a9a;
   --muted2: rgba(255,255,255,.32);
 
-  --primary: #22c55e;
-  --primary-dark: #16a34a;
-  --accent: #22c55e;
+  --primary: #2563EB;
+  --primary-dark: #1d4ed8;
+  --accent: #2563EB;
   --danger: #ef4444;
 
   --r-sm: 8px;
@@ -193,8 +193,8 @@ body[data-page="stats"] #spa-stats {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .statsChip.active {
-  background: var(--primary, #22c55e);
-  border-color: var(--primary, #22c55e);
+  background: var(--primary, #2563EB);
+  border-color: var(--primary, #2563EB);
   color: #fff;
 }
 /* Custom date range */
@@ -766,7 +766,7 @@ main {
 }
 .iBtn:active { background: var(--surface3); transform: scale(.94); }
 .iBtn--danger { color: var(--danger); border-color: rgba(237,73,86,.25); background: rgba(237,73,86,.06); }
-.iBtn--sameRO { color: var(--primary); border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.08); font-weight: 600; }
+.iBtn--sameRO { color: var(--primary); border-color: rgba(37,99,235,.3); background: rgba(37,99,235,.08); font-weight: 600; }
 
 /* ── Week group header ───────────────────────────── */
 .weekGroupHdr {
@@ -855,7 +855,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(34,197,94,.18);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.18);
 }
 
 /* ── Buttons ─────────────────────────────────────── */
@@ -1185,7 +1185,7 @@ a.btn {
 .fr26HourBtn:active { transform: scale(.88); transition-duration: 60ms; }
 
 .fr26HourBtn.selected {
-  background: rgba(34, 197, 94, .18);
+  background: rgba(37, 99, 235, .18);
   border-color: var(--primary);
   border-width: 2px;
   color: var(--primary);
@@ -1195,14 +1195,14 @@ a.btn {
 /* Custom hour chips */
 #customHourChips { display: contents; }
 .fr26HourBtnCustom {
-  background: rgba(34,197,94,.08);
-  border-color: rgba(34,197,94,.35);
+  background: rgba(37,99,235,.08);
+  border-color: rgba(37,99,235,.35);
   color: var(--primary);
 }
 /* + button */
 /* Job-type hours chip — appears first when a known job type is selected */
 .fr26HourBtnType {
-  background: rgba(34,197,94,.18);
+  background: rgba(37,99,235,.18);
   border-color: var(--primary);
   color: var(--primary);
   font-weight: 700;
@@ -1221,9 +1221,9 @@ a.btn {
 .fr26BtnSaveRoll {
   margin-top: 8px;
   width: 100%;
-  background: rgba(34,197,94,.1);
+  background: rgba(37,99,235,.1);
   color: var(--primary);
-  border: 1.5px solid rgba(34,197,94,.4);
+  border: 1.5px solid rgba(37,99,235,.4);
   border-radius: var(--r-md);
   padding: 9px 14px;
   font-size: 14px;
@@ -1233,7 +1233,7 @@ a.btn {
 .fr26HourBtnAdd {
   min-width: 42px;
   color: var(--primary);
-  border-color: rgba(34,197,94,.4);
+  border-color: rgba(37,99,235,.4);
   background: transparent;
   font-size: 20px;
   font-weight: 400;
@@ -1330,12 +1330,12 @@ a.btn {
   min-height: 56px;
   border: none;
   background: var(--primary);
-  color: #000;
+  color: #fff;
   letter-spacing: .2px;
   font-size: 17px;
   font-weight: 800;
   border-radius: var(--r-lg);
-  box-shadow: 0 4px 16px rgba(34,197,94,.28);
+  box-shadow: 0 4px 16px rgba(37,99,235,.28);
 }
 
 .fr26BtnPrimary:active { opacity: .85; transform: scale(.99); }
@@ -1413,12 +1413,12 @@ a.btn {
   border-radius: var(--r-lg);
   cursor: pointer;
   text-align: left;
-  box-shadow: 0 4px 18px rgba(34,197,94,.30);
+  box-shadow: 0 4px 18px rgba(37,99,235,.30);
   transition: transform .12s var(--ease), box-shadow .12s var(--ease);
 }
 .scanHeroBtn:active {
   transform: scale(.97);
-  box-shadow: 0 2px 8px rgba(34,197,94,.20);
+  box-shadow: 0 2px 8px rgba(37,99,235,.20);
 }
 .scanHeroIcon {
   width: 26px;
@@ -1488,7 +1488,7 @@ a.btn {
 .fr26ScanJobAlt {
   font-size: 12px;
   padding: 4px 10px;
-  border: 1px solid rgba(34,197,94,.5);
+  border: 1px solid rgba(37,99,235,.5);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--primary);
@@ -1497,7 +1497,7 @@ a.btn {
 }
 .fr26ScanJobAlt:active {
   background: var(--primary);
-  color: #000;
+  color: #fff;
 }
 
 .fr26QuickTools {
@@ -2566,7 +2566,7 @@ a.btn {
 
 /* Light theme — hero & chart fixes */
 [data-theme="light"] .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-[data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(34,197,94,.3); }
+[data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
 [data-theme="light"] .heroGoalPctText { color: var(--text); }
 [data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
 [data-theme="light"] .heroAmt { color: var(--text); }
@@ -2583,12 +2583,12 @@ a.btn {
 
 /* Light theme — form & input visibility */
 [data-theme="light"] .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-[data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+[data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 [data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
 [data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8; }
 [data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
 [data-theme="light"] .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
-[data-theme="light"] .fr26HourBtn.selected { background: rgba(34,197,94,.15); border-color: var(--primary); color: var(--primary-dark); }
+[data-theme="light"] .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
 [data-theme="light"] .fr26HourBtn:hover { background: var(--surface3); }
 [data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
 [data-theme="light"] .fr26Check span { color: var(--text); }
@@ -2635,14 +2635,14 @@ a.btn {
   :root:not([data-theme="dark"]) .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
   :root:not([data-theme="dark"]) .moreTabBar { background: #ffffff; border-bottom-color: rgba(0,0,0,.08); }
   :root:not([data-theme="dark"]) .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-  :root:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(34,197,94,.3); }
+  :root:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
   :root:not([data-theme="dark"]) .hcGoalBarTrack { background: rgba(0,0,0,.12); }
   :root:not([data-theme="dark"]) .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+  :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
   :root:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
   :root:not([data-theme="dark"]) input::placeholder, :root:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
   :root:not([data-theme="dark"]) .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
-  :root:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(34,197,94,.15); border-color: var(--primary); color: var(--primary-dark); }
+  :root:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
   :root:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
   :root:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
   :root:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -2956,7 +2956,7 @@ body.compact .list    { gap: 1px; }
   touch-action: pan-y;
 }
 .bulkEntryRow:first-child { border-top: none; }
-.bulkEntryRow.is-selected { background: rgba(34,197,94,.08); }
+.bulkEntryRow.is-selected { background: rgba(37,99,235,.08); }
 .bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; }
 .bulkEntryCheck input { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
 .bulkEntryInfo { flex: 1; min-width: 0; }
@@ -3298,7 +3298,7 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
   overflow: hidden;
   animation: mascotBob 2.8s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(34,197,94,0.25);
+  box-shadow: 0 0 12px rgba(37,99,235,0.25);
 }
 
 @keyframes mascotBob {
@@ -3378,7 +3378,7 @@ body.compact .list    { gap: 1px; }
   padding: 14px 16px 16px;
   max-width: 680px;
   margin: 0 auto;
-  background: linear-gradient(to bottom, rgba(34,197,94,.07) 0%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(37,99,235,.07) 0%, transparent 100%);
   position: relative;
 }
 
@@ -3483,7 +3483,7 @@ body.compact .list    { gap: 1px; }
 .clockInBtn--active {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(34,197,94,.08);
+  background: rgba(37,99,235,.08);
 }
 .clockInBtn:active { transform: scale(.95); }
 
@@ -3504,7 +3504,7 @@ body.compact .list    { gap: 1px; }
   transition: background .12s, border-color .12s;
 }
 .repeatChip:active, .comboSuggestChip:active { background: var(--surface3); }
-.comboSuggestChip { border-style: dashed; border-color: rgba(34,197,94,.4); color: var(--primary); }
+.comboSuggestChip { border-style: dashed; border-color: rgba(37,99,235,.4); color: var(--primary); }
 
 /* ── Owe Me tracker ───────────────────────────────── */
 .oweMeTotalBadge {
@@ -3537,7 +3537,7 @@ body.compact .list    { gap: 1px; }
 .heroChartInner {
   background: var(--surface);
   border: 1px solid var(--stroke);
-  border-top: 2px solid rgba(34,197,94,.25);
+  border-top: 2px solid rgba(37,99,235,.25);
   border-radius: var(--r-xl);
   overflow: hidden;
 }
@@ -3567,7 +3567,7 @@ body.compact .list    { gap: 1px; }
 .hcTab.hcTab--active {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(34,197,94,.35);
+  box-shadow: 0 2px 10px rgba(37,99,235,.35);
 }
 /* Nav group: label flanked by prev/next arrows */
 .hcNavGroup {
@@ -3601,10 +3601,10 @@ body.compact .list    { gap: 1px; }
   fill: rgba(255,255,255,.07);
 }
 .hcBarSkel--today {
-  fill: rgba(34,197,94,.18);
+  fill: rgba(37,99,235,.18);
 }
 [data-theme="light"] .hcBarSkel { fill: rgba(0,0,0,.07); }
-[data-theme="light"] .hcBarSkel--today { fill: rgba(34,197,94,.18); }
+[data-theme="light"] .hcBarSkel--today { fill: rgba(37,99,235,.18); }
 
 .heroChartLabelsRow {
   display: flex;
@@ -3814,8 +3814,8 @@ body.compact .list    { gap: 1px; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(34,197,94,.1);
-  border: 1px solid rgba(34,197,94,.28);
+  background: rgba(37,99,235,.1);
+  border: 1px solid rgba(37,99,235,.28);
   border-radius: var(--r-pill);
   padding: 2px 8px 2px 6px;
   font-size: 11px;
@@ -3827,7 +3827,7 @@ body.compact .list    { gap: 1px; }
   align-self: flex-start;
   margin-top: 2px;
 }
-.hcEntryPhotoChip:active { background: rgba(34,197,94,.22); opacity: .85; }
+.hcEntryPhotoChip:active { background: rgba(37,99,235,.22); opacity: .85; }
 .hcEntryPhotoIcon { font-size: 12px; }
 .hcEntryType {
   font-size: 13px;
@@ -4050,7 +4050,7 @@ body.compact .list    { gap: 1px; }
 .heroStreak {
   display:inline-flex; align-items:center; gap:3px;
   font-size:10px; font-weight:700; color:var(--primary);
-  background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.2);
+  background:rgba(37,99,235,.1); border:1px solid rgba(37,99,235,.2);
   border-radius:8px; padding:2px 7px; margin-top:4px; letter-spacing:.04em;
 }
 
@@ -4340,8 +4340,8 @@ body.compact .list    { gap: 1px; }
 .cbGood {
   font-size: 12px;
   color: var(--primary);
-  background: rgba(34,197,94,.08);
-  border: 1px solid rgba(34,197,94,.18);
+  background: rgba(37,99,235,.08);
+  border: 1px solid rgba(37,99,235,.18);
   border-radius: var(--r-md);
   padding: 8px 12px;
 }
@@ -4388,7 +4388,7 @@ body.compact .list    { gap: 1px; }
 
 /* Fix #1: Save button — always looks actionable */
 .fr26PrimaryAction { padding: 10px 14px 12px; }
-.fr26BtnPrimary { box-shadow: 0 4px 20px rgba(34,197,94,.35); }
+.fr26BtnPrimary { box-shadow: 0 4px 20px rgba(37,99,235,.35); }
 
 /* Fix #5: Clear chip — danger tint so it's not confused with positive actions */
 .fr26ChipDanger {
@@ -4443,13 +4443,13 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
   flex-shrink: 0;
   padding: 6px 11px;
   border-radius: var(--r-md);
-  background: rgba(34,197,94,.12);
-  border: 1.5px solid rgba(34,197,94,.28);
+  background: rgba(37,99,235,.12);
+  border: 1.5px solid rgba(37,99,235,.28);
   cursor: pointer;
   transition: background 120ms var(--ease), transform 100ms var(--ease-bounce), border-color 120ms;
   max-width: 140px;
 }
-.recentTypeChip:active { transform: scale(.91); background: rgba(34,197,94,.22); }
+.recentTypeChip:active { transform: scale(.91); background: rgba(37,99,235,.22); }
 .recentTypeChipName {
   font-size: 12px;
   font-weight: 700;
@@ -4493,8 +4493,8 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 
 /* Input focus glow — snappy pop on focus */
 @keyframes inputFocusPop {
-  from { box-shadow: 0 0 0 0 rgba(34,197,94,.45); }
-  to   { box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+  from { box-shadow: 0 0 0 0 rgba(37,99,235,.45); }
+  to   { box-shadow: 0 0 0 4px rgba(37,99,235,.18); }
 }
 input.fr26Input:focus, textarea.fr26Input:focus {
   animation: inputFocusPop 180ms ease forwards;
@@ -4539,7 +4539,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* Save success: background flash green */
 @keyframes saveBtnFlash {
   0%,100% { background: var(--primary); transform: scale(1); }
-  35%     { background: #16a34a; transform: scale(.96); }
+  35%     { background: #1d4ed8; transform: scale(.96); }
   65%     { background: #4ade80; transform: scale(1.04); }
 }
 .fr26BtnPrimary.btn-success {
