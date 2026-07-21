@@ -319,7 +319,7 @@ async function compressImageFileToDataUrl(file, maxW = 1200, quality = 0.75, enh
 function applyPhotoLoadGuard(img, photo_path) {
   if (!img) return;
   img.onerror = () => {
-    console.error("PHOTO LOAD FAILED", photo_path);
+    console.warn("[photo] load failed:", photo_path);
     img.replaceWith(
       Object.assign(document.createElement("div"), {
         textContent: "Photo failed to load",

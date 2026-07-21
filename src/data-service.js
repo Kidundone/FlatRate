@@ -380,29 +380,29 @@ async function listEntriesWithPhotos(limit = 100) {
 
 
 async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
+  // On native Capacitor iOS, WKWebView can't load external https:// <img src> URLs.
+  // Use Supabase's .download() — same auth stack as all other SDK calls — and return a blob URL.
+  if (window.Capacitor?.isNativePlatform?.()) {
+    try {
+      const { data: blob, error: dlErr } = await sb()
+        .storage
+        .from("proofs")
+        .download(photoPath);
+      if (dlErr) throw dlErr;
+      if (blob) return URL.createObjectURL(blob);
+    } catch (dlErr) {
+      console.warn("[photo] native download failed, trying signed URL:", dlErr?.message || dlErr);
+      // Fall through to signed URL
+    }
+  }
+
   const { data, error } = await sb()
     .storage
     .from("proofs")
     .createSignedUrl(photoPath, expiresIn);
 
   if (error) throw error;
-  const signedUrl = data?.signedUrl || null;
-
-  // On native Capacitor iOS, WKWebView can't load external https:// images via <img src>.
-  // Fetch through the native HTTP stack and return a local blob URL instead.
-  if (signedUrl && window.Capacitor?.isNativePlatform?.()) {
-    try {
-      const resp = await fetch(signedUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const blob = await resp.blob();
-      return URL.createObjectURL(blob);
-    } catch (fetchErr) {
-      console.warn("[photo] native blob fallback failed:", fetchErr?.message || fetchErr);
-      // Fall through to signed URL — may still work on some devices
-    }
-  }
-
-  return signedUrl;
+  return data?.signedUrl || null;
 }
 
 const LS_EMP = "fr_emp_id";
