@@ -139,6 +139,8 @@ if (!window.__FR_HAPTIC_DELEGATED__) {
     ".asConfirm", ".asCancel", ".chip", ".pill",
   ].join(",");
   document.addEventListener("pointerdown", (e) => {
+    // Only the primary button (left-click / finger tap). Skip right/middle-click.
+    if (e.button && e.button !== 0) return;
     const t = e.target?.closest?.(TAP_SELECTOR);
     if (!t || t.disabled || t.getAttribute("aria-disabled") === "true") return;
     window.haptic?.("light");

@@ -380,9 +380,11 @@ async function listEntriesWithPhotos(limit = 100) {
 
 
 async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
+  const isNative = !!window.Capacitor?.isNativePlatform?.();
+
   // On native Capacitor iOS, WKWebView can't load external https:// <img src> URLs.
   // Use Supabase's .download() — same auth stack as all other SDK calls — and return a blob URL.
-  if (window.Capacitor?.isNativePlatform?.()) {
+  if (isNative) {
     try {
       const { data: blob, error: dlErr } = await sb()
         .storage
@@ -391,8 +393,8 @@ async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
       if (dlErr) throw dlErr;
       if (blob) return URL.createObjectURL(blob);
     } catch (dlErr) {
-      console.warn("[photo] native download failed, trying signed URL:", dlErr?.message || dlErr);
-      // Fall through to signed URL
+      console.warn("[photo] native download failed, trying signed-URL fetch:", dlErr?.message || dlErr);
+      // Fall through to the signed-URL path below.
     }
   }
 
@@ -402,7 +404,28 @@ async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
     .createSignedUrl(photoPath, expiresIn);
 
   if (error) throw error;
-  return data?.signedUrl || null;
+  const signedUrl = data?.signedUrl || null;
+  if (!signedUrl) return null;
+
+  // On native, a raw https URL still won't load as an <img src> inside WKWebView.
+  // fetch() DOES work for external origins there, so pull the bytes ourselves and
+  // hand back a blob: URL the <img> can actually render. This makes the fallback
+  // path succeed instead of producing a "[photo] load failed" error.
+  if (isNative) {
+    try {
+      const resp = await fetch(signedUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        if (blob) return URL.createObjectURL(blob);
+      }
+    } catch (fetchErr) {
+      console.warn("[photo] signed-URL fetch failed:", fetchErr?.message || fetchErr);
+      // Last resort: return the raw signed URL (may still fail in WKWebView, but
+      // works on web and lets the download-link fallback function).
+    }
+  }
+
+  return signedUrl;
 }
 
 const LS_EMP = "fr_emp_id";

@@ -670,9 +670,11 @@ async function listEntriesWithPhotos(limit = 100) {
 
 
 async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
+  const isNative = !!window.Capacitor?.isNativePlatform?.();
+
   // On native Capacitor iOS, WKWebView can't load external https:// <img src> URLs.
   // Use Supabase's .download() — same auth stack as all other SDK calls — and return a blob URL.
-  if (window.Capacitor?.isNativePlatform?.()) {
+  if (isNative) {
     try {
       const { data: blob, error: dlErr } = await sb()
         .storage
@@ -681,8 +683,8 @@ async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
       if (dlErr) throw dlErr;
       if (blob) return URL.createObjectURL(blob);
     } catch (dlErr) {
-      console.warn("[photo] native download failed, trying signed URL:", dlErr?.message || dlErr);
-      // Fall through to signed URL
+      console.warn("[photo] native download failed, trying signed-URL fetch:", dlErr?.message || dlErr);
+      // Fall through to the signed-URL path below.
     }
   }
 
@@ -692,7 +694,28 @@ async function getSignedPhotoUrl(photoPath, expiresIn = 1800) {
     .createSignedUrl(photoPath, expiresIn);
 
   if (error) throw error;
-  return data?.signedUrl || null;
+  const signedUrl = data?.signedUrl || null;
+  if (!signedUrl) return null;
+
+  // On native, a raw https URL still won't load as an <img src> inside WKWebView.
+  // fetch() DOES work for external origins there, so pull the bytes ourselves and
+  // hand back a blob: URL the <img> can actually render. This makes the fallback
+  // path succeed instead of producing a "[photo] load failed" error.
+  if (isNative) {
+    try {
+      const resp = await fetch(signedUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        if (blob) return URL.createObjectURL(blob);
+      }
+    } catch (fetchErr) {
+      console.warn("[photo] signed-URL fetch failed:", fetchErr?.message || fetchErr);
+      // Last resort: return the raw signed URL (may still fail in WKWebView, but
+      // works on web and lets the download-link fallback function).
+    }
+  }
+
+  return signedUrl;
 }
 
 const LS_EMP = "fr_emp_id";
@@ -1571,7 +1594,8 @@ function todayKeyLocal(){
 }
 function formatMoney(n){
   const x = Number(n || 0);
-  return `$${x.toFixed(2)}`;
+  // Thousands separators so big pay numbers read cleanly ($1,234.00). Display-only.
+  return `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function round1(n){
   return Math.round((Number(n) || 0) * 10) / 10;
@@ -7257,40 +7281,11 @@ function render8WeekChart(allEntries) {
 }
 
 // ── Comeback stats (More > History) ──────────────────────
-function renderComebackStats(allEntries) {
-  const el = document.getElementById("comebackStatsCard");
-  if (!el) return;
-  const empId = getEmpId();
-  const own = filterEntriesByEmp(normalizeEntries(allEntries || []), empId);
-
-  if (!own.length) {
-    el.innerHTML = `<div class="eightWkEmptyState">Log some jobs to see comeback stats.</div>`;
-    return;
-  }
-
-  const total = own.length;
-  const cbs = own.filter(e => e.isComeback);
-  const cbCount = cbs.length;
-  const cbRate = total > 0 ? Math.round((cbCount / total) * 100) : 0;
-  const cbHours = round1(cbs.reduce((s, e) => s + Number(e.hours || 0), 0));
-  const cbCost = round2(cbs.reduce((s, e) => s + Number(e.earnings || 0), 0));
-
-  const statusHtml = cbRate > 10
-    ? `<div class="cbAlert">⚠️ Your comeback rate is above 10% — track these carefully to dispute unwarranted chargebacks.</div>`
-    : cbCount > 0
-      ? `<div class="cbGood">✅ Comeback rate is under control.</div>`
-      : `<div class="cbGood">✅ No comebacks logged — great job.</div>`;
-
-  el.innerHTML = `
-    <div class="cbStatsGrid">
-      <div class="cbStat"><div class="cbStatVal">${cbCount}</div><div class="cbStatLbl">comebacks</div></div>
-      <div class="cbStat"><div class="cbStatVal">${cbRate}%</div><div class="cbStatLbl">of total jobs</div></div>
-      <div class="cbStat"><div class="cbStatVal">${cbHours}h</div><div class="cbStatLbl">hours spent</div></div>
-      <div class="cbStat cbStat--cost"><div class="cbStatVal">${formatMoney(cbCost)}</div><div class="cbStatLbl">earnings at risk</div></div>
-    </div>
-    ${statusHtml}
-  `;
-}
+// NOTE: renderComebackStats() lives in more-page.js (the #comebackStatsCard element
+// is part of the More page). An earlier duplicate definition here was dead code —
+// it was always shadowed by the more-page version due to bundle order, so its layout
+// never rendered. Removed to avoid a latent bug if bundle order ever changes.
+// The call in refreshUI resolves to the more-page version via function hoisting.
 
 // ── Job Timer ────────────────────────────────────────────
 (function initJobTimer() {
@@ -10724,6 +10719,8 @@ if (!window.__FR_HAPTIC_DELEGATED__) {
     ".asConfirm", ".asCancel", ".chip", ".pill",
   ].join(",");
   document.addEventListener("pointerdown", (e) => {
+    // Only the primary button (left-click / finger tap). Skip right/middle-click.
+    if (e.button && e.button !== 0) return;
     const t = e.target?.closest?.(TAP_SELECTOR);
     if (!t || t.disabled || t.getAttribute("aria-disabled") === "true") return;
     window.haptic?.("light");

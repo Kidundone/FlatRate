@@ -247,7 +247,8 @@ function todayKeyLocal(){
 }
 function formatMoney(n){
   const x = Number(n || 0);
-  return `$${x.toFixed(2)}`;
+  // Thousands separators so big pay numbers read cleanly ($1,234.00). Display-only.
+  return `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function round1(n){
   return Math.round((Number(n) || 0) * 10) / 10;

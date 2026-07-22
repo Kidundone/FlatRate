@@ -4103,40 +4103,11 @@ function render8WeekChart(allEntries) {
 }
 
 // ── Comeback stats (More > History) ──────────────────────
-function renderComebackStats(allEntries) {
-  const el = document.getElementById("comebackStatsCard");
-  if (!el) return;
-  const empId = getEmpId();
-  const own = filterEntriesByEmp(normalizeEntries(allEntries || []), empId);
-
-  if (!own.length) {
-    el.innerHTML = `<div class="eightWkEmptyState">Log some jobs to see comeback stats.</div>`;
-    return;
-  }
-
-  const total = own.length;
-  const cbs = own.filter(e => e.isComeback);
-  const cbCount = cbs.length;
-  const cbRate = total > 0 ? Math.round((cbCount / total) * 100) : 0;
-  const cbHours = round1(cbs.reduce((s, e) => s + Number(e.hours || 0), 0));
-  const cbCost = round2(cbs.reduce((s, e) => s + Number(e.earnings || 0), 0));
-
-  const statusHtml = cbRate > 10
-    ? `<div class="cbAlert">⚠️ Your comeback rate is above 10% — track these carefully to dispute unwarranted chargebacks.</div>`
-    : cbCount > 0
-      ? `<div class="cbGood">✅ Comeback rate is under control.</div>`
-      : `<div class="cbGood">✅ No comebacks logged — great job.</div>`;
-
-  el.innerHTML = `
-    <div class="cbStatsGrid">
-      <div class="cbStat"><div class="cbStatVal">${cbCount}</div><div class="cbStatLbl">comebacks</div></div>
-      <div class="cbStat"><div class="cbStatVal">${cbRate}%</div><div class="cbStatLbl">of total jobs</div></div>
-      <div class="cbStat"><div class="cbStatVal">${cbHours}h</div><div class="cbStatLbl">hours spent</div></div>
-      <div class="cbStat cbStat--cost"><div class="cbStatVal">${formatMoney(cbCost)}</div><div class="cbStatLbl">earnings at risk</div></div>
-    </div>
-    ${statusHtml}
-  `;
-}
+// NOTE: renderComebackStats() lives in more-page.js (the #comebackStatsCard element
+// is part of the More page). An earlier duplicate definition here was dead code —
+// it was always shadowed by the more-page version due to bundle order, so its layout
+// never rendered. Removed to avoid a latent bug if bundle order ever changes.
+// The call in refreshUI resolves to the more-page version via function hoisting.
 
 // ── Job Timer ────────────────────────────────────────────
 (function initJobTimer() {
