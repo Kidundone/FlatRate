@@ -3875,13 +3875,13 @@ function renderHeroChart(entries, weekStart) {
     const gap  = 3;
     const isLight = document.documentElement.dataset.theme === "light";
     const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-    const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+    const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
     svg.innerHTML = "";
     buckets.forEach((b, i) => {
       const x = gap + i * (barW + gap);
       const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
       const y = H - barH;
-      const color = b.isCurrent ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
+      const color = b.isCurrent ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute("x", x.toFixed(1));
       rect.setAttribute("y", y.toFixed(1));
@@ -3932,7 +3932,7 @@ function renderHeroChart(entries, weekStart) {
     const monthEnd   = endOfMonthLocal(navNow);
     const isLight = document.documentElement.dataset.theme === "light";
     const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-    const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+    const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
 
     // Walk week starts that overlap this month
     const wkBuckets = [];
@@ -3968,7 +3968,7 @@ function renderHeroChart(entries, weekStart) {
       const x = gap + i * (barW + gap);
       const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
       const y = H - barH;
-      const color = b.isCurrent ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
+      const color = b.isCurrent ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute("x", x.toFixed(1));
       rect.setAttribute("y", y.toFixed(1));
@@ -4029,7 +4029,7 @@ function renderHeroChart(entries, weekStart) {
   const W = 300, H = 56, barW = 30, gap = (W - 7 * barW) / 8;
   const isLight = document.documentElement.dataset.theme === "light";
   const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-  const pastColor  = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+  const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
 
   // Animated bars
   svg.innerHTML = "";
@@ -4037,7 +4037,7 @@ function renderHeroChart(entries, weekStart) {
     const x = gap + i * (barW + gap);
     const barH = Math.max(3, (b.dollars / max) * (H - 6));
     const y = H - barH;
-    const color = b.isToday ? "#22c55e" : b.dollars > 0 ? pastColor : emptyColor;
+    const color = b.isToday ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", x.toFixed(1));
     rect.setAttribute("y", y.toFixed(1));
@@ -4500,7 +4500,7 @@ window.addEventListener("pageshow", (ev) => {
 });
 
 function triggerConfetti(count = 36) {
-  const colors = ["#22c55e","#4ade80","#86efac","#ffffff","#fbbf24","#f472b6","#60a5fa"];
+  const colors = ["#2563EB","#4ade80","#86efac","#ffffff","#fbbf24","#f472b6","#60a5fa"];
   const ox = window.innerWidth / 2;
   const oy = window.innerHeight * 0.22;
   for (let i = 0; i < count; i++) {
@@ -5865,8 +5865,8 @@ async function renderTypesListInMore(){
       const open = form.style.display !== "none";
       form.style.display = open ? "none" : "block";
       editBtn.style.opacity = open ? "" : "1";
-      editBtn.style.background = open ? "" : "rgba(34,197,94,.12)";
-      editBtn.style.borderColor = open ? "" : "rgba(34,197,94,.35)";
+      editBtn.style.background = open ? "" : "rgba(37,99,235,.12)";
+      editBtn.style.borderColor = open ? "" : "rgba(37,99,235,.35)";
       editBtn.style.color = open ? "" : "var(--primary)";
     });
     cancelBtn.addEventListener("click", () => {
@@ -7028,13 +7028,13 @@ async function shareWeekCard() {
 
   // Green top bar
   const bar = ctx.createLinearGradient(0, 0, W, 0);
-  bar.addColorStop(0, "#22c55e");
-  bar.addColorStop(1, "#16a34a");
+  bar.addColorStop(0, "#2563EB");
+  bar.addColorStop(1, "#1d4ed8");
   ctx.fillStyle = bar;
   ctx.fillRect(0, 0, W, 3);
 
   // Header
-  ctx.fillStyle = "rgba(34,197,94,.9)";
+  ctx.fillStyle = "rgba(37,99,235,.9)";
   ctx.font = "bold 13px -apple-system,system-ui,sans-serif";
   ctx.fillText("FLAT-RATE TRACKER", 24, 30);
 
@@ -7081,7 +7081,7 @@ async function shareWeekCard() {
     const x = 24 + i * (bW + bGap);
     const h = Math.max(3, (b.dollars / maxBar) * bH);
     const y = 175 + bH - h;
-    ctx.fillStyle = b.dollars > 0 ? "rgba(34,197,94,.7)" : "rgba(255,255,255,.08)";
+    ctx.fillStyle = b.dollars > 0 ? "rgba(37,99,235,.7)" : "rgba(255,255,255,.08)";
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, bW, h, 4);
     else ctx.rect(x, y, bW, h);
@@ -7173,7 +7173,7 @@ function render8WeekChart(allEntries) {
   const maxD = Math.max(...weeks.map(w => w.dollars), 1);
   const W2 = 340, H2 = 80, bW2 = 30, gap2 = (W2 - 8 * bW2) / 9;
   const isLight = document.documentElement.dataset.theme === "light";
-  const pastC = isLight ? "rgba(34,197,94,.30)" : "rgba(34,197,94,.28)";
+  const pastC = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
   const emptyC = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
 
   let rects = "";
@@ -7181,10 +7181,10 @@ function render8WeekChart(allEntries) {
     const x = gap2 + i * (bW2 + gap2);
     const bH2 = Math.max(3, (w.dollars / maxD) * (H2 - 12));
     const y2 = H2 - bH2;
-    const fill = w.isCurrent ? "#22c55e" : w.dollars > 0 ? pastC : emptyC;
+    const fill = w.isCurrent ? "#2563EB" : w.dollars > 0 ? pastC : emptyC;
     rects += `<rect class="eightWkBar" x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bW2}" height="${bH2.toFixed(1)}" rx="4" fill="${fill}" style="transform-origin:${(x+bW2/2).toFixed(1)}px ${H2}px;transform:scaleY(0);transition:transform 360ms cubic-bezier(.34,1.56,.64,1) ${i*40}ms"/>`;
     if (w.dollars > 0) {
-      rects += `<text x="${(x+bW2/2).toFixed(1)}" y="${(y2-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${w.isCurrent ? "#22c55e" : "rgba(255,255,255,.5)"}">${formatMoney(w.dollars)}</text>`;
+      rects += `<text x="${(x+bW2/2).toFixed(1)}" y="${(y2-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${w.isCurrent ? "#2563EB" : "rgba(255,255,255,.5)"}">${formatMoney(w.dollars)}</text>`;
     }
   });
 
@@ -7705,7 +7705,7 @@ window.checkPersonalRecords = checkPersonalRecords;
 
 // ── Type Breakdown (Stats page) ──────────────────────────────────────────────
 const BREAKDOWN_COLORS = [
-  "#22c55e","#0095f6","#f59e0b","#a855f7",
+  "#2563EB","#0095f6","#f59e0b","#a855f7",
   "#ef4444","#14b8a6","#f97316","#e879f9","#64748b",
 ];
 
@@ -11351,10 +11351,18 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.3-beta";
+const APP_VERSION = "1.4";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.4": [
+    "Meet Buddy! New app icon — your official flat-rate mascot 👻",
+    "Fresh blue look throughout the whole app 💙",
+    "Photos now load correctly in the iOS app (no more failed loads)",
+    "App runs smoother on iPhone and Android — less lag scrolling jobs",
+    "Native iOS splash screen with Buddy on launch",
+    "Notification color updated to match the new brand",
+  ],
   "1.3-beta": [
     "Beta mode — all features free while we build with you 🧪",
     "New Stats tab — job type breakdown with donut chart 📊",
@@ -11362,15 +11370,6 @@ const CHANGELOG = {
     "Smart job-type merging: PDI, Pre-Owned, Re-Clean, Sold auto-grouped",
     "Stats normalization now flows into payday summary and insights",
     "Tour updated to walk through the new Stats tab",
-  ],
-  "1.2": [
-    "FR Buddy mascot now guides you through the app tour 🦫",
-    "Landing page at app.nellylabs.dev/landing.html",
-    "Payday reminder notification — get pinged on pay day",
-    "Share the app link in More → Help",
-    "App icon updated with mascot, plus maskable icon for Android",
-    "Robots.txt + sitemap for better discoverability",
-    "Cloudflare Web Analytics — privacy-first visitor tracking",
   ],
 };
 

@@ -822,10 +822,18 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.3-beta";
+const APP_VERSION = "1.4";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.4": [
+    "Meet Buddy! New app icon — your official flat-rate mascot 👻",
+    "Fresh blue look throughout the whole app 💙",
+    "Photos now load correctly in the iOS app (no more failed loads)",
+    "App runs smoother on iPhone and Android — less lag scrolling jobs",
+    "Native iOS splash screen with Buddy on launch",
+    "Notification color updated to match the new brand",
+  ],
   "1.3-beta": [
     "Beta mode — all features free while we build with you 🧪",
     "New Stats tab — job type breakdown with donut chart 📊",
@@ -833,15 +841,6 @@ const CHANGELOG = {
     "Smart job-type merging: PDI, Pre-Owned, Re-Clean, Sold auto-grouped",
     "Stats normalization now flows into payday summary and insights",
     "Tour updated to walk through the new Stats tab",
-  ],
-  "1.2": [
-    "FR Buddy mascot now guides you through the app tour 🦫",
-    "Landing page at app.nellylabs.dev/landing.html",
-    "Payday reminder notification — get pinged on pay day",
-    "Share the app link in More → Help",
-    "App icon updated with mascot, plus maskable icon for Android",
-    "Robots.txt + sitemap for better discoverability",
-    "Cloudflare Web Analytics — privacy-first visitor tracking",
   ],
 };
 
