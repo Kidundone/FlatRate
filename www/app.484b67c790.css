@@ -4573,3 +4573,42 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   opacity: 0.8;
   letter-spacing: .1px;
 }
+
+/* ── Motion Pack v1.5 ──────────────────────────────────────────────────────── */
+
+/* Pay total lands with a reward glow (fires only when earnings grew) */
+@keyframes heroAmtGlow {
+  0%   { text-shadow: 0 0 0 rgba(255,255,255,0); }
+  35%  { text-shadow: 0 0 22px rgba(255,255,255,.65), 0 0 6px rgba(96,158,255,.55); }
+  100% { text-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+.heroAmt.landed { animation: heroAmtGlow 680ms ease-out; }
+
+/* Entry rows give a subtle press-in so taps feel physical */
+.item { transition: transform 130ms cubic-bezier(.34,1.56,.64,1); }
+.item:active { transform: scale(.985); }
+
+/* Scan hero: bouncier spring on press (primary action deserves the best feel) */
+.scanHeroBtn { transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .14s var(--ease); }
+.scanHeroBtn:active { transform: scale(.955); }
+
+/* Tab bar: label lifts slightly on the active tab */
+.tabItem { transition: transform 160ms cubic-bezier(.34,1.56,.64,1); }
+.tabItem:active { transform: scale(.9); }
+
+/* Generic pressable pill/chip springiness */
+.recentTypeChip { transition: transform 140ms cubic-bezier(.34,1.56,.64,1); }
+.recentTypeChip:active { transform: scale(.9); }
+
+/* ── Accessibility: honor reduced-motion ──────────────────────────────────────
+ * Users who enable "Reduce Motion" in iOS get near-instant, motion-free UI.
+ * Haptics still fire — only visual animation is neutralized. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cfp { display: none !important; }
+}

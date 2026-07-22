@@ -1375,6 +1375,51 @@ function getDefaultRate() {
   return Number(getSettings().defaultRate) || 15;
 }
 
+/* ── Haptics engine ───────────────────────────────────────────────────────────
+ * haptic(kind) — one entry point for all tactile feedback.
+ *   kinds: "light" | "medium" | "heavy" | "success" | "warning" | "error" | "selection"
+ * Native: Capacitor Haptics (impact / notification / selectionChanged).
+ * Web fallback: navigator.vibrate patterns.
+ * Respects the user's haptic setting and rate-limits rapid fire so delegated
+ * listeners never buzz-spam. Never throws.
+ */
+let _lastHapticAt = 0;
+const _VIBE = {
+  light: 12, medium: 22, heavy: 34,
+  selection: 8,
+  success: [18, 40, 26],
+  warning: [26, 50, 26],
+  error: [40, 60, 40],
+};
+function haptic(kind = "light") {
+  try {
+    if (getSettings().haptic === false) return;
+    // Rate-limit: collapse bursts fired within 28ms (e.g. pointerdown + click)
+    const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (now - _lastHapticAt < 28) return;
+    _lastHapticAt = now;
+
+    const cap = window.Capacitor;
+    const H = cap?.Plugins?.Haptics;
+    if (cap?.isNativePlatform?.() && H) {
+      switch (kind) {
+        case "selection": H.selectionChanged?.().catch(() => {}); break;
+        case "success":   H.notification?.({ type: "SUCCESS" }).catch(() => {}); break;
+        case "warning":   H.notification?.({ type: "WARNING" }).catch(() => {}); break;
+        case "error":     H.notification?.({ type: "ERROR" }).catch(() => {}); break;
+        case "heavy":     H.impact?.({ style: "HEAVY" }).catch(() => {}); break;
+        case "medium":    H.impact?.({ style: "MEDIUM" }).catch(() => {}); break;
+        case "light":
+        default:          H.impact?.({ style: "LIGHT" }).catch(() => {}); break;
+      }
+      return;
+    }
+    // Web fallback
+    navigator.vibrate?.(_VIBE[kind] ?? _VIBE.light);
+  } catch { /* haptics are best-effort */ }
+}
+window.haptic = haptic;
+
 /* ── Page detect (GLOBAL) ─────────────────────────────────────────────────── */
 // Initial value only — boot.js showSpaPage() keeps window.__PAGE__ current.
 window.__PAGE__ = location.pathname.includes("more") ? "more" : "main";
@@ -4409,6 +4454,10 @@ function showLevelUpAnimation(rank) {
   void overlay.offsetWidth;
   overlay.classList.add("levelUp-enter");
 
+  // Celebratory haptic burst: firm hit, then the iOS success chime
+  haptic?.("heavy");
+  setTimeout(() => haptic?.("success"), 140);
+
   triggerConfetti(60);
 
   const hide = () => {
@@ -4479,12 +4528,22 @@ function animateHeroNumber(el, to) {
     const c1 = 1.40158, c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   };
+  const grew = to > from;
   const step = (now) => {
     const t = Math.min(1, (now - start) / dur);
     const eased = easeOutBack(t);
     el.textContent = formatMoney(Math.max(0, from + (to - from) * eased));
     if (t < 1) requestAnimationFrame(step);
-    else el.textContent = formatMoney(to);
+    else {
+      el.textContent = formatMoney(to);
+      // Reward glow the moment the number lands (only when earnings grew)
+      if (grew) {
+        el.classList.remove("landed");
+        void el.offsetWidth;
+        el.classList.add("landed");
+        setTimeout(() => el.classList.remove("landed"), 700);
+      }
+    }
   };
   requestAnimationFrame(step);
 }
@@ -4544,6 +4603,7 @@ function checkPayMilestone(todayDollars) {
   for (const m of PAY_MILESTONES) {
     if (prev < m && todayDollars >= m) {
       showMilestoneToast(`💰 $${m} today — keep going!`);
+      haptic?.("success");
       break;
     }
   }
@@ -4965,13 +5025,7 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    if (getSettings?.()?.haptic !== false) {
-      if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.Haptics) {
-        window.Capacitor.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
-      } else {
-        navigator.vibrate?.([40, 30, 40]);
-      }
-    }
+    haptic("success");
     flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.
@@ -7270,6 +7324,7 @@ function renderComebackStats(allEntries) {
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     tick();
+    haptic?.("medium");
     toast("Timer started");
   }
 
@@ -7289,6 +7344,7 @@ function renderComebackStats(allEntries) {
       hoursEl.dispatchEvent(new Event("input", { bubbles: true }));
       hoursEl.focus();
     }
+    haptic?.("medium");
     toast(`Timer stopped — ${rounded}h logged`);
   }
 
@@ -10651,8 +10707,28 @@ window.__FR.showSpaPage = showSpaPage;
 
 // Wire tab bar buttons
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
-  btn.addEventListener("click", () => showSpaPage(btn.dataset.spaPage));
+  btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
+
+// ── Global tactile feedback ───────────────────────────────────────────────
+// One delegated listener gives every interactive control a light tap on press.
+// Fires on pointerdown so the buzz lands the instant a finger touches down —
+// the same trick native iOS controls use to feel responsive. Elements with
+// their own stronger haptic (save = success, timer = medium) layer on top.
+if (!window.__FR_HAPTIC_DELEGATED__) {
+  window.__FR_HAPTIC_DELEGATED__ = true;
+  const TAP_SELECTOR = [
+    "button", "[role=\"button\"]",
+    ".fr26HourBtn", ".recentTypeChip", ".tabItem",
+    ".comebackChipBtn", ".fr26TimerBtn", ".fr26ScanJob", ".fr26ScanJobAlt",
+    ".asConfirm", ".asCancel", ".chip", ".pill",
+  ].join(",");
+  document.addEventListener("pointerdown", (e) => {
+    const t = e.target?.closest?.(TAP_SELECTOR);
+    if (!t || t.disabled || t.getAttribute("aria-disabled") === "true") return;
+    window.haptic?.("light");
+  }, { passive: true, capture: true });
+}
 
 // Legacy deep-link: old app navigated to more.html which now redirects here with ?goto=more
 // Runs at script-load time (defer — DOM already parsed) so no try/catch can swallow it.
@@ -11351,10 +11427,18 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.5": [
+    "The whole app feels snappier — tactile haptics on every tap 📳",
+    "Your pay total glows when it climbs 💫",
+    "Springier buttons, chips, and tabs — everything reacts to your touch",
+    "Bigger celebration when you rank up: buzz + confetti 🎉",
+    "Cleaner Buddy app icon — no more box-in-a-box",
+    "Respects iOS Reduce Motion for a calmer view when you want it",
+  ],
   "1.4": [
     "Meet Buddy! New app icon — your official flat-rate mascot 👻",
     "Fresh blue look throughout the whole app 💙",

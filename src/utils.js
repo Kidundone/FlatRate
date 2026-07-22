@@ -51,6 +51,51 @@ function getDefaultRate() {
   return Number(getSettings().defaultRate) || 15;
 }
 
+/* ── Haptics engine ───────────────────────────────────────────────────────────
+ * haptic(kind) — one entry point for all tactile feedback.
+ *   kinds: "light" | "medium" | "heavy" | "success" | "warning" | "error" | "selection"
+ * Native: Capacitor Haptics (impact / notification / selectionChanged).
+ * Web fallback: navigator.vibrate patterns.
+ * Respects the user's haptic setting and rate-limits rapid fire so delegated
+ * listeners never buzz-spam. Never throws.
+ */
+let _lastHapticAt = 0;
+const _VIBE = {
+  light: 12, medium: 22, heavy: 34,
+  selection: 8,
+  success: [18, 40, 26],
+  warning: [26, 50, 26],
+  error: [40, 60, 40],
+};
+function haptic(kind = "light") {
+  try {
+    if (getSettings().haptic === false) return;
+    // Rate-limit: collapse bursts fired within 28ms (e.g. pointerdown + click)
+    const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (now - _lastHapticAt < 28) return;
+    _lastHapticAt = now;
+
+    const cap = window.Capacitor;
+    const H = cap?.Plugins?.Haptics;
+    if (cap?.isNativePlatform?.() && H) {
+      switch (kind) {
+        case "selection": H.selectionChanged?.().catch(() => {}); break;
+        case "success":   H.notification?.({ type: "SUCCESS" }).catch(() => {}); break;
+        case "warning":   H.notification?.({ type: "WARNING" }).catch(() => {}); break;
+        case "error":     H.notification?.({ type: "ERROR" }).catch(() => {}); break;
+        case "heavy":     H.impact?.({ style: "HEAVY" }).catch(() => {}); break;
+        case "medium":    H.impact?.({ style: "MEDIUM" }).catch(() => {}); break;
+        case "light":
+        default:          H.impact?.({ style: "LIGHT" }).catch(() => {}); break;
+      }
+      return;
+    }
+    // Web fallback
+    navigator.vibrate?.(_VIBE[kind] ?? _VIBE.light);
+  } catch { /* haptics are best-effort */ }
+}
+window.haptic = haptic;
+
 /* ── Page detect (GLOBAL) ─────────────────────────────────────────────────── */
 // Initial value only — boot.js showSpaPage() keeps window.__PAGE__ current.
 window.__PAGE__ = location.pathname.includes("more") ? "more" : "main";

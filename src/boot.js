@@ -122,8 +122,28 @@ window.__FR.showSpaPage = showSpaPage;
 
 // Wire tab bar buttons
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
-  btn.addEventListener("click", () => showSpaPage(btn.dataset.spaPage));
+  btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
+
+// ── Global tactile feedback ───────────────────────────────────────────────
+// One delegated listener gives every interactive control a light tap on press.
+// Fires on pointerdown so the buzz lands the instant a finger touches down —
+// the same trick native iOS controls use to feel responsive. Elements with
+// their own stronger haptic (save = success, timer = medium) layer on top.
+if (!window.__FR_HAPTIC_DELEGATED__) {
+  window.__FR_HAPTIC_DELEGATED__ = true;
+  const TAP_SELECTOR = [
+    "button", "[role=\"button\"]",
+    ".fr26HourBtn", ".recentTypeChip", ".tabItem",
+    ".comebackChipBtn", ".fr26TimerBtn", ".fr26ScanJob", ".fr26ScanJobAlt",
+    ".asConfirm", ".asCancel", ".chip", ".pill",
+  ].join(",");
+  document.addEventListener("pointerdown", (e) => {
+    const t = e.target?.closest?.(TAP_SELECTOR);
+    if (!t || t.disabled || t.getAttribute("aria-disabled") === "true") return;
+    window.haptic?.("light");
+  }, { passive: true, capture: true });
+}
 
 // Legacy deep-link: old app navigated to more.html which now redirects here with ?goto=more
 // Runs at script-load time (defer — DOM already parsed) so no try/catch can swallow it.
@@ -822,10 +842,18 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.5": [
+    "The whole app feels snappier — tactile haptics on every tap 📳",
+    "Your pay total glows when it climbs 💫",
+    "Springier buttons, chips, and tabs — everything reacts to your touch",
+    "Bigger celebration when you rank up: buzz + confetti 🎉",
+    "Cleaner Buddy app icon — no more box-in-a-box",
+    "Respects iOS Reduce Motion for a calmer view when you want it",
+  ],
   "1.4": [
     "Meet Buddy! New app icon — your official flat-rate mascot 👻",
     "Fresh blue look throughout the whole app 💙",

@@ -1300,6 +1300,10 @@ function showLevelUpAnimation(rank) {
   void overlay.offsetWidth;
   overlay.classList.add("levelUp-enter");
 
+  // Celebratory haptic burst: firm hit, then the iOS success chime
+  haptic?.("heavy");
+  setTimeout(() => haptic?.("success"), 140);
+
   triggerConfetti(60);
 
   const hide = () => {
@@ -1370,12 +1374,22 @@ function animateHeroNumber(el, to) {
     const c1 = 1.40158, c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   };
+  const grew = to > from;
   const step = (now) => {
     const t = Math.min(1, (now - start) / dur);
     const eased = easeOutBack(t);
     el.textContent = formatMoney(Math.max(0, from + (to - from) * eased));
     if (t < 1) requestAnimationFrame(step);
-    else el.textContent = formatMoney(to);
+    else {
+      el.textContent = formatMoney(to);
+      // Reward glow the moment the number lands (only when earnings grew)
+      if (grew) {
+        el.classList.remove("landed");
+        void el.offsetWidth;
+        el.classList.add("landed");
+        setTimeout(() => el.classList.remove("landed"), 700);
+      }
+    }
   };
   requestAnimationFrame(step);
 }
@@ -1435,6 +1449,7 @@ function checkPayMilestone(todayDollars) {
   for (const m of PAY_MILESTONES) {
     if (prev < m && todayDollars >= m) {
       showMilestoneToast(`💰 $${m} today — keep going!`);
+      haptic?.("success");
       break;
     }
   }
@@ -1856,13 +1871,7 @@ async function handleSave(ev) {
       preservedType: keepLastWork ? typeName : "",
       __isEdit: isEditing,
     });
-    if (getSettings?.()?.haptic !== false) {
-      if (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.Haptics) {
-        window.Capacitor.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
-      } else {
-        navigator.vibrate?.([40, 30, 40]);
-      }
-    }
+    haptic("success");
     flashSaveBtn();
     // Optimistic update: show the new entry immediately using the server-returned ID,
     // then resync in the background to pick up any server-side fields we don't have locally.
@@ -4161,6 +4170,7 @@ function renderComebackStats(allEntries) {
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     tick();
+    haptic?.("medium");
     toast("Timer started");
   }
 
@@ -4180,6 +4190,7 @@ function renderComebackStats(allEntries) {
       hoursEl.dispatchEvent(new Event("input", { bubbles: true }));
       hoursEl.focus();
     }
+    haptic?.("medium");
     toast(`Timer stopped — ${rounded}h logged`);
   }
 
