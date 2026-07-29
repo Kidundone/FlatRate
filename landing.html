@@ -3,486 +3,272 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Flatrate Buddy — Built for Flat-Rate Technicians</title>
-  <meta name="description" content="Log jobs in seconds, track every flat hour, and catch short pay before it disappears. Free to start — installs to your home screen." />
-  <link rel="icon" href="./favicon.ico" sizes="any">
-  <link rel="icon" href="./icon-192.png" type="image/png">
+  <title>Flat-Rate Tracker — Built for Automotive Technicians</title>
+  <meta name="description" content="Track flat-rate hours, protect your paycheck, and spot short-pays before your boss does. Built by a tech, for techs." />
+  <meta property="og:title" content="Flat-Rate Tracker" />
+  <meta property="og:description" content="Track flat-rate hours, protect your paycheck, and spot short-pays before your boss does." />
+  <meta property="og:image" content="https://app.nellylabs.dev/icon-512.png" />
+  <meta property="og:url" content="https://nellylabs.dev/" />
+  <link rel="icon" href="https://app.nellylabs.dev/icon-192.png" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:      #08091a;
-      --bg2:     #0b1220;
-      --card:    #111827;
-      --border:  rgba(255,255,255,0.07);
+      --bg: #07070f;
+      --bg2: #0d1117;
+      --fg: #e8eaf0;
+      --muted: #8a93a8;
+      --muted2: #4b5563;
       --primary: #22c55e;
-      --text:    #e8edf5;
-      --muted:   #6b7a99;
-      --r:       14px;
+      --primary-dim: rgba(34,197,94,0.12);
+      --card: #111827;
+      --stroke: #1f2937;
+      --danger: #ef4444;
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+    a { color: var(--primary); text-decoration: none; }
 
-    html { scroll-behavior: smooth; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; max-width: 1000px; margin: 0 auto; }
+    .navLogo { display: flex; align-items: center; gap: 10px; }
+    .navMark { width: 34px; height: 34px; border-radius: 8px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #07070f; }
+    .navName { font-size: 16px; font-weight: 700; color: var(--fg); }
+    .navCta { background: var(--primary); color: #07070f; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
+    .hero { text-align: center; padding: 72px 24px 64px; max-width: 700px; margin: 0 auto; }
+    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(34,197,94,0.2); }
+    .heroH1 { font-size: clamp(32px, 6vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; letter-spacing: -0.02em; }
+    .heroH1 span { color: var(--primary); }
+    .heroParagraph { font-size: 18px; color: var(--muted); max-width: 520px; margin: 0 auto 36px; }
+    .heroButtons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btnPrimary { background: var(--primary); color: #07070f; font-weight: 700; font-size: 16px; padding: 16px 32px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
+    .btnGhost { background: var(--card); color: var(--fg); font-weight: 600; font-size: 16px; padding: 16px 32px; border-radius: 12px; border: 1px solid var(--stroke); }
+    .heroSub { font-size: 13px; color: var(--muted2); margin-top: 18px; }
 
-    /* ── NAV ── */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(8,9,26,0.88);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px;
-    }
-    .navBrand {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .navBrand img {
-      width: 32px; height: 32px; border-radius: 8px;
-    }
-    .navBrandName {
-      font-size: 16px; font-weight: 800;
-      background: linear-gradient(90deg, #22c55e, #4ade80);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      letter-spacing: -.01em;
-    }
-    .navCta {
-      background: var(--primary); color: #000;
-      font-size: 14px; font-weight: 700;
-      padding: 9px 20px; border-radius: 999px;
-      text-decoration: none; white-space: nowrap;
-      transition: opacity .15s;
-    }
-    .navCta:hover { opacity: .88; }
+    .statsStrip { display: flex; justify-content: center; border: 1px solid var(--stroke); border-radius: 16px; overflow: hidden; max-width: 680px; margin: 0 auto 64px; }
+    .statItem { flex: 1; padding: 20px 16px; text-align: center; border-right: 1px solid var(--stroke); }
+    .statItem:last-child { border-right: none; }
+    .statNum { font-size: 26px; font-weight: 800; color: var(--primary); }
+    .statLabel { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-    /* ── HERO ── */
-    .hero {
-      max-width: 680px; margin: 0 auto;
-      padding: 72px 24px 56px;
-      text-align: center;
-    }
-    .heroChip {
-      display: inline-block;
-      font-size: 11px; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--primary);
-      background: rgba(34,197,94,0.1);
-      border: 1px solid rgba(34,197,94,0.25);
-      padding: 5px 14px; border-radius: 999px;
-      margin-bottom: 24px;
-    }
-    .heroMascot {
-      width: 110px; height: 110px;
-      border-radius: 26px;
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.2), 0 20px 60px rgba(0,0,0,0.5);
-      margin: 0 auto 28px;
-      display: block;
-    }
-    .heroH1 {
-      font-size: clamp(32px, 7vw, 52px);
-      font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: -.02em;
-      margin-bottom: 18px;
-    }
-    .heroH1 em {
-      font-style: normal;
-      background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .heroSub {
-      font-size: 17px; color: var(--muted); line-height: 1.65;
-      max-width: 480px; margin: 0 auto 36px;
-    }
-    .heroCtas {
-      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
-    }
-    .btnPrimary {
-      background: var(--primary); color: #000;
-      font-size: 16px; font-weight: 800;
-      padding: 14px 32px; border-radius: 999px;
-      text-decoration: none; display: inline-block;
-      box-shadow: 0 4px 24px rgba(34,197,94,0.35);
-      transition: opacity .15s, transform .15s;
-    }
-    .btnPrimary:hover { opacity: .9; transform: translateY(-1px); }
-    .btnGhost {
-      color: var(--text); font-size: 16px; font-weight: 600;
-      padding: 14px 28px; border-radius: 999px;
-      text-decoration: none; display: inline-block;
-      border: 1.5px solid var(--border);
-      transition: border-color .15s;
-    }
-    .btnGhost:hover { border-color: rgba(255,255,255,0.2); }
+    .section { max-width: 960px; margin: 0 auto; padding: 0 24px 80px; }
+    .sectionEye { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--primary); margin-bottom: 12px; }
+    .sectionH2 { font-size: clamp(24px, 4vw, 38px); font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+    .sectionP { font-size: 17px; color: var(--muted); max-width: 600px; }
+    .painGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 36px; }
+    .painCard { background: var(--card); border: 1px solid var(--stroke); border-radius: 14px; padding: 20px; }
+    .painIcon { font-size: 26px; margin-bottom: 10px; }
+    .painTitle { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--danger); }
+    .painBody { font-size: 14px; color: var(--muted); }
 
-    .heroNote {
-      margin-top: 16px; font-size: 13px; color: var(--muted);
-    }
+    .featureGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 36px; }
+    .featureCard { background: var(--card); border: 1px solid var(--stroke); border-radius: 14px; padding: 22px; }
+    .featureIcon { font-size: 28px; margin-bottom: 12px; }
+    .featureTitle { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .featureBody { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .proTag { display: inline-block; background: var(--primary-dim); color: var(--primary); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 6px; vertical-align: middle; }
 
-    /* ── SOCIAL PROOF STRIP ── */
-    .proofStrip {
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 18px 24px;
-      display: flex; gap: 32px; justify-content: center;
-      flex-wrap: wrap;
-    }
-    .proofItem {
-      text-align: center;
-    }
-    .proofNum {
-      font-size: 22px; font-weight: 900; color: var(--primary);
-      line-height: 1;
-    }
-    .proofLabel {
-      font-size: 12px; color: var(--muted); margin-top: 3px;
-      text-transform: uppercase; letter-spacing: .08em;
-    }
+    .pricingGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 40px; max-width: 620px; }
+    .pricingCard { background: var(--card); border: 1px solid var(--stroke); border-radius: 18px; padding: 28px; }
+    .pricingCard.featured { border-color: var(--primary); background: linear-gradient(135deg, #0d1117, #0a1a0f); }
+    .pricingBadge { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+    .pricingName { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .pricingPrice { font-size: 36px; font-weight: 800; color: var(--primary); }
+    .pricingPeriod { font-size: 15px; color: var(--muted); }
+    .pricingSavings { font-size: 13px; color: var(--primary); margin: 4px 0 16px; }
+    .pricingFeatures { list-style: none; margin: 16px 0 24px; }
+    .pricingFeatures li { font-size: 14px; color: var(--muted); padding: 5px 0; display: flex; align-items: flex-start; gap: 8px; }
+    .pricingFeatures li::before { content: "✓"; color: var(--primary); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .pricingBtn { display: block; text-align: center; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; }
+    .pricingBtn.primary { background: var(--primary); color: #07070f; }
+    .pricingBtn.ghost { background: var(--stroke); color: var(--fg); }
 
-    /* ── FEATURES ── */
-    .section {
-      max-width: 720px; margin: 0 auto;
-      padding: 72px 24px;
-    }
-    .sectionLabel {
-      font-size: 11px; font-weight: 700; letter-spacing: .14em;
-      text-transform: uppercase; color: var(--primary);
-      margin-bottom: 12px;
-    }
-    .sectionH2 {
-      font-size: clamp(24px, 5vw, 36px);
-      font-weight: 900; letter-spacing: -.02em;
-      line-height: 1.2; margin-bottom: 16px;
-    }
-    .sectionSub {
-      font-size: 16px; color: var(--muted); max-width: 500px;
-      margin-bottom: 48px; line-height: 1.65;
-    }
+    .quoteSection { background: var(--bg2); border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); padding: 64px 24px; margin-bottom: 80px; }
+    .quoteInner { max-width: 640px; margin: 0 auto; text-align: center; }
+    .quoteMark { font-size: 56px; color: var(--primary); line-height: 1; margin-bottom: 8px; }
+    .quoteText { font-size: 20px; font-weight: 600; line-height: 1.5; margin-bottom: 16px; }
+    .quoteAuthor { font-size: 14px; color: var(--muted); }
 
-    .featGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .featCard {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 24px;
-      transition: border-color .2s;
-    }
-    .featCard:hover { border-color: rgba(34,197,94,0.3); }
-    .featIcon {
-      font-size: 28px; margin-bottom: 14px; display: block;
-    }
-    .featTitle {
-      font-size: 16px; font-weight: 700; margin-bottom: 6px;
-    }
-    .featBody {
-      font-size: 14px; color: var(--muted); line-height: 1.6;
-    }
+    .ctaSection { text-align: center; padding: 0 24px 96px; }
+    .ctaH2 { font-size: clamp(26px, 5vw, 40px); font-weight: 800; margin-bottom: 16px; }
+    .ctaP { font-size: 17px; color: var(--muted); margin-bottom: 36px; }
 
-    /* ── HOW IT WORKS ── */
-    .steps {
-      display: flex; flex-direction: column; gap: 28px;
-      padding: 0 0 8px;
-    }
-    .step {
-      display: flex; gap: 20px; align-items: flex-start;
-    }
-    .stepNum {
-      width: 36px; height: 36px; flex-shrink: 0;
-      background: rgba(34,197,94,0.12);
-      border: 1.5px solid rgba(34,197,94,0.3);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 800; color: var(--primary);
-    }
-    .stepTitle { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-    .stepBody  { font-size: 14px; color: var(--muted); line-height: 1.6; }
-
-    /* ── MASCOT QUOTE ── */
-    .quoteSection {
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 56px 24px;
-      text-align: center;
-    }
-    .quoteAvatar {
-      width: 72px; height: 72px;
-      border-radius: 18px;
-      border: 2px solid var(--primary);
-      box-shadow: 0 0 20px rgba(34,197,94,0.2);
-      margin: 0 auto 20px;
-      display: block;
-    }
-    .quoteText {
-      font-size: clamp(18px, 4vw, 26px);
-      font-weight: 700; line-height: 1.4;
-      max-width: 560px; margin: 0 auto 14px;
-      color: var(--text);
-    }
-    .quoteAttr {
-      font-size: 13px; color: var(--primary);
-      font-weight: 700; letter-spacing: .04em;
-    }
-
-    /* ── CTA FOOTER ── */
-    .ctaSection {
-      max-width: 560px; margin: 0 auto;
-      padding: 72px 24px 56px;
-      text-align: center;
-    }
-    .ctaH2 {
-      font-size: clamp(26px, 5vw, 40px);
-      font-weight: 900; letter-spacing: -.02em;
-      line-height: 1.2; margin-bottom: 16px;
-    }
-    .ctaSub {
-      font-size: 16px; color: var(--muted);
-      margin-bottom: 32px; line-height: 1.65;
-    }
-
-    /* ── SITE FOOTER ── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 28px 24px;
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px;
-    }
-    .footerBrand {
-      font-size: 13px; font-weight: 700; color: var(--muted);
-    }
-    .footerLinks {
-      display: flex; gap: 20px;
-    }
-    .footerLinks a {
-      font-size: 13px; color: var(--muted); text-decoration: none;
-    }
-    .footerLinks a:hover { color: var(--text); }
+    footer { border-top: 1px solid var(--stroke); padding: 28px 24px; text-align: center; }
+    .footerLinks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .footerLinks a { font-size: 14px; color: var(--muted); }
+    .footerCopy { font-size: 13px; color: var(--muted2); }
 
     @media (max-width: 480px) {
-      .heroCtas { flex-direction: column; align-items: center; }
-      .btnPrimary, .btnGhost { width: 100%; max-width: 320px; text-align: center; }
-      footer { flex-direction: column; align-items: flex-start; }
+      .statsStrip { flex-direction: column; }
+      .statItem { border-right: none; border-bottom: 1px solid var(--stroke); }
+      .statItem:last-child { border-bottom: none; }
     }
   </style>
 </head>
 <body>
 
 <nav>
-  <div class="navBrand">
-    <img src="./icon-192.png" alt="FR Buddy" />
-    <span class="navBrandName">Flatrate Buddy</span>
-  </div>
-  <a href="./index.html" class="navCta">Open App</a>
+  <a href="#" class="navLogo">
+    <div class="navMark">F</div>
+    <div class="navName">Flat-Rate Tracker</div>
+  </a>
+  <a href="https://app.nellylabs.dev" class="navCta">Open App →</a>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
-  <div class="heroChip">Free for flat-rate techs</div>
-  <img src="./icon-192.png" alt="FR Buddy mascot" class="heroMascot" />
-  <h1 class="heroH1">Your <em>flat-rate sidekick</em> on the shop floor</h1>
-  <p class="heroSub">Log jobs in seconds, track every flat hour you turn, and catch short pay before it disappears — right from your phone.</p>
-  <div class="heroCtas">
-    <a href="./index.html" class="btnPrimary">Open the App →</a>
-    <a href="#how-it-works" class="btnGhost">See how it works</a>
+  <div class="heroBadge">⚡ Built by a tech, for techs</div>
+  <h1 class="heroH1">Stop getting <span>short-paid</span><br>without knowing it</h1>
+  <p class="heroParagraph">Log flat-rate hours, track every RO, and audit your paycheck in seconds. Know exactly what you're owed — before payday.</p>
+  <div class="heroButtons">
+    <a href="https://app.nellylabs.dev" class="btnPrimary">📱 Open the App — Free</a>
   </div>
-  <p class="heroNote">Works offline · No app store required · Free to start</p>
+  <p class="heroSub">No download required · Works on iPhone, Android &amp; desktop · Free to start</p>
 </div>
 
-<!-- PROOF STRIP -->
-<div class="proofStrip">
-  <div class="proofItem">
-    <div class="proofNum">⚡</div>
-    <div class="proofLabel">Logs in under 5 sec</div>
-  </div>
-  <div class="proofItem">
-    <div class="proofNum">100%</div>
-    <div class="proofLabel">Works offline</div>
-  </div>
-  <div class="proofItem">
-    <div class="proofNum">$0</div>
-    <div class="proofLabel">Free to start</div>
-  </div>
-  <div class="proofItem">
-    <div class="proofNum">📱</div>
-    <div class="proofLabel">Install to home screen</div>
+<div style="padding: 0 24px;">
+  <div class="statsStrip">
+    <div class="statItem"><div class="statNum">$0</div><div class="statLabel">To get started</div></div>
+    <div class="statItem"><div class="statNum">30s</div><div class="statLabel">To log an RO</div></div>
+    <div class="statItem"><div class="statNum">100%</div><div class="statLabel">Your data</div></div>
+    <div class="statItem"><div class="statNum">0</div><div class="statLabel">Ads. Ever.</div></div>
   </div>
 </div>
 
-<!-- FEATURES -->
 <div class="section">
-  <div class="sectionLabel">Features</div>
-  <h2 class="sectionH2">Everything you need, nothing you don't</h2>
-  <p class="sectionSub">Built specifically for flat-rate automotive technicians. Not a generic time tracker — a tool that speaks your language.</p>
-  <div class="featGrid">
-    <div class="featCard">
-      <span class="featIcon">🔧</span>
-      <div class="featTitle">Log Jobs Instantly</div>
-      <div class="featBody">Tap job type, enter flat hours, hit save. Your most-used jobs appear as one-tap chips. The whole thing takes under 5 seconds.</div>
+  <div class="sectionEye">The problem</div>
+  <h2 class="sectionH2">Flat-rate techs get burned. Here's how.</h2>
+  <p class="sectionP">You're flat-rate. That means the shop tracks your time, your hours, and your money — and you're trusting them to get it right.</p>
+  <div class="painGrid">
+    <div class="painCard">
+      <div class="painIcon">💸</div>
+      <div class="painTitle">Short-pays</div>
+      <div class="painBody">Missing hours on your check — with no paper trail to prove it happened. Most techs don't catch it until it's too late.</div>
     </div>
-    <div class="featCard">
-      <span class="featIcon">💰</span>
-      <div class="featTitle">Catch Short Pay</div>
-      <div class="featBody">Enter your check amount after payday. The app compares it against every logged job and flags any gap automatically.</div>
+    <div class="painCard">
+      <div class="painIcon">🔁</div>
+      <div class="painTitle">Comebacks costing you</div>
+      <div class="painBody">When a car comes back, you eat the time. But which jobs come back the most? Most techs have no idea.</div>
     </div>
-    <div class="featCard">
-      <span class="featIcon">📊</span>
-      <div class="featTitle">Track Your Week</div>
-      <div class="featBody">Daily bar chart, weekly goal ring, effective $/hr, comeback rate — every number that tells you how your week actually went.</div>
-    </div>
-    <div class="featCard">
-      <span class="featIcon">📷</span>
-      <div class="featTitle">Scan Repair Orders</div>
-      <div class="featBody">Point the camera at an RO or Get Ready sheet. The app reads the RO number, VIN, and job list automatically.</div>
-    </div>
-    <div class="featCard">
-      <span class="featIcon">⏱️</span>
-      <div class="featTitle">Clock In / Out</div>
-      <div class="featBody">Track your shift and see your efficiency ratio — flat hours earned vs. time on the clock. Know when you're ahead or behind.</div>
-    </div>
-    <div class="featCard">
-      <span class="featIcon">☁️</span>
-      <div class="featTitle">Cloud Backup</div>
-      <div class="featBody">Sign in to sync your full history to the cloud. Switch phones or reinstall — every job you ever logged comes back instantly.</div>
+    <div class="painCard">
+      <div class="painIcon">📋</div>
+      <div class="painTitle">No records, no leverage</div>
+      <div class="painBody">Without your own log, you're at the mercy of the DMS. Flat-Rate Tracker gives you your own record of everything.</div>
     </div>
   </div>
 </div>
 
-<!-- HOW IT WORKS -->
-<div class="section" id="how-it-works">
-  <div class="sectionLabel">How it works</div>
-  <h2 class="sectionH2">Up and running in under 2 minutes</h2>
-  <p class="sectionSub">No account required to start. Works right in your browser, installs to your home screen like a real app.</p>
-  <div class="steps">
-    <div class="step">
-      <div class="stepNum">1</div>
-      <div>
-        <div class="stepTitle">Open the app</div>
-        <div class="stepBody">Visit the link and tap "Add to Home Screen" when prompted. It opens like a native app — no App Store required.</div>
-      </div>
+<div class="section">
+  <div class="sectionEye">What it does</div>
+  <h2 class="sectionH2">Everything a flat-rate tech needs</h2>
+  <div class="featureGrid">
+    <div class="featureCard">
+      <div class="featureIcon">⚡</div>
+      <div class="featureTitle">Fast RO logging</div>
+      <div class="featureBody">Log a job in under 10 seconds. Tap your saved job types, enter hours, and you're done. Timer built in.</div>
     </div>
-    <div class="step">
-      <div class="stepNum">2</div>
-      <div>
-        <div class="stepTitle">Take the quick tour</div>
-        <div class="stepBody">FR Buddy walks you through every feature in under 2 minutes. You'll know exactly how to use every part of the app.</div>
-      </div>
+    <div class="featureCard">
+      <div class="featureIcon">💰</div>
+      <div class="featureTitle">Live pay tracking</div>
+      <div class="featureBody">See your today, this week, and weekly pace in real time. Know if you're on track before the week ends.</div>
     </div>
-    <div class="step">
-      <div class="stepNum">3</div>
-      <div>
-        <div class="stepTitle">Log your first job</div>
-        <div class="stepBody">Type the job, enter flat hours, hit Save. The first time takes 10 seconds — after that it's 5.</div>
-      </div>
+    <div class="featureCard">
+      <div class="featureIcon">🔁</div>
+      <div class="featureTitle">Comeback tracker</div>
+      <div class="featureBody">Flag comebacks when they happen. See which job types are costing you the most money over time.</div>
     </div>
-    <div class="step">
-      <div class="stepNum">4</div>
-      <div>
-        <div class="stepTitle">Check your pay stub</div>
-        <div class="stepBody">After payday, enter your check amount. See exactly what you earned vs. what you were paid. Dispute anything that's off.</div>
-      </div>
+    <div class="featureCard">
+      <div class="featureIcon">🧾</div>
+      <div class="featureTitle">Pay stub audit<span class="proTag">Pro</span></div>
+      <div class="featureBody">Enter your check amount and we compare it to what you logged. Spot the discrepancy instantly.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">📄</div>
+      <div class="featureTitle">Dispute reports<span class="proTag">Pro</span></div>
+      <div class="featureBody">Generate a PDF of your logged hours and earnings — formatted to show your shop or HR if you get shorted.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">📊</div>
+      <div class="featureTitle">8-week earnings chart</div>
+      <div class="featureBody">See your earnings trend at a glance. Know your average week and track improvement over time.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">📤</div>
+      <div class="featureTitle">CSV &amp; JSON export<span class="proTag">Pro</span></div>
+      <div class="featureBody">Export your full history anytime. Your data is yours — take it wherever you need.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">☁️</div>
+      <div class="featureTitle">Cloud sync</div>
+      <div class="featureBody">Your data syncs securely across devices. Lose your phone, keep your records.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">📷</div>
+      <div class="featureTitle">Pay stub scan<span class="proTag">Pro</span></div>
+      <div class="featureBody">Take a photo of your pay stub and let AI extract the numbers automatically.</div>
     </div>
   </div>
 </div>
 
-<!-- MASCOT QUOTE -->
 <div class="quoteSection">
-  <img src="./icon-192.png" alt="FR Buddy" class="quoteAvatar" />
-  <p class="quoteText">"I'll do the math. You turn the wrenches."</p>
-  <div class="quoteAttr">— FR Buddy, your flat-rate sidekick</div>
-</div>
-
-<!-- CTA FOOTER -->
-<div class="ctaSection">
-  <h2 class="ctaH2">Start tracking your hours today</h2>
-  <p class="ctaSub">Free to use. No credit card. Works offline from day one. Every job you log is one less dollar that can slip through the cracks.</p>
-  <a href="./index.html" class="btnPrimary">Open Flatrate Buddy →</a>
-
-  <!-- EMAIL CAPTURE -->
-  <div style="margin-top:48px;padding-top:40px;border-top:1px solid rgba(255,255,255,0.07);">
-    <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);margin-bottom:10px;">Get updates</div>
-    <div style="font-size:15px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Drop your email and we'll let you know when new features ship.</div>
-    <form id="waitlistForm" style="display:flex;gap:10px;max-width:400px;margin:0 auto;flex-wrap:wrap;">
-      <input id="waitlistEmail" type="email" placeholder="your@email.com" required
-        style="flex:1;min-width:200px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);
-               border-radius:10px;padding:12px 16px;color:#fff;font-size:15px;outline:none;" />
-      <button type="submit"
-        style="background:var(--primary);color:#000;font-size:15px;font-weight:700;
-               padding:12px 24px;border-radius:10px;border:none;cursor:pointer;white-space:nowrap;">
-        Notify me
-      </button>
-    </form>
-    <div id="waitlistMsg" style="margin-top:12px;font-size:14px;min-height:20px;"></div>
+  <div class="quoteInner">
+    <div class="quoteMark">"</div>
+    <p class="quoteText">Flat-rate techs work harder than almost anyone in the building — and most of us have zero way to verify what we're being paid. That's exactly what this fixes.</p>
+    <div class="quoteAuthor">— Built by a flat-rate tech</div>
   </div>
 </div>
 
-<!--
-  To enable the email form, create this table in your Supabase dashboard:
+<div class="section">
+  <div class="sectionEye">Pricing</div>
+  <h2 class="sectionH2">Start free. Go Pro when you're ready.</h2>
+  <p class="sectionP">Core logging is always free. Pro unlocks exports, PDF reports, and pay stub audit tools.</p>
+  <div class="pricingGrid">
+    <div class="pricingCard">
+      <div class="pricingName">Free</div>
+      <div class="pricingPrice">$0</div>
+      <ul class="pricingFeatures">
+        <li>Unlimited job logging</li>
+        <li>Live pay tracking</li>
+        <li>Comeback tracker</li>
+        <li>8-week earnings chart</li>
+        <li>Cloud sync</li>
+        <li>Job type library</li>
+      </ul>
+      <a href="https://app.nellylabs.dev" class="pricingBtn ghost">Get Started Free</a>
+    </div>
+    <div class="pricingCard featured">
+      <div class="pricingBadge">Most popular</div>
+      <div class="pricingName">Pro — Yearly</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin:4px 0;">
+        <div class="pricingPrice">$49</div>
+        <div class="pricingPeriod">/ year</div>
+      </div>
+      <div class="pricingSavings">Save $11 vs. monthly</div>
+      <ul class="pricingFeatures">
+        <li>Everything in Free</li>
+        <li>Pay stub audit tool</li>
+        <li>PDF dispute reports</li>
+        <li>CSV &amp; JSON export</li>
+        <li>Pay stub photo scan (AI)</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="https://app.nellylabs.dev" class="pricingBtn primary">Start Pro — $49/yr</a>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--muted2);margin-top:20px;">Cancel anytime. Secure payments via Stripe. No hidden fees.</p>
+</div>
 
-  create table waitlist (
-    id uuid primary key default gen_random_uuid(),
-    email text not null unique,
-    created_at timestamptz default now()
-  );
-
-  Then enable Row Level Security and add this policy:
-  create policy "Anyone can join" on waitlist for insert with check (true);
--->
-<script>
-(function() {
-  const SB_URL  = "https://lfnydhidbwfyfjafazdy.supabase.co";
-  const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmbnlkaGlkYndmeWZqYWZhemR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTk0MDYsImV4cCI6MjA4MzkzNTQwNn0.ES4tEeUgtTrPjYR64SGHDeQJps7dFdTmF7IRUhPZwt4";
-
-  document.getElementById("waitlistForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("waitlistEmail")?.value?.trim();
-    const msg   = document.getElementById("waitlistMsg");
-    if (!email || !msg) return;
-
-    msg.style.color = "var(--muted)";
-    msg.textContent = "Submitting…";
-
-    try {
-      const res = await fetch(`${SB_URL}/rest/v1/waitlist`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SB_KEY,
-          "Authorization": `Bearer ${SB_KEY}`,
-          "Prefer": "return=minimal",
-        },
-        body: JSON.stringify({ email }),
-      });
-      if (res.ok || res.status === 409) {
-        msg.style.color = "#22c55e";
-        msg.textContent = res.status === 409 ? "You're already on the list!" : "You're in! 🎉 We'll keep you posted.";
-        document.getElementById("waitlistEmail").value = "";
-      } else {
-        throw new Error(res.status);
-      }
-    } catch {
-      msg.style.color = "#f87171";
-      msg.textContent = "Something went wrong — try again.";
-    }
-  });
-})();
-</script>
+<div class="ctaSection">
+  <h2 class="ctaH2">Know exactly what you're owed.</h2>
+  <p class="ctaP">Free to start. Takes 30 seconds to log your first RO.</p>
+  <a href="https://app.nellylabs.dev" class="btnPrimary" style="font-size:18px;padding:18px 40px;">Open App — It's Free →</a>
+</div>
 
 <footer>
-  <div class="footerBrand">© 2026 Flatrate Buddy</div>
   <div class="footerLinks">
-    <a href="./tos.html">Terms</a>
-    <a href="./privacy.html">Privacy</a>
-    <a href="./index.html">Open App</a>
+    <a href="https://app.nellylabs.dev">App</a>
+    <a href="https://app.nellylabs.dev/privacy.html">Privacy Policy</a>
+    <a href="https://app.nellylabs.dev/terms.html">Terms of Service</a>
+    <a href="mailto:eamnelsonmalloy@icloud.com">Contact</a>
   </div>
+  <div class="footerCopy">© 2026 Flat-Rate Tracker. All rights reserved.</div>
 </footer>
 
 </body>
