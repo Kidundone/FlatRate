@@ -125,6 +125,72 @@ document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
 
+// ── Collapse Emp # once it's known ────────────────────────────────────────
+// Your employee number is set once, but it used to sit between the scan button
+// and the hours field — dead space in a form filled dozens of times a shift.
+// Once set it becomes a small chip, so the form starts where the work starts.
+(function initEmpChip() {
+  const bar   = document.getElementById("empBar");
+  const input = document.getElementById("empId");
+  const chip  = document.getElementById("empChipBtn");
+  if (!bar || !input || !chip) return;
+
+  const collapse = () => {
+    const val = (input.value || "").trim();
+    if (!val) return expand(false);
+    chip.textContent = `Emp ${val}`;
+    chip.hidden = false;
+    bar.classList.add("fr26EmployeeBar--collapsed");
+  };
+
+  const expand = (focus = true) => {
+    chip.hidden = true;
+    bar.classList.remove("fr26EmployeeBar--collapsed");
+    if (focus) { try { input.focus(); input.select(); } catch {} }
+  };
+
+  chip.addEventListener("click", () => expand(true));
+  // Collapse again once they're done editing, if a value is present.
+  input.addEventListener("blur", () => { if ((input.value || "").trim()) collapse(); });
+
+  // Initial state — collapsed only when we already know the number.
+  if ((input.value || "").trim()) collapse();
+  else {
+    // Value may be restored from storage slightly after boot.
+    setTimeout(() => { if ((input.value || "").trim()) collapse(); }, 400);
+  }
+})();
+
+// ── Remember which More-page sections you left open ───────────────────────
+// Previously only Pay Stub persisted; every other section collapsed on each
+// visit, so the ones you actually use had to be reopened every time. Keys are
+// derived from the section heading, so a renamed heading simply resets that
+// one section to its default instead of breaking.
+(function persistMoreSections() {
+  const all = document.querySelectorAll("details.moreSectionDetails");
+  if (!all.length) return;
+
+  const seen = new Set();
+  all.forEach((det, i) => {
+    // Pay Stub manages its own state in more-page.js — don't double-bind it.
+    if (det.id === "payStubDetails") return;
+
+    const heading = det.querySelector("summary")?.textContent || "";
+    let slug = heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
+    if (!slug || seen.has(slug)) slug = `${slug || "section"}-${i}`;
+    seen.add(slug);
+    const key = `fr_sect_${slug}`;
+
+    try {
+      if (localStorage.getItem(key) === "1") det.open = true;
+    } catch {}
+
+    det.addEventListener("toggle", () => {
+      try { localStorage.setItem(key, det.open ? "1" : "0"); } catch {}
+    });
+  });
+})();
+
 // ── Hero "More stats" disclosure ──────────────────────────────────────────
 // Keeps the shift view to one headline number + one status line. Everything
 // else (pay period, records, rank, goal gap) is one tap away. The open/closed

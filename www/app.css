@@ -4601,6 +4601,19 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .recentTypeChip { transition: transform 140ms cubic-bezier(.34,1.56,.64,1); }
 .recentTypeChip:active { transform: scale(.9); }
 
+/* ── Emp # collapsed chip ──────────────────────────────────────────────────── */
+.fr26EmployeeBar--collapsed .fr26EmployeeLabel,
+.fr26EmployeeBar--collapsed #empId { display: none; }
+.fr26EmployeeBar--collapsed { justify-content: flex-end; padding-top: 2px; padding-bottom: 2px; }
+.empChip {
+  background: transparent; border: none;
+  color: var(--muted); font-size: 11px; font-weight: 600;
+  letter-spacing: .02em; padding: 2px 4px; cursor: pointer;
+  touch-action: manipulation; opacity: .75;
+  transition: opacity 120ms, transform 130ms cubic-bezier(.34,1.56,.64,1);
+}
+.empChip:active { transform: scale(.92); opacity: 1; }
+
 /* ── Hero "More stats" disclosure ──────────────────────────────────────────── */
 .heroDetailsToggle {
   display: inline-flex; align-items: center; gap: 4px;

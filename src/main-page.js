@@ -1901,22 +1901,32 @@ async function handleSave(ev) {
       }, 350);
     }
     safeLoadEntries().catch(e => { if (e && (e instanceof Error || Object.keys(e).length)) console.error("[safeLoad]", e); });
-    document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Stay on the form after logging a new job. Techs log several in a row, and
+    // jumping to the entry list scrolled the form (and the field we then focus)
+    // off screen. On an edit, scrolling to the list is useful — it shows the
+    // change landed.
+    if (isEditing) {
+      document.getElementById("entryList")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     setSelectedPhotoFile(null);
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
     document.getElementById("photoCamera") && (document.getElementById("photoCamera").value = "");
     document.getElementById("photoFile") && (document.getElementById("photoFile").value = "");
-    // Auto-focus: if type was preserved (keepLastWork), focus hours next;
-    // if type was cleared, focus type field so user can start typing immediately
-    requestAnimationFrame(() => {
-      const typeEl = document.getElementById("typeText");
-      const hoursEl = document.getElementById("hours");
-      if (typeEl && !typeEl.value.trim()) {
-        typeEl.focus({ preventScroll: true });
-      } else if (hoursEl) {
-        hoursEl.focus({ preventScroll: true });
-      }
-    });
+    // Auto-focus the next field so back-to-back jobs flow without tapping:
+    // type was preserved (keepLastWork) → go to hours; type cleared → go to type.
+    // Skipped on edits, where we scroll to the list instead and focusing the
+    // form would fight that scroll.
+    if (!isEditing) {
+      requestAnimationFrame(() => {
+        const typeEl = document.getElementById("typeText");
+        const hoursEl = document.getElementById("hours");
+        if (typeEl && !typeEl.value.trim()) {
+          typeEl.focus({ preventScroll: true });
+        } else if (hoursEl) {
+          hoursEl.focus({ preventScroll: true });
+        }
+      });
+    }
   } catch (err) {
     console.error("Save failed", err);
     const errStr = String(err?.message || "") + String(err?.code || "");

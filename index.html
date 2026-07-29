@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.44c3175a4a.css">
+  <link rel="stylesheet" href="./app.b27e68dfa7.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -170,9 +170,12 @@
       <div id="photoScanStatus" class="fr26ScanStatus" style="display:none;"></div>
       <div id="scanJobAlternatives" class="fr26ScanJobAlts" style="display:none;"></div>
 
-      <div class="fr26EmployeeBar">
+      <!-- Emp # is set once and never changes, so it collapses to a small chip
+           after the first entry instead of sitting in the daily logging path. -->
+      <div class="fr26EmployeeBar" id="empBar">
         <label class="fr26EmployeeLabel" for="empId">Emp #</label>
         <input id="empId" inputmode="numeric" placeholder="12345" autocomplete="off" class="fr26Input fr26InputCompact" />
+        <button type="button" id="empChipBtn" class="empChip" hidden aria-label="Change employee number"></button>
       </div>
 
       <section class="fr26Group fr26PrimaryEntry">
@@ -1156,7 +1159,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.47d93216c4.js" defer></script>
+<script src="./app.bc180233f7.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
