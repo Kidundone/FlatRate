@@ -844,10 +844,17 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.6": [
+    "🏆 New Job Scorecard — see which job types actually pay best per hour",
+    "Spots your top earner and flags jobs with high comeback rates",
+    "Fixed: forgetting to clock out no longer wrecks your efficiency number",
+    "Photos load more reliably in the iOS app",
+    "Big numbers now show commas — $1,234.00",
+  ],
   "1.5": [
     "The whole app feels snappier — tactile haptics on every tap 📳",
     "Your pay total glows when it climbs 💫",

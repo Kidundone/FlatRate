@@ -7527,8 +7527,26 @@ function startTour(force = false) {
 // ═══════════════════════════════════════════════════════════════
 const LS_CLOCKIN = "fr_clockin_";
 
+// A shift longer than this almost certainly means the user forgot to clock out.
+// Chosen to comfortably allow long days and overnight shifts, while still
+// catching a clock-in left running for days.
+const MAX_SHIFT_MS = 16 * 3600000; // 16 hours
+
 function getClockInMs(empId) {
-  try { return Number(localStorage.getItem(LS_CLOCKIN + empId) || 0) || 0; } catch { return 0; }
+  try {
+    const ms = Number(localStorage.getItem(LS_CLOCKIN + empId) || 0) || 0;
+    if (!ms) return 0;
+    // Guard against a forgotten clock-out. Without this, a stale clock-in keeps
+    // accumulating and gets compared against a *later* day's flat hours, showing
+    // a nonsense efficiency (e.g. a 30-hour "shift" vs. 2 flat hours).
+    // Uses elapsed time rather than a calendar-day check so genuine overnight
+    // shifts still work correctly.
+    if (Date.now() - ms > MAX_SHIFT_MS) {
+      clearClockIn(empId);
+      return 0;
+    }
+    return ms;
+  } catch { return 0; }
 }
 function setClockInMs(empId, ms) {
   try { localStorage.setItem(LS_CLOCKIN + empId, String(ms)); } catch {}
@@ -8023,6 +8041,8 @@ function renderBreakdownPage(period, customFrom, customTo) {
     `;
   }
 
+  renderJobScorecard(entries);
+
   if (!types.length) {
     listEl.innerHTML = '<div class="muted small" style="text-align:center;padding:32px 0;">No entries for this period.</div>';
     return;
@@ -8042,6 +8062,99 @@ function renderBreakdownPage(period, customFrom, customTo) {
       </div>
     </div>`;
   }).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB SCORECARD — which job types actually pay best
+// ═══════════════════════════════════════════════════════════════
+// For a flat-rate tech the key question isn't "what did I make the most on"
+// (that's just whatever you did most often) — it's "which jobs pay best for
+// the time they eat." This ranks job types by effective $/hr so you know what
+// to chase and what to avoid, and flags types with a high comeback rate since
+// comebacks are unpaid time.
+
+// Below this many jobs a type's average is too noisy to call a trend.
+const SCORECARD_MIN_SAMPLE = 3;
+
+function computeJobScorecard(entries) {
+  const map = new Map();
+  for (const e of (entries || [])) {
+    const name = normalizeJobType(e.type || e.typeText || "") || "Other";
+    const cur = map.get(name) || { name, count: 0, hours: 0, earnings: 0, comebacks: 0 };
+    cur.count    += 1;
+    cur.hours    += Number(e.hours    || 0);
+    cur.earnings += Number(e.earnings || 0);
+    if (e.isComeback) cur.comebacks += 1;
+    map.set(name, cur);
+  }
+
+  return Array.from(map.values()).map(t => {
+    const hours = round1(t.hours);
+    const earnings = round2(t.earnings);
+    return {
+      ...t,
+      hours,
+      earnings,
+      perHour:     hours   > 0 ? round2(earnings / hours) : 0,
+      perJob:      t.count > 0 ? round2(earnings / t.count) : 0,
+      avgHours:    t.count > 0 ? round1(hours / t.count)    : 0,
+      comebackPct: t.count > 0 ? Math.round((t.comebacks / t.count) * 100) : 0,
+      reliable:    t.count >= SCORECARD_MIN_SAMPLE,
+    };
+  }).sort((a, b) => b.perHour - a.perHour || b.earnings - a.earnings);
+}
+
+function renderJobScorecard(entries) {
+  const el = document.getElementById("jobScorecard");
+  if (!el) return;
+
+  const rows = computeJobScorecard(entries);
+  if (!rows.length) { el.innerHTML = ""; return; }
+
+  // Only crown a "best" when there's enough data to mean something, and when
+  // there's actually something to compare it against.
+  const reliable = rows.filter(r => r.reliable);
+  const best = reliable.length >= 2 ? reliable[0] : null;
+  const worst = reliable.length >= 3 ? reliable[reliable.length - 1] : null;
+
+  const headline = best
+    ? `<div class="jsHeadline">💡 <strong>${escapeHtml(best.name)}</strong> is your best earner at
+         <strong>${formatMoney(best.perHour)}/hr</strong>${
+           worst && worst.perHour > 0 && worst.name !== best.name
+             ? ` — that's ${(best.perHour / worst.perHour).toFixed(1)}× what ${escapeHtml(worst.name)} pays.`
+             : "."
+         }</div>`
+    : `<div class="jsHeadline jsHeadline--muted">Log at least ${SCORECARD_MIN_SAMPLE} of a job type to see which pays best.</div>`;
+
+  const rowsHtml = rows.map(r => {
+    const isBest = best && r.name === best.name;
+    const hotCb  = r.comebackPct >= 20 && r.count >= SCORECARD_MIN_SAMPLE;
+    return `
+      <div class="jsRow${isBest ? " jsRow--best" : ""}">
+        <div class="jsRowMain">
+          <div class="jsRowName">
+            ${escapeHtml(r.name)}
+            ${isBest ? '<span class="jsBadge jsBadge--best">TOP</span>' : ""}
+            ${hotCb ? `<span class="jsBadge jsBadge--warn">${r.comebackPct}% CB</span>` : ""}
+            ${!r.reliable ? '<span class="jsBadge jsBadge--thin">low data</span>' : ""}
+          </div>
+          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} · ${r.avgHours}h avg · ${formatMoney(r.perJob)}/job</div>
+        </div>
+        <div class="jsRowRate">
+          <div class="jsRateVal">${r.perHour > 0 ? formatMoney(r.perHour) : "—"}</div>
+          <div class="jsRateLbl">per hour</div>
+        </div>
+      </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="jsHeader">
+      <span class="jsTitle">🏆 Job Scorecard</span>
+      <span class="jsSubtitle">ranked by real $/hr</span>
+    </div>
+    ${headline}
+    <div class="jsRows">${rowsHtml}</div>
+  `;
 }
 
 function initBreakdownPage() {
@@ -11424,10 +11537,17 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.6": [
+    "🏆 New Job Scorecard — see which job types actually pay best per hour",
+    "Spots your top earner and flags jobs with high comeback rates",
+    "Fixed: forgetting to clock out no longer wrecks your efficiency number",
+    "Photos load more reliably in the iOS app",
+    "Big numbers now show commas — $1,234.00",
+  ],
   "1.5": [
     "The whole app feels snappier — tactile haptics on every tap 📳",
     "Your pay total glows when it climbs 💫",

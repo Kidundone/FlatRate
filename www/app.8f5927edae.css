@@ -4600,6 +4600,61 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .recentTypeChip { transition: transform 140ms cubic-bezier(.34,1.56,.64,1); }
 .recentTypeChip:active { transform: scale(.9); }
 
+/* ── Job Scorecard ─────────────────────────────────────────────────────────── */
+.jobScorecard { margin: 4px 0 18px; }
+.jobScorecard:empty { display: none; }
+
+.jsHeader {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 0 2px 8px;
+}
+.jsTitle { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.jsSubtitle { font-size: 11px; color: var(--muted); }
+
+.jsHeadline {
+  font-size: 12px; line-height: 1.5; color: var(--text2);
+  background: rgba(37,99,235,.10);
+  border: 1px solid rgba(37,99,235,.22);
+  border-radius: var(--r-lg, 12px);
+  padding: 9px 12px; margin-bottom: 10px;
+}
+.jsHeadline strong { color: var(--primary); font-weight: 700; }
+.jsHeadline--muted {
+  background: var(--surface2); border-color: var(--stroke);
+  color: var(--muted);
+}
+
+.jsRows { display: flex; flex-direction: column; gap: 6px; }
+
+.jsRow {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--stroke);
+  border-radius: var(--r-lg, 12px);
+  padding: 10px 12px;
+  transition: transform 130ms cubic-bezier(.34,1.56,.64,1);
+}
+.jsRow:active { transform: scale(.985); }
+.jsRow--best { border-color: rgba(37,99,235,.45); background: rgba(37,99,235,.07); }
+
+.jsRowMain { flex: 1; min-width: 0; }
+.jsRowName {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 13.5px; font-weight: 600; color: var(--text);
+}
+.jsRowSub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.jsRowRate { text-align: right; flex-shrink: 0; }
+.jsRateVal { font-size: 15px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+.jsRateLbl { font-size: 9.5px; color: var(--muted); letter-spacing: .03em; margin-top: 1px; }
+
+.jsBadge {
+  font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  border-radius: 5px; padding: 2px 5px; white-space: nowrap;
+}
+.jsBadge--best { background: rgba(37,99,235,.18); color: var(--primary); }
+.jsBadge--warn { background: rgba(245,158,11,.16); color: #f59e0b; }
+.jsBadge--thin { background: var(--surface3, var(--surface2)); color: var(--muted); font-weight: 600; }
+
 /* ── Accessibility: honor reduced-motion ──────────────────────────────────────
  * Users who enable "Reduce Motion" in iOS get near-instant, motion-free UI.
  * Haptics still fire — only visual animation is neutralized. */
