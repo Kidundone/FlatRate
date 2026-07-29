@@ -3452,7 +3452,8 @@ body.compact .list    { gap: 1px; }
 .heroPaceWarn {
   font-size: 11px;
   font-weight: 600;
-  color: var(--danger);
+  /* Amber, not red: being behind pace mid-week is a nudge, not an error. */
+  color: #f59e0b;
   margin-top: 2px;
   min-height: 14px;
   letter-spacing: .01em;
@@ -4599,6 +4600,33 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* Generic pressable pill/chip springiness */
 .recentTypeChip { transition: transform 140ms cubic-bezier(.34,1.56,.64,1); }
 .recentTypeChip:active { transform: scale(.9); }
+
+/* ── Hero "More stats" disclosure ──────────────────────────────────────────── */
+.heroDetailsToggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; padding: 3px 9px 3px 10px;
+  background: transparent;
+  border: 1px solid var(--stroke2, var(--stroke));
+  border-radius: var(--r-pill, 999px);
+  color: var(--muted);
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  cursor: pointer; touch-action: manipulation;
+  transition: color 120ms, border-color 120ms, transform 130ms cubic-bezier(.34,1.56,.64,1);
+}
+.heroDetailsToggle:active { transform: scale(.93); }
+.heroDetailsToggle--open { color: var(--primary); border-color: rgba(37,99,235,.45); }
+.heroDetailsChev {
+  font-size: 12px; line-height: 1;
+  transition: transform 200ms cubic-bezier(.4,0,.2,1);
+}
+.heroDetailsToggle--open .heroDetailsChev { transform: rotate(180deg); }
+
+.heroDetails { animation: heroDetailsIn 220ms cubic-bezier(.25,.46,.45,.94) both; }
+.heroDetails[hidden] { display: none; }
+@keyframes heroDetailsIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ── Job Scorecard ─────────────────────────────────────────────────────────── */
 .jobScorecard { margin: 4px 0 18px; }

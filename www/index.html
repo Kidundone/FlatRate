@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.8f5927edae.css">
+  <link rel="stylesheet" href="./app.44c3175a4a.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -110,11 +110,22 @@
     <div class="heroAmt" id="heroPayAmt">$0</div>
     <div class="heroSubLine" id="heroSubLine"></div>
     <div class="heroPaceLine" id="heroPaceLine"></div>
-    <div class="heroPayPeriodLine" id="heroPayPeriodLine" style="display:none;"></div>
-    <div class="heroPaceWarn" id="heroPaceWarn" style="display:none;"></div>
+    <!-- Live shift efficiency stays visible: it's actionable mid-shift -->
     <div id="heroEfficiency" class="heroEfficiency" style="display:none;"></div>
-    <div id="heroRecords" class="heroRecords" style="display:none;"></div>
-    <div id="techRankBadge" class="techRankBadge" style="display:none;"></div>
+
+    <!-- Secondary stats live one tap away so the shift view stays calm.
+         Element IDs are unchanged so all existing render logic still works. -->
+    <button type="button" id="heroDetailsToggle" class="heroDetailsToggle"
+            aria-expanded="false" aria-controls="heroDetails">
+      <span class="heroDetailsToggleLabel">More stats</span>
+      <span class="heroDetailsChev" aria-hidden="true">⌄</span>
+    </button>
+    <div id="heroDetails" class="heroDetails" hidden>
+      <div class="heroPayPeriodLine" id="heroPayPeriodLine" style="display:none;"></div>
+      <div class="heroPaceWarn" id="heroPaceWarn" style="display:none;"></div>
+      <div id="heroRecords" class="heroRecords" style="display:none;"></div>
+      <div id="techRankBadge" class="techRankBadge" style="display:none;"></div>
+    </div>
   </div>
   <button id="clockInBtn" class="clockInBtn" type="button" aria-label="Clock in / Clock out">Clock In</button>
 </div>
@@ -1145,7 +1156,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.acd4bf2959.js" defer></script>
+<script src="./app.47d93216c4.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

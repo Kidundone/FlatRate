@@ -557,12 +557,24 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     if (behindPace) {
       const dayOfWeekNow = new Date().getDay();
       const daysLeft = Math.max(1, 5 - Math.min(dayOfWeekNow, 5));
+      const dayWord = `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      // A per-day target you physically can't hit ("need 19.0 hrs/day") reads as
+      // a verdict, not a plan. Past a realistic ceiling, show the remaining gap
+      // instead — same information, but something you can actually act on.
+      const MAX_REALISTIC_FLAT_HRS_PER_DAY = 12;
       if (goalType === "pay") {
-        const needPerDay = round2(Math.max(0, goalVal - weekDollars) / daysLeft);
-        paceWarnEl.textContent = `⚠ Need ${formatMoney(needPerDay)}/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+        const shortfall  = round2(Math.max(0, goalVal - weekDollars));
+        const needPerDay = round2(shortfall / daysLeft);
+        const ceiling    = (Number(getDefaultRate?.()) || 15) * MAX_REALISTIC_FLAT_HRS_PER_DAY;
+        paceWarnEl.textContent = needPerDay > ceiling
+          ? `${formatMoney(shortfall)} to goal · ${dayWord}`
+          : `${formatMoney(needPerDay)}/day to hit goal · ${dayWord}`;
       } else {
-        const needPerDay = round1(Math.max(0, goalVal - weekHours) / daysLeft);
-        paceWarnEl.textContent = `⚠ Need ${needPerDay.toFixed(1)} hrs/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+        const shortfall  = round1(Math.max(0, goalVal - weekHours));
+        const needPerDay = round1(shortfall / daysLeft);
+        paceWarnEl.textContent = needPerDay > MAX_REALISTIC_FLAT_HRS_PER_DAY
+          ? `${shortfall.toFixed(1)} hrs to goal · ${dayWord}`
+          : `${needPerDay.toFixed(1)} hrs/day to hit goal · ${dayWord}`;
       }
     }
   }

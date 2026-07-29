@@ -3735,12 +3735,24 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     if (behindPace) {
       const dayOfWeekNow = new Date().getDay();
       const daysLeft = Math.max(1, 5 - Math.min(dayOfWeekNow, 5));
+      const dayWord = `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+      // A per-day target you physically can't hit ("need 19.0 hrs/day") reads as
+      // a verdict, not a plan. Past a realistic ceiling, show the remaining gap
+      // instead — same information, but something you can actually act on.
+      const MAX_REALISTIC_FLAT_HRS_PER_DAY = 12;
       if (goalType === "pay") {
-        const needPerDay = round2(Math.max(0, goalVal - weekDollars) / daysLeft);
-        paceWarnEl.textContent = `⚠ Need ${formatMoney(needPerDay)}/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+        const shortfall  = round2(Math.max(0, goalVal - weekDollars));
+        const needPerDay = round2(shortfall / daysLeft);
+        const ceiling    = (Number(getDefaultRate?.()) || 15) * MAX_REALISTIC_FLAT_HRS_PER_DAY;
+        paceWarnEl.textContent = needPerDay > ceiling
+          ? `${formatMoney(shortfall)} to goal · ${dayWord}`
+          : `${formatMoney(needPerDay)}/day to hit goal · ${dayWord}`;
       } else {
-        const needPerDay = round1(Math.max(0, goalVal - weekHours) / daysLeft);
-        paceWarnEl.textContent = `⚠ Need ${needPerDay.toFixed(1)} hrs/day · ${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`;
+        const shortfall  = round1(Math.max(0, goalVal - weekHours));
+        const needPerDay = round1(shortfall / daysLeft);
+        paceWarnEl.textContent = needPerDay > MAX_REALISTIC_FLAT_HRS_PER_DAY
+          ? `${shortfall.toFixed(1)} hrs to goal · ${dayWord}`
+          : `${needPerDay.toFixed(1)} hrs/day to hit goal · ${dayWord}`;
       }
     }
   }
@@ -10817,6 +10829,54 @@ window.__FR.showSpaPage = showSpaPage;
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
+
+// ── Hero "More stats" disclosure ──────────────────────────────────────────
+// Keeps the shift view to one headline number + one status line. Everything
+// else (pay period, records, rank, goal gap) is one tap away. The open/closed
+// choice persists so it stays however the user likes it.
+(function initHeroDetails() {
+  const btn  = document.getElementById("heroDetailsToggle");
+  const wrap = document.getElementById("heroDetails");
+  if (!btn || !wrap) return;
+
+  const LS_KEY = "fr_hero_details_open";
+  const label  = btn.querySelector(".heroDetailsToggleLabel");
+
+  const apply = (open) => {
+    wrap.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    btn.classList.toggle("heroDetailsToggle--open", open);
+    if (label) label.textContent = open ? "Less" : "More stats";
+  };
+
+  let open = false;
+  try { open = localStorage.getItem(LS_KEY) === "1"; } catch {}
+  apply(open);
+
+  btn.addEventListener("click", () => {
+    open = !open;
+    apply(open);
+    try { localStorage.setItem(LS_KEY, open ? "1" : "0"); } catch {}
+  });
+
+  // Don't offer a toggle that opens an empty panel (e.g. a brand-new user with
+  // no records or pay period yet). The render code shows/hides these children
+  // by setting inline display, so watch for that and mirror it on the button.
+  const syncToggleVisibility = () => {
+    const hasContent = Array.from(wrap.children).some(
+      (c) => c.style.display !== "none" && (c.textContent || "").trim() !== ""
+    );
+    btn.style.display = hasContent ? "" : "none";
+    if (!hasContent && open) apply(false);
+  };
+  syncToggleVisibility();
+  try {
+    new MutationObserver(syncToggleVisibility).observe(wrap, {
+      subtree: true, childList: true,
+      attributes: true, attributeFilter: ["style"],
+    });
+  } catch {}
+})();
 
 // ── Global tactile feedback ───────────────────────────────────────────────
 // One delegated listener gives every interactive control a light tap on press.

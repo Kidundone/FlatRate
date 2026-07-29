@@ -125,6 +125,54 @@ document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
 
+// ── Hero "More stats" disclosure ──────────────────────────────────────────
+// Keeps the shift view to one headline number + one status line. Everything
+// else (pay period, records, rank, goal gap) is one tap away. The open/closed
+// choice persists so it stays however the user likes it.
+(function initHeroDetails() {
+  const btn  = document.getElementById("heroDetailsToggle");
+  const wrap = document.getElementById("heroDetails");
+  if (!btn || !wrap) return;
+
+  const LS_KEY = "fr_hero_details_open";
+  const label  = btn.querySelector(".heroDetailsToggleLabel");
+
+  const apply = (open) => {
+    wrap.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    btn.classList.toggle("heroDetailsToggle--open", open);
+    if (label) label.textContent = open ? "Less" : "More stats";
+  };
+
+  let open = false;
+  try { open = localStorage.getItem(LS_KEY) === "1"; } catch {}
+  apply(open);
+
+  btn.addEventListener("click", () => {
+    open = !open;
+    apply(open);
+    try { localStorage.setItem(LS_KEY, open ? "1" : "0"); } catch {}
+  });
+
+  // Don't offer a toggle that opens an empty panel (e.g. a brand-new user with
+  // no records or pay period yet). The render code shows/hides these children
+  // by setting inline display, so watch for that and mirror it on the button.
+  const syncToggleVisibility = () => {
+    const hasContent = Array.from(wrap.children).some(
+      (c) => c.style.display !== "none" && (c.textContent || "").trim() !== ""
+    );
+    btn.style.display = hasContent ? "" : "none";
+    if (!hasContent && open) apply(false);
+  };
+  syncToggleVisibility();
+  try {
+    new MutationObserver(syncToggleVisibility).observe(wrap, {
+      subtree: true, childList: true,
+      attributes: true, attributeFilter: ["style"],
+    });
+  } catch {}
+})();
+
 // ── Global tactile feedback ───────────────────────────────────────────────
 // One delegated listener gives every interactive control a light tap on press.
 // Fires on pointerdown so the buzz lands the instant a finger touches down —
