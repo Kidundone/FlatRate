@@ -104,6 +104,40 @@
     .table-note { font-size: 11px; color: var(--muted2); margin-top: 10px; line-height: 1.5; }
     .flag-cb { color: var(--danger); font-weight: 700; }
     .top-tech { color: var(--accent); font-size: 10px; font-weight: 700; margin-left: 5px; }
+
+    /* ── Requests / claims ─────────────────────────────────────── */
+    .count-pill { display: inline-block; min-width: 20px; padding: 1px 7px; background: var(--primary); color: #fff; border-radius: 10px; font-size: 12px; font-weight: 700; margin-left: 6px; }
+    .claim-row { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--surface2); border: 1px solid var(--stroke2); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: inherit; font: inherit; }
+    .claim-row:hover { border-color: var(--primary); }
+    .claim-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .claim-subject { font-size: 14px; font-weight: 600; }
+    .claim-meta { font-size: 11.5px; color: var(--muted2); margin-top: 4px; }
+    .claim-who { color: var(--muted); font-weight: 600; }
+    .st { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+    .st-open { background: rgba(245,158,11,.16); color: #f59e0b; }
+    .st-acknowledged { background: rgba(37,99,235,.15); color: var(--primary); }
+    .st-resolved { background: rgba(41,217,165,.15); color: var(--accent); }
+    .st-declined { background: rgba(239,68,68,.14); color: var(--danger); }
+
+    .drawer { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 900; }
+    .drawer-card { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 16px; padding: 20px; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; }
+    .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .drawer-title { font-size: 17px; font-weight: 700; }
+    .cd-meta { margin-bottom: 14px; }
+    .cd-ev { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 6px; }
+    .cd-details { font-size: 13px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; }
+    .cd-msgs { max-height: 32vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .cd-msg { max-width: 86%; padding: 9px 12px; border-radius: 13px; }
+    .cd-msg.mine { align-self: flex-end; background: rgba(37,99,235,.15); }
+    .cd-msg.them { align-self: flex-start; background: var(--surface2); }
+    .cd-msg-body { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .cd-msg-who { font-size: 10px; color: var(--muted2); margin-top: 3px; }
+    .cd-reply { display: flex; gap: 8px; margin-bottom: 12px; }
+    .cd-reply input { flex: 1; }
+    .cd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .btn-sm.ok { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
+    .cd-note { width: 100%; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -201,6 +235,22 @@
     <!-- Headline insight -->
     <div id="teamInsight" class="insight" style="display:none;"></div>
 
+    <!-- Requests from techs -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Requests <span id="claimCount" class="count-pill" style="display:none;">0</span></span>
+        <select id="claimFilter" class="filter-sel" style="max-width:160px;">
+          <option value="active">Needs action</option>
+          <option value="all">All</option>
+          <option value="open">Open</option>
+          <option value="acknowledged">Seen</option>
+          <option value="resolved">Resolved</option>
+          <option value="declined">Declined</option>
+        </select>
+      </div>
+      <div id="claimList"></div>
+    </div>
+
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title">Technicians</span>
@@ -230,6 +280,31 @@
           <tbody id="logRows"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- Claim detail drawer (manager) -->
+  <div id="claimDrawer" class="drawer" style="display:none;" role="dialog" aria-modal="true">
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="cdTitle">Request</div>
+          <div class="cell-muted" id="cdSub"></div>
+        </div>
+        <button type="button" class="btn-sm" id="cdCloseBtn">Close</button>
+      </div>
+      <div id="cdMeta" class="cd-meta"></div>
+      <div id="cdMsgs" class="cd-msgs"></div>
+      <div class="cd-reply">
+        <input id="cdReply" placeholder="Reply to the tech…" maxlength="4000" />
+        <button type="button" class="btn primary" id="cdReplyBtn">Send</button>
+      </div>
+      <div class="cd-actions">
+        <button type="button" class="btn-sm" data-status="acknowledged">Mark seen</button>
+        <button type="button" class="btn-sm ok" data-status="resolved">Resolve</button>
+        <button type="button" class="btn-sm danger" data-status="declined">Decline</button>
+      </div>
+      <input id="cdNote" class="cd-note" placeholder="Optional note shown to the tech…" maxlength="4000" />
     </div>
   </div>
 
@@ -336,6 +411,7 @@
     if (isMgr) {
       $("inviteCode").textContent = shop.invite_code || "";
       await renderTeam();
+      await loadClaims();
     }
   }
 
@@ -600,6 +676,170 @@
 
     el.innerHTML = parts.join(" ");
     el.style.display = "";
+  }
+
+  /* ── Requests / claims (manager side) ───────────────────────── */
+  const CLAIM_KIND = {
+    missing_work: { emoji: "🔍", label: "Missing work" },
+    short_pay:    { emoji: "💸", label: "Short pay" },
+    need_hours:   { emoji: "🕐", label: "Need hours" },
+    other:        { emoji: "💬", label: "Other" },
+  };
+  const STATUS_LABEL = { open: "Open", acknowledged: "Seen", resolved: "Resolved", declined: "Declined" };
+  let CLAIMS = [], ACTIVE = null;
+
+  function ago(iso) {
+    if (!iso) return "";
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + "m ago";
+    const h = Math.floor(mins / 60);
+    if (h < 24) return h + "h ago";
+    const d = Math.floor(h / 24);
+    return d < 7 ? d + "d ago" : new Date(iso).toLocaleDateString();
+  }
+
+  function claimEv(c) {
+    const b = [];
+    if (c.ro_number) b.push("RO " + c.ro_number);
+    if (c.work_date) b.push(c.work_date);
+    if (Number(c.claimed_hours)  > 0) b.push(Number(c.claimed_hours).toFixed(1) + "h");
+    if (Number(c.claimed_amount) > 0) b.push(money(c.claimed_amount));
+    return b.join(" · ");
+  }
+
+  const techName = (uid) => {
+    const m = MEMBERS.find(x => x.user_id === uid);
+    return m?.display_name || "Tech";
+  };
+
+  $("claimFilter").addEventListener("change", drawClaims);
+
+  async function loadClaims() {
+    if (!SHOP) return;
+    const { data, error } = await db
+      .from("claims").select("*")
+      .eq("shop_id", SHOP.id)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) { $("claimList").innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
+    CLAIMS = data || [];
+    drawClaims();
+  }
+
+  function drawClaims() {
+    const f = $("claimFilter").value;
+    // "Needs action" is the manager's real working queue.
+    const rows = CLAIMS.filter(c =>
+      f === "all" ? true :
+      f === "active" ? (c.status === "open" || c.status === "acknowledged") :
+      c.status === f);
+
+    const pending = CLAIMS.filter(c => c.status === "open").length;
+    const pill = $("claimCount");
+    pill.textContent = pending;
+    pill.style.display = pending ? "" : "none";
+
+    if (!rows.length) {
+      $("claimList").innerHTML = `<div class="empty">${f === "active" ? "Nothing needs action right now." : "No requests."}</div>`;
+      return;
+    }
+
+    $("claimList").innerHTML = rows.map(c => {
+      const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
+      const ev = claimEv(c);
+      return `<button type="button" class="claim-row" data-claim="${esc(c.id)}">
+        <div class="claim-top">
+          <span class="claim-subject">${k.emoji} ${esc(c.subject)}</span>
+          <span class="st st-${esc(c.status)}">${STATUS_LABEL[c.status] || c.status}</span>
+        </div>
+        <div class="claim-meta"><span class="claim-who">${esc(techName(c.user_id))}</span> · ${k.label}${ev ? " · " + esc(ev) : ""} · ${ago(c.created_at)}</div>
+      </button>`;
+    }).join("");
+  }
+
+  $("claimList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-claim]");
+    if (b) openClaim(b.dataset.claim);
+  });
+
+  async function openClaim(id) {
+    const c = CLAIMS.find(x => String(x.id) === String(id));
+    if (!c) return;
+    ACTIVE = c;
+    const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
+    $("cdTitle").textContent = `${k.emoji} ${c.subject}`;
+    $("cdSub").textContent = `${techName(c.user_id)} · ${k.label} · ${ago(c.created_at)}`;
+    const ev = claimEv(c);
+    $("cdMeta").innerHTML =
+      (ev ? `<div class="cd-ev">${esc(ev)}</div>` : "") +
+      (c.details ? `<div class="cd-details">${esc(c.details)}</div>` : "");
+    $("cdNote").value = c.resolution_note || "";
+    $("claimDrawer").style.display = "flex";
+    await drawClaimMsgs(c.id);
+  }
+
+  async function drawClaimMsgs(claimId) {
+    const box = $("cdMsgs");
+    box.innerHTML = `<div class="cell-muted">Loading…</div>`;
+    const { data, error } = await db
+      .from("claim_messages").select("id, author_id, body, created_at")
+      .eq("claim_id", claimId).order("created_at", { ascending: true });
+    if (error) { box.innerHTML = `<div class="cell-muted">Couldn't load messages.</div>`; return; }
+    if (!data?.length) { box.innerHTML = `<div class="cell-muted">No messages yet.</div>`; return; }
+    box.innerHTML = data.map(m => {
+      const mine = m.author_id === UID;
+      return `<div class="cd-msg ${mine ? "mine" : "them"}">
+        <div class="cd-msg-body">${esc(m.body)}</div>
+        <div class="cd-msg-who">${mine ? "You" : esc(techName(m.author_id))} · ${ago(m.created_at)}</div>
+      </div>`;
+    }).join("");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  $("cdCloseBtn").addEventListener("click", () => {
+    $("claimDrawer").style.display = "none";
+    ACTIVE = null;
+  });
+  $("claimDrawer").addEventListener("click", (e) => {
+    if (e.target === $("claimDrawer")) { $("claimDrawer").style.display = "none"; ACTIVE = null; }
+  });
+
+  $("cdReplyBtn").addEventListener("click", sendReply);
+  $("cdReply").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendReply(); } });
+
+  async function sendReply() {
+    const body = $("cdReply").value.trim();
+    if (!body || !ACTIVE) return;
+    const btn = $("cdReplyBtn"); btn.disabled = true;
+    const { error } = await db.from("claim_messages").insert({
+      claim_id: ACTIVE.id, author_id: UID, body,
+    });
+    btn.disabled = false;
+    if (error) { alert(error.message); return; }
+    $("cdReply").value = "";
+    // Replying implies you've seen it.
+    if (ACTIVE.status === "open") await setClaimStatus("acknowledged", { silent: true });
+    await drawClaimMsgs(ACTIVE.id);
+  }
+
+  document.querySelectorAll("[data-status]").forEach(b =>
+    b.addEventListener("click", () => setClaimStatus(b.dataset.status)));
+
+  async function setClaimStatus(status, opts = {}) {
+    if (!ACTIVE) return;
+    const { error } = await db.rpc("resolve_claim", {
+      p_claim: ACTIVE.id,
+      p_status: status,
+      p_note: $("cdNote").value.trim() || null,
+    });
+    if (error) { alert(error.message); return; }
+    ACTIVE.status = status;
+    await loadClaims();
+    if (!opts.silent) {
+      $("claimDrawer").style.display = "none";
+      ACTIVE = null;
+    }
   }
 
   function exportTeamCsv() {

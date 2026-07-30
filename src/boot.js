@@ -927,6 +927,8 @@ async function runOnce() {
     if (hasGalleryUi) {
       initPhotosUI();
     }
+    // Requests-to-manager section. Wiring only — it fetches on first expand.
+    window.__FR?.initRequestsUI?.();
     // Data for the more page loads on first tab visit (see showSpaPage below),
     // NOT here at boot — avoids "Supabase not ready" errors at startup.
   } catch (e) { logErr("moreInit")(e); }

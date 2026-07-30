@@ -19,6 +19,7 @@ const SOURCE_PARTS = [
   "src/photo-service.js",
   "src/main-page.js",
   "src/more-page.js",
+  "src/claims-service.js",
   "src/boot.js",
 ];
 // more.html is now a redirect stub — no hashed assets to update in it
