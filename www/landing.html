@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Flat-Rate Tracker — Built for Automotive Technicians</title>
+  <title>Flatrate Buddy — Built for Automotive Technicians</title>
   <meta name="description" content="Track flat-rate hours, protect your paycheck, and spot short-pays before your boss does. Built by a tech, for techs." />
-  <meta property="og:title" content="Flat-Rate Tracker" />
+  <meta property="og:title" content="Flatrate Buddy" />
   <meta property="og:description" content="Track flat-rate hours, protect your paycheck, and spot short-pays before your boss does." />
   <meta property="og:image" content="https://app.nellylabs.dev/icon-512.png" />
   <meta property="og:url" content="https://nellylabs.dev/" />
@@ -17,8 +17,8 @@
       --fg: #e8eaf0;
       --muted: #8a93a8;
       --muted2: #4b5563;
-      --primary: #22c55e;
-      --primary-dim: rgba(34,197,94,0.12);
+      --primary: #2563EB;
+      --primary-dim: rgba(37,99,235,0.12);
       --card: #111827;
       --stroke: #1f2937;
       --danger: #ef4444;
@@ -29,17 +29,18 @@
 
     nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; max-width: 1000px; margin: 0 auto; }
     .navLogo { display: flex; align-items: center; gap: 10px; }
-    .navMark { width: 34px; height: 34px; border-radius: 8px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #07070f; }
+    .navMark { width: 34px; height: 34px; border-radius: 8px; overflow: hidden; }
+    .navMark img { width: 100%; height: 100%; object-fit: cover; }
     .navName { font-size: 16px; font-weight: 700; color: var(--fg); }
-    .navCta { background: var(--primary); color: #07070f; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; }
+    .navCta { background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; }
 
     .hero { text-align: center; padding: 72px 24px 64px; max-width: 700px; margin: 0 auto; }
-    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(34,197,94,0.2); }
+    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(37,99,235,0.25); }
     .heroH1 { font-size: clamp(32px, 6vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; letter-spacing: -0.02em; }
     .heroH1 span { color: var(--primary); }
     .heroParagraph { font-size: 18px; color: var(--muted); max-width: 520px; margin: 0 auto 36px; }
     .heroButtons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btnPrimary { background: var(--primary); color: #07070f; font-weight: 700; font-size: 16px; padding: 16px 32px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
+    .btnPrimary { background: var(--primary); color: #fff; font-weight: 700; font-size: 16px; padding: 16px 32px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
     .btnGhost { background: var(--card); color: var(--fg); font-weight: 600; font-size: 16px; padding: 16px 32px; border-radius: 12px; border: 1px solid var(--stroke); }
     .heroSub { font-size: 13px; color: var(--muted2); margin-top: 18px; }
 
@@ -68,7 +69,7 @@
 
     .pricingGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 40px; max-width: 620px; }
     .pricingCard { background: var(--card); border: 1px solid var(--stroke); border-radius: 18px; padding: 28px; }
-    .pricingCard.featured { border-color: var(--primary); background: linear-gradient(135deg, #0d1117, #0a1a0f); }
+    .pricingCard.featured { border-color: var(--primary); background: linear-gradient(135deg, #0d1117, #0a0f1e); }
     .pricingBadge { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
     .pricingName { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
     .pricingPrice { font-size: 36px; font-weight: 800; color: var(--primary); }
@@ -78,7 +79,7 @@
     .pricingFeatures li { font-size: 14px; color: var(--muted); padding: 5px 0; display: flex; align-items: flex-start; gap: 8px; }
     .pricingFeatures li::before { content: "✓"; color: var(--primary); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
     .pricingBtn { display: block; text-align: center; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; }
-    .pricingBtn.primary { background: var(--primary); color: #07070f; }
+    .pricingBtn.primary { background: var(--primary); color: #fff; }
     .pricingBtn.ghost { background: var(--stroke); color: var(--fg); }
 
     .quoteSection { background: var(--bg2); border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); padding: 64px 24px; margin-bottom: 80px; }
@@ -107,8 +108,8 @@
 
 <nav>
   <a href="#" class="navLogo">
-    <div class="navMark">F</div>
-    <div class="navName">Flat-Rate Tracker</div>
+    <div class="navMark"><img src="https://app.nellylabs.dev/icon-192.png" alt="Flatrate Buddy" /></div>
+    <div class="navName">Flatrate Buddy</div>
   </a>
   <a href="https://app.nellylabs.dev" class="navCta">Open App →</a>
 </nav>
@@ -118,7 +119,7 @@
   <h1 class="heroH1">Stop getting <span>short-paid</span><br>without knowing it</h1>
   <p class="heroParagraph">Log flat-rate hours, track every RO, and audit your paycheck in seconds. Know exactly what you're owed — before payday.</p>
   <div class="heroButtons">
-    <a href="https://app.nellylabs.dev" class="btnPrimary">📱 Open the App — Free</a>
+    <a href="https://app.nellylabs.dev" class="btnPrimary">📱 Open Flatrate Buddy — Free</a>
   </div>
   <p class="heroSub">No download required · Works on iPhone, Android &amp; desktop · Free to start</p>
 </div>
@@ -150,7 +151,7 @@
     <div class="painCard">
       <div class="painIcon">📋</div>
       <div class="painTitle">No records, no leverage</div>
-      <div class="painBody">Without your own log, you're at the mercy of the DMS. Flat-Rate Tracker gives you your own record of everything.</div>
+      <div class="painBody">Without your own log, you're at the mercy of the DMS. Flatrate Buddy gives you your own record of everything.</div>
     </div>
   </div>
 </div>
@@ -258,7 +259,7 @@
 <div class="ctaSection">
   <h2 class="ctaH2">Know exactly what you're owed.</h2>
   <p class="ctaP">Free to start. Takes 30 seconds to log your first RO.</p>
-  <a href="https://app.nellylabs.dev" class="btnPrimary" style="font-size:18px;padding:18px 40px;">Open App — It's Free →</a>
+  <a href="https://app.nellylabs.dev" class="btnPrimary" style="font-size:18px;padding:18px 40px;">Open Flatrate Buddy — Free →</a>
 </div>
 
 <footer>
@@ -268,7 +269,7 @@
     <a href="https://app.nellylabs.dev/terms.html">Terms of Service</a>
     <a href="mailto:eamnelsonmalloy@icloud.com">Contact</a>
   </div>
-  <div class="footerCopy">© 2026 Flat-Rate Tracker. All rights reserved.</div>
+  <div class="footerCopy">© 2026 Flatrate Buddy. All rights reserved.</div>
 </footer>
 
 </body>

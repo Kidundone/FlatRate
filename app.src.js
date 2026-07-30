@@ -5329,7 +5329,7 @@ async function shareDaySummary() {
   const effLine = effRate > 0 ? `⚡ ${formatMoney(effRate)}/hr effective` : "";
 
   const text = [
-    `📋 Flat-Rate Log — ${dayLabel}`,
+    `📋 Flatrate Buddy — ${dayLabel}`,
     `Emp #${empId}`,
     `${"─".repeat(32)}`,
     ...lines,
