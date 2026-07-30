@@ -258,7 +258,7 @@ const WWW_ASSETS = [
   "index.html", "more.html", "auth-callback.html", "dashboard.html", "team.html",
   "manifest.webmanifest", "sw.js", "app.css",
   "icon-192.png", "icon-512.png", "favicon.ico", "_redirects",
-  "tos.html", "privacy.html", "landing.html",
+  "terms.html", "privacy.html", "landing.html",
   "robots.txt", "sitemap.xml",
 ];
 mkdirSync("www", { recursive: true });

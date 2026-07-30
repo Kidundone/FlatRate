@@ -7732,12 +7732,46 @@ function updateClockInDisplay() {
   }
 }
 
+/* ── Pro gating helpers ───────────────────────────────────────────────────────
+ * Free keeps the daily habit AND the hook: logging, pay totals, and short-pay
+ * alerts. Pro is the stuff that recovers money (dispute PDFs, exports) or costs
+ * real money to run (cloud sync, photo storage) — plus the deeper analytics.
+ *
+ * Deliberately NOT gated: a user's own job history. This app is someone's pay
+ * record and their evidence in a dispute; holding that hostage would be wrong.
+ *
+ * While billing is off (beta) this returns false, so nothing is locked.
+ */
+function proLocked() {
+  try {
+    if (typeof billingLive !== "function") return false;
+    if (!billingLive()) return false;
+    return !(typeof isPro === "function" && isPro());
+  } catch { return false; }
+}
+
+function renderProLock(el, title, text) {
+  if (!el) return;
+  el.innerHTML = `
+    <div class="proLock">
+      <div class="proLockIcon">⚡</div>
+      <div class="proLockTitle">${escapeHtml(title)}</div>
+      <div class="proLockText">${escapeHtml(text)}</div>
+      <button type="button" class="fr26BtnPrimary proLockBtn" data-open-upgrade>Unlock with Pro</button>
+    </div>`;
+}
+
 // Renders the Lost Time breakdown (More → History). Period follows the same
 // 30-day default as other trend cards; the point is the running total you can
 // take to a service manager.
 function renderLostTimeCard(days = 30) {
   const el = document.getElementById("lostTimeCard");
   if (!el) return;
+
+  if (proLocked()) {
+    return renderProLock(el, "See what downtime costs you",
+      "Track unpaid hours lost to parts delays and dead dispatch, priced at your rate — proof you can take to your service manager.");
+  }
 
   const empId = getEmpId();
   if (!empId) {
@@ -8440,6 +8474,11 @@ function computeJobScorecard(entries) {
 function renderJobScorecard(entries) {
   const el = document.getElementById("jobScorecard");
   if (!el) return;
+
+  if (proLocked()) {
+    return renderProLock(el, "Know which jobs actually pay",
+      "Rank every job type by real dollars-per-hour so you know what to chase and what's quietly costing you.");
+  }
 
   const rows = computeJobScorecard(entries);
   if (!rows.length) { el.innerHTML = ""; return; }
@@ -11149,6 +11188,15 @@ window.__FR.showSpaPage = showSpaPage;
 // Wire tab bar buttons
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
+});
+
+// Any [data-open-upgrade] control opens the upgrade modal.
+document.addEventListener("click", (e) => {
+  if (e.target?.closest?.("[data-open-upgrade]")) {
+    e.preventDefault();
+    window.haptic?.("light");
+    window.__FR?.showUpgradeModal?.() || (typeof showUpgradeModal === "function" && showUpgradeModal());
+  }
 });
 
 // ── Collapse Emp # once it's known ────────────────────────────────────────

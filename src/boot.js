@@ -125,6 +125,15 @@ document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
 });
 
+// Any [data-open-upgrade] control opens the upgrade modal.
+document.addEventListener("click", (e) => {
+  if (e.target?.closest?.("[data-open-upgrade]")) {
+    e.preventDefault();
+    window.haptic?.("light");
+    window.__FR?.showUpgradeModal?.() || (typeof showUpgradeModal === "function" && showUpgradeModal());
+  }
+});
+
 // ── Collapse Emp # once it's known ────────────────────────────────────────
 // Your employee number is set once, but it used to sit between the scan button
 // and the hours field — dead space in a form filled dozens of times a shift.
