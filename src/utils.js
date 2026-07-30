@@ -949,3 +949,127 @@ function unlockBodyScroll() {
   document.body.style.top = "";
   window.scrollTo(0, _scrollLockY);
 }
+
+/* ── Lost Time ────────────────────────────────────────────────────────────────
+ * Flat rate only pays for turned hours. The difference between clocked time and
+ * flat hours is unpaid — usually parts delays, dead dispatch, or free comeback
+ * rework. Logging where it went turns an invisible loss into evidence you can
+ * put in front of a service manager.
+ *
+ * Stored locally per employee. The record shape is deliberately sync-friendly
+ * (stable id + timestamps) so it can move to Supabase later without migration.
+ */
+const LOST_TIME_KEY = "fr_lost_time_";
+
+const LOST_TIME_CATEGORIES = Object.freeze([
+  { id: "parts",    label: "Parts delay",   emoji: "📦", blame: "shop" },
+  { id: "nowork",   label: "No work",       emoji: "🪑", blame: "shop" },
+  { id: "comeback", label: "Comeback",      emoji: "🔁", blame: "mixed" },
+  { id: "cleanup",  label: "Cleanup",       emoji: "🧹", blame: "shop" },
+  { id: "helping",  label: "Helping tech",  emoji: "🤝", blame: "shop" },
+  { id: "training", label: "Training",      emoji: "📚", blame: "shop" },
+  { id: "other",    label: "Other",         emoji: "•",  blame: "mixed" },
+]);
+
+function lostTimeCategory(id) {
+  return LOST_TIME_CATEGORIES.find(c => c.id === id) || null;
+}
+
+function getLostTime(empId) {
+  const id = String(empId || "").trim();
+  if (!id) return [];
+  try {
+    const raw = localStorage.getItem(LOST_TIME_KEY + id);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function saveLostTime(empId, rows) {
+  const id = String(empId || "").trim();
+  if (!id) return false;
+  try {
+    localStorage.setItem(LOST_TIME_KEY + id, JSON.stringify(Array.isArray(rows) ? rows : []));
+    return true;
+  } catch { return false; }
+}
+
+/** Add entries for one day. `items` = [{category, hours, note}]. Ignores zero/invalid rows. */
+function addLostTime(empId, items, dayKey) {
+  const id = String(empId || "").trim();
+  if (!id || !Array.isArray(items)) return 0;
+  const day = dayKey || todayKeyLocal();
+  const now = new Date().toISOString();
+  const rows = getLostTime(id);
+  let added = 0;
+  for (const it of items) {
+    const hours = round1(Number(it?.hours) || 0);
+    if (!(hours > 0)) continue;
+    if (!lostTimeCategory(it?.category)) continue;
+    rows.push({
+      id: `lt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      dayKey: day,
+      category: it.category,
+      hours,
+      note: String(it?.note || "").slice(0, 200),
+      createdAt: now,
+    });
+    added++;
+  }
+  if (added) saveLostTime(id, rows);
+  return added;
+}
+
+function removeLostTime(empId, rowId) {
+  const rows = getLostTime(empId);
+  const next = rows.filter(r => r.id !== rowId);
+  if (next.length === rows.length) return false;
+  return saveLostTime(empId, next);
+}
+
+/**
+ * Summarize lost time between two dayKeys (inclusive; omit for all-time).
+ * Returns { totalHours, dollars, byCategory:[{id,label,emoji,hours,dollars,pct}] }
+ */
+function summarizeLostTime(empId, fromKey, toKey, rate) {
+  const rows = getLostTime(empId).filter(r => {
+    const k = r?.dayKey;
+    if (!k) return false;
+    if (fromKey && k < fromKey) return false;
+    if (toKey   && k > toKey)   return false;
+    return true;
+  });
+
+  const hourlyRate = Number(rate) > 0 ? Number(rate) : (Number(getDefaultRate?.()) || 0);
+  const map = new Map();
+  let totalHours = 0;
+  for (const r of rows) {
+    const h = Number(r.hours) || 0;
+    if (!(h > 0)) continue;
+    totalHours += h;
+    map.set(r.category, (map.get(r.category) || 0) + h);
+  }
+  totalHours = round1(totalHours);
+
+  const byCategory = Array.from(map.entries())
+    .map(([id, h]) => {
+      const cat = lostTimeCategory(id) || { id, label: id, emoji: "•" };
+      const hours = round1(h);
+      return {
+        id,
+        label: cat.label,
+        emoji: cat.emoji,
+        hours,
+        dollars: round2(hours * hourlyRate),
+        pct: totalHours > 0 ? Math.round((hours / totalHours) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.hours - a.hours);
+
+  return {
+    totalHours,
+    dollars: round2(totalHours * hourlyRate),
+    count: rows.length,
+    byCategory,
+  };
+}

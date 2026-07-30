@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.b27e68dfa7.css">
+  <link rel="stylesheet" href="./app.058741e7a2.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -128,6 +128,31 @@
     </div>
   </div>
   <button id="clockInBtn" class="clockInBtn" type="button" aria-label="Clock in / Clock out">Clock In</button>
+</div>
+
+<!-- Lost Time capture (shown on clock out when there's an unpaid gap) -->
+<div id="lostTimeModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="ltTitle">
+  <div class="ltInner card">
+    <div class="ltHead">
+      <div class="ltTitle" id="ltTitle">Where did the time go?</div>
+      <div class="ltSub" id="ltSub"></div>
+    </div>
+
+    <div class="ltRemainRow">
+      <span class="ltRemainLabel">Unaccounted</span>
+      <span class="ltRemainVal" id="ltRemain">0.0h</span>
+    </div>
+
+    <div class="ltChips" id="ltChips"></div>
+    <div class="ltRows" id="ltRows"></div>
+
+    <div class="ltHint" id="ltHint">Tap what ate your time. This becomes proof you can show the shop.</div>
+
+    <div class="ltActions">
+      <button type="button" class="ltBtnGhost" id="ltSkipBtn">Skip</button>
+      <button type="button" class="fr26BtnPrimary ltBtnSave" id="ltSaveBtn">Save</button>
+    </div>
+  </div>
 </div>
 
 <!-- Goal setter popover -->
@@ -567,6 +592,12 @@
         <details class="moreSectionDetails">
           <summary class="moreCardHeader moreSectionSummary">🔁 Comeback Impact</summary>
           <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
+        </details>
+      </section>
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">⏳ Lost Time</summary>
+          <div id="lostTimeCard" style="padding:8px 16px 14px;"></div>
         </details>
       </section>
       <section class="card moreCard">
@@ -1160,7 +1191,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.f1d3670092.js" defer></script>
+<script src="./app.053d859ffe.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

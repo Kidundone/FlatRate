@@ -2297,6 +2297,130 @@ function unlockBodyScroll() {
   window.scrollTo(0, _scrollLockY);
 }
 
+/* ── Lost Time ────────────────────────────────────────────────────────────────
+ * Flat rate only pays for turned hours. The difference between clocked time and
+ * flat hours is unpaid — usually parts delays, dead dispatch, or free comeback
+ * rework. Logging where it went turns an invisible loss into evidence you can
+ * put in front of a service manager.
+ *
+ * Stored locally per employee. The record shape is deliberately sync-friendly
+ * (stable id + timestamps) so it can move to Supabase later without migration.
+ */
+const LOST_TIME_KEY = "fr_lost_time_";
+
+const LOST_TIME_CATEGORIES = Object.freeze([
+  { id: "parts",    label: "Parts delay",   emoji: "📦", blame: "shop" },
+  { id: "nowork",   label: "No work",       emoji: "🪑", blame: "shop" },
+  { id: "comeback", label: "Comeback",      emoji: "🔁", blame: "mixed" },
+  { id: "cleanup",  label: "Cleanup",       emoji: "🧹", blame: "shop" },
+  { id: "helping",  label: "Helping tech",  emoji: "🤝", blame: "shop" },
+  { id: "training", label: "Training",      emoji: "📚", blame: "shop" },
+  { id: "other",    label: "Other",         emoji: "•",  blame: "mixed" },
+]);
+
+function lostTimeCategory(id) {
+  return LOST_TIME_CATEGORIES.find(c => c.id === id) || null;
+}
+
+function getLostTime(empId) {
+  const id = String(empId || "").trim();
+  if (!id) return [];
+  try {
+    const raw = localStorage.getItem(LOST_TIME_KEY + id);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function saveLostTime(empId, rows) {
+  const id = String(empId || "").trim();
+  if (!id) return false;
+  try {
+    localStorage.setItem(LOST_TIME_KEY + id, JSON.stringify(Array.isArray(rows) ? rows : []));
+    return true;
+  } catch { return false; }
+}
+
+/** Add entries for one day. `items` = [{category, hours, note}]. Ignores zero/invalid rows. */
+function addLostTime(empId, items, dayKey) {
+  const id = String(empId || "").trim();
+  if (!id || !Array.isArray(items)) return 0;
+  const day = dayKey || todayKeyLocal();
+  const now = new Date().toISOString();
+  const rows = getLostTime(id);
+  let added = 0;
+  for (const it of items) {
+    const hours = round1(Number(it?.hours) || 0);
+    if (!(hours > 0)) continue;
+    if (!lostTimeCategory(it?.category)) continue;
+    rows.push({
+      id: `lt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      dayKey: day,
+      category: it.category,
+      hours,
+      note: String(it?.note || "").slice(0, 200),
+      createdAt: now,
+    });
+    added++;
+  }
+  if (added) saveLostTime(id, rows);
+  return added;
+}
+
+function removeLostTime(empId, rowId) {
+  const rows = getLostTime(empId);
+  const next = rows.filter(r => r.id !== rowId);
+  if (next.length === rows.length) return false;
+  return saveLostTime(empId, next);
+}
+
+/**
+ * Summarize lost time between two dayKeys (inclusive; omit for all-time).
+ * Returns { totalHours, dollars, byCategory:[{id,label,emoji,hours,dollars,pct}] }
+ */
+function summarizeLostTime(empId, fromKey, toKey, rate) {
+  const rows = getLostTime(empId).filter(r => {
+    const k = r?.dayKey;
+    if (!k) return false;
+    if (fromKey && k < fromKey) return false;
+    if (toKey   && k > toKey)   return false;
+    return true;
+  });
+
+  const hourlyRate = Number(rate) > 0 ? Number(rate) : (Number(getDefaultRate?.()) || 0);
+  const map = new Map();
+  let totalHours = 0;
+  for (const r of rows) {
+    const h = Number(r.hours) || 0;
+    if (!(h > 0)) continue;
+    totalHours += h;
+    map.set(r.category, (map.get(r.category) || 0) + h);
+  }
+  totalHours = round1(totalHours);
+
+  const byCategory = Array.from(map.entries())
+    .map(([id, h]) => {
+      const cat = lostTimeCategory(id) || { id, label: id, emoji: "•" };
+      const hours = round1(h);
+      return {
+        id,
+        label: cat.label,
+        emoji: cat.emoji,
+        hours,
+        dollars: round2(hours * hourlyRate),
+        pct: totalHours > 0 ? Math.round((hours / totalHours) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.hours - a.hours);
+
+  return {
+    totalHours,
+    dollars: round2(totalHours * hourlyRate),
+    count: rows.length,
+    byCategory,
+  };
+}
+
 const PHOTO_BUCKET = "proofs"; // private
 
 function setPhotoUploadTarget(path) {
@@ -6883,6 +7007,7 @@ async function refreshUI(entriesOverride){
   // More page extras (no-op if elements don't exist on main page)
   render8WeekChart(allEntries);
   renderComebackStats(allEntries);
+  renderLostTimeCard();
 
   // stash last week calc for export (delta always set)
   window.__WEEK_STATE__ = { ws, we, week, flagged, delta };
@@ -7607,6 +7732,183 @@ function updateClockInDisplay() {
   }
 }
 
+// Renders the Lost Time breakdown (More → History). Period follows the same
+// 30-day default as other trend cards; the point is the running total you can
+// take to a service manager.
+function renderLostTimeCard(days = 30) {
+  const el = document.getElementById("lostTimeCard");
+  if (!el) return;
+
+  const empId = getEmpId();
+  if (!empId) {
+    el.innerHTML = `<div class="muted small" style="padding:8px 0;">Set your Employee # to track lost time.</div>`;
+    return;
+  }
+
+  const to   = todayKeyLocal();
+  const from = dateKey(new Date(Date.now() - days * 86400000));
+  const rate = Number(getDefaultRate?.()) || 0;
+  const s    = summarizeLostTime(empId, from, to, rate);
+
+  if (!s.totalHours) {
+    el.innerHTML = `
+      <div class="ltEmpty">
+        <div class="ltEmptyTitle">Nothing logged yet</div>
+        <div class="ltEmptySub">Clock in and out, and when your flat hours don't
+        cover your clocked time, Buddy will ask where it went.</div>
+      </div>`;
+    return;
+  }
+
+  const worst = s.byCategory[0];
+  const bars = s.byCategory.map(c => `
+    <div class="ltBarRow">
+      <div class="ltBarTop">
+        <span class="ltBarName">${c.emoji} ${escapeHtml(c.label)}</span>
+        <span class="ltBarVal">${c.hours.toFixed(1)}h${rate > 0 ? ` · ${formatMoney(c.dollars)}` : ""}</span>
+      </div>
+      <div class="ltBarTrack"><div class="ltBarFill" style="width:${Math.max(3, c.pct)}%"></div></div>
+    </div>`).join("");
+
+  el.innerHTML = `
+    <div class="ltHeadline">
+      <div class="ltHeadlineNum">${s.totalHours.toFixed(1)}<span class="ltHeadlineUnit">h</span></div>
+      <div class="ltHeadlineMeta">
+        unpaid in the last ${days} days${rate > 0 ? `<br><strong>${formatMoney(s.dollars)}</strong> of your time` : ""}
+      </div>
+    </div>
+    <div class="ltCallout">Biggest drain: <strong>${escapeHtml(worst.label)}</strong> — ${worst.hours.toFixed(1)}h (${worst.pct}%)</div>
+    <div class="ltBars">${bars}</div>
+    <div class="ltFootnote">Flat rate only pays turned hours. This is time you were at work but couldn't bill.</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOST TIME CAPTURE
+// ═══════════════════════════════════════════════════════════════
+// Shown once at clock-out when clocked hours exceed flat hours. Ten seconds of
+// tapping turns an invisible loss into something you can put in front of a
+// service manager.
+
+// Below this the gap is noise (rounding, a short break) — don't nag.
+const LOST_TIME_MIN_GAP = 0.5;
+
+function openLostTimeModal(gapHours, dayKey) {
+  const modal = document.getElementById("lostTimeModal");
+  if (!modal) return;
+  const chipsEl  = document.getElementById("ltChips");
+  const rowsEl   = document.getElementById("ltRows");
+  const remainEl = document.getElementById("ltRemain");
+  const subEl    = document.getElementById("ltSub");
+  const saveBtn  = document.getElementById("ltSaveBtn");
+  const skipBtn  = document.getElementById("ltSkipBtn");
+  if (!chipsEl || !rowsEl || !remainEl || !saveBtn || !skipBtn) return;
+
+  const gap = round1(Math.max(0, gapHours));
+  const picked = new Map(); // categoryId -> hours
+
+  if (subEl) {
+    const rate = Number(getDefaultRate?.()) || 0;
+    subEl.textContent = rate > 0
+      ? `${gap.toFixed(1)} unpaid hours — about ${formatMoney(gap * rate)}`
+      : `${gap.toFixed(1)} unpaid hours`;
+  }
+
+  const remaining = () => round1(gap - Array.from(picked.values()).reduce((a, b) => a + b, 0));
+
+  const renderRemain = () => {
+    const r = remaining();
+    remainEl.textContent = `${r.toFixed(1)}h`;
+    remainEl.classList.toggle("ltRemainVal--done", r <= 0.04);
+  };
+
+  const renderRows = () => {
+    rowsEl.innerHTML = "";
+    for (const [id, hrs] of picked) {
+      const cat = lostTimeCategory(id);
+      if (!cat) continue;
+      const row = document.createElement("div");
+      row.className = "ltRow";
+      row.innerHTML = `
+        <span class="ltRowName">${cat.emoji} ${escapeHtml(cat.label)}</span>
+        <span class="ltStepper">
+          <button type="button" class="ltStep" data-lt-dec="${id}" aria-label="Less">−</button>
+          <span class="ltRowHrs">${hrs.toFixed(1)}h</span>
+          <button type="button" class="ltStep" data-lt-inc="${id}" aria-label="More">+</button>
+        </span>`;
+      rowsEl.appendChild(row);
+    }
+    renderRemain();
+    // Chips already chosen get a selected look
+    chipsEl.querySelectorAll("[data-lt-cat]").forEach(b => {
+      b.classList.toggle("ltChip--on", picked.has(b.dataset.ltCat));
+    });
+  };
+
+  // Build category chips
+  chipsEl.innerHTML = "";
+  for (const cat of LOST_TIME_CATEGORIES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ltChip";
+    b.dataset.ltCat = cat.id;
+    b.textContent = `${cat.emoji} ${cat.label}`;
+    chipsEl.appendChild(b);
+  }
+
+  chipsEl.onclick = (e) => {
+    const btn = e.target.closest("[data-lt-cat]");
+    if (!btn) return;
+    const id = btn.dataset.ltCat;
+    if (picked.has(id)) { picked.delete(id); }
+    else {
+      // Default the first pick to the whole gap — usually one thing ate it.
+      const rest = remaining();
+      picked.set(id, rest > 0 ? rest : 0.5);
+    }
+    renderRows();
+  };
+
+  rowsEl.onclick = (e) => {
+    const inc = e.target.closest("[data-lt-inc]");
+    const dec = e.target.closest("[data-lt-dec]");
+    if (!inc && !dec) return;
+    const id = (inc || dec).dataset.ltInc || (inc || dec).dataset.ltDec;
+    const cur = picked.get(id) || 0;
+    const next = round1(cur + (inc ? 0.5 : -0.5));
+    if (next <= 0) picked.delete(id);
+    else picked.set(id, next);
+    renderRows();
+  };
+
+  const close = () => {
+    modal.style.display = "none";
+    unlockBodyScroll();
+    chipsEl.onclick = null;
+    rowsEl.onclick = null;
+    saveBtn.onclick = null;
+    skipBtn.onclick = null;
+  };
+
+  saveBtn.onclick = () => {
+    const items = Array.from(picked.entries()).map(([category, hours]) => ({ category, hours }));
+    if (!items.length) { close(); return; }
+    const n = addLostTime(getEmpId(), items, dayKey);
+    close();
+    if (n > 0) {
+      haptic?.("success");
+      const total = round1(items.reduce((a, i) => a + i.hours, 0));
+      toast(`Logged ${total.toFixed(1)}h of lost time`, 3000);
+      renderLostTimeCard?.();
+    }
+  };
+  skipBtn.onclick = close;
+
+  renderRows();
+  modal.style.display = "flex";
+  lockBodyScroll();
+}
+
 function initClockIn() {
   const btn = document.getElementById("clockInBtn");
   if (!btn) return;
@@ -7624,6 +7926,12 @@ function initClockIn() {
       const ratio = shiftHrs > 0 ? round2(flatHrs / shiftHrs) : 0;
       clearClockIn(empId);
       toast(`Shift ended · ${shiftHrs.toFixed(1)} hrs · ${flatHrs.toFixed(1)} flat · Eff ${ratio.toFixed(2)}×`, 5000);
+      // Any clocked time you didn't get paid flat hours for is unpaid time.
+      // Capture where it went while the shift is still fresh.
+      const gap = round1(shiftHrs - flatHrs);
+      if (gap >= LOST_TIME_MIN_GAP) {
+        setTimeout(() => openLostTimeModal(gap, todayKey), 600);
+      }
     } else {
       setClockInMs(empId, Date.now());
       toast("Clocked in ✓");
