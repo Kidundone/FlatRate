@@ -75,6 +75,35 @@
     .err { font-size: 12px; color: var(--danger); display: none; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+    /* ── Dashboard ─────────────────────────────────────────────── */
+    .stat-delta { font-size: 11px; font-weight: 600; margin-top: 3px; min-height: 14px; }
+    .delta-up   { color: var(--accent); }
+    .delta-down { color: var(--danger); }
+    .delta-flat { color: var(--muted2); }
+
+    .panel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 14px; padding: 16px; margin-bottom: 18px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .panel-title { font-size: 15px; font-weight: 700; }
+    .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-sm:hover { color: var(--primary); border-color: var(--primary); }
+
+    .chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding-top: 6px; }
+    .chart-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+    .chart-bar { width: 100%; background: var(--primary); border-radius: 3px 3px 0 0; min-height: 2px; transition: height 400ms cubic-bezier(.25,.46,.45,.94); }
+    .chart-bar.is-weekend { background: var(--stroke2); }
+    .chart-lbl { font-size: 9px; color: var(--muted2); white-space: nowrap; overflow: hidden; }
+
+    .insight { background: rgba(37,99,235,.08); border: 1px solid rgba(37,99,235,.25); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; }
+    .insight strong { color: var(--primary); }
+
+    th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+    th[data-sort]:hover { color: var(--primary); }
+    th[data-sort].sorted::after { content: " ↓"; font-size: 10px; }
+    th[data-sort].sorted.asc::after { content: " ↑"; }
+    .table-note { font-size: 11px; color: var(--muted2); margin-top: 10px; line-height: 1.5; }
+    .flag-cb { color: var(--danger); font-weight: 700; }
+    .top-tech { color: var(--accent); font-size: 10px; font-weight: 700; margin-left: 5px; }
   </style>
 </head>
 <body>
@@ -154,25 +183,53 @@
     </div>
 
     <div class="stats">
-      <div class="stat"><div class="stat-label">Techs</div><div class="stat-value" id="statTechs">–</div></div>
-      <div class="stat"><div class="stat-label">Jobs</div><div class="stat-value primary" id="statJobs">–</div></div>
-      <div class="stat"><div class="stat-label">Flat Hours</div><div class="stat-value" id="statHours">–</div></div>
-      <div class="stat"><div class="stat-label">Earnings</div><div class="stat-value accent" id="statPay">–</div></div>
+      <div class="stat"><div class="stat-label">Techs</div><div class="stat-value" id="statTechs">–</div><div class="stat-delta" id="deltaTechs"></div></div>
+      <div class="stat"><div class="stat-label">Jobs</div><div class="stat-value primary" id="statJobs">–</div><div class="stat-delta" id="deltaJobs"></div></div>
+      <div class="stat"><div class="stat-label">Flat Hours</div><div class="stat-value" id="statHours">–</div><div class="stat-delta" id="deltaHours"></div></div>
+      <div class="stat"><div class="stat-label">Earnings</div><div class="stat-value accent" id="statPay">–</div><div class="stat-delta" id="deltaPay"></div></div>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Tech</th><th>Role</th><th class="num">Jobs</th><th class="num">Hours</th><th class="num">Earnings</th></tr></thead>
-        <tbody id="memberRows"></tbody>
-      </table>
+    <!-- Shop output over the period -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Shop output</span>
+        <span class="cell-muted" id="chartMeta"></span>
+      </div>
+      <div class="chart" id="outputChart"></div>
     </div>
 
-    <h2 style="font-size:16px;font-weight:700;margin-bottom:10px;">Recent jobs</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Date</th><th>Tech</th><th>RO #</th><th>Job</th><th class="num">Hours</th><th class="num">Pay</th></tr></thead>
-        <tbody id="logRows"></tbody>
-      </table>
+    <!-- Headline insight -->
+    <div id="teamInsight" class="insight" style="display:none;"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Technicians</span>
+        <button type="button" class="btn-sm" id="exportTeamBtn">Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th data-sort="name">Tech</th>
+            <th class="num" data-sort="jobs">Jobs</th>
+            <th class="num" data-sort="hours">Hours</th>
+            <th class="num" data-sort="pay">Earnings</th>
+            <th class="num" data-sort="hrsPerDay" title="Flat hours per day worked">Hrs/Day</th>
+            <th class="num" data-sort="comebackPct" title="Share of this tech's jobs marked as comebacks">CB&nbsp;%</th>
+          </tr></thead>
+          <tbody id="memberRows"></tbody>
+        </table>
+      </div>
+      <div class="table-note">Tap a column to sort. Hrs/Day counts only days a tech logged work.</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Recent jobs</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Tech</th><th>RO #</th><th>Job</th><th class="num">Hours</th><th class="num">Pay</th></tr></thead>
+          <tbody id="logRows"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -323,64 +380,246 @@
   });
 
   /* ── Manager team view ── */
+  let SORT = { key: "pay", asc: false };
+  let LAST_ROWS = [];
+
   $("rangeSel").addEventListener("change", renderTeam);
+
+  // Column sorting
+  document.querySelectorAll("th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      // Same column toggles direction; a new column starts descending
+      // (biggest first), except the name column which reads better A→Z.
+      if (SORT.key === key) SORT.asc = !SORT.asc;
+      else SORT = { key, asc: key === "name" };
+      drawMemberTable();
+    });
+  });
+
+  $("exportTeamBtn").addEventListener("click", exportTeamCsv);
+
+  // A period of the same length immediately before [from,to], for deltas.
+  function priorRange(from, to) {
+    const f = new Date(from + "T00:00:00");
+    const t = new Date(to + "T00:00:00");
+    const days = Math.max(1, Math.round((t - f) / 86400000) + 1);
+    const pT = new Date(f); pT.setDate(pT.getDate() - 1);
+    const pF = new Date(pT); pF.setDate(pF.getDate() - (days - 1));
+    const k = (d) => d.toISOString().slice(0, 10);
+    return [k(pF), k(pT)];
+  }
+
+  async function fetchLogs(ids, from, to) {
+    const { data, error } = await db
+      .from("work_logs")
+      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount, is_comeback")
+      .in("user_id", ids)
+      .gte("work_date", from)
+      .lte("work_date", to)
+      .or("is_deleted.is.null,is_deleted.eq.false")
+      .order("work_date", { ascending: false })
+      .limit(2000);
+    if (error) throw error;
+    return data || [];
+  }
+
+  function deltaHtml(cur, prev, fmt) {
+    const el = { html: "", };
+    if (!prev) return `<span class="delta-flat">—</span>`;
+    const diff = cur - prev;
+    if (Math.abs(diff) < 0.005) return `<span class="delta-flat">no change</span>`;
+    const pct = Math.round((diff / prev) * 100);
+    const cls = diff > 0 ? "delta-up" : "delta-down";
+    const arrow = diff > 0 ? "▲" : "▼";
+    return `<span class="${cls}">${arrow} ${Math.abs(pct)}% vs prev</span>`;
+  }
+
+  function nameOfFactory(logs) {
+    return (uid) => {
+      const m = MEMBERS.find(x => x.user_id === uid);
+      if (m?.display_name) return m.display_name;
+      const withNum = logs.find(l => l.user_id === uid && l.employee_number);
+      return withNum ? "Tech #" + withNum.employee_number : "Tech";
+    };
+  }
 
   async function renderTeam() {
     const [from, to] = rangeFor($("rangeSel").value);
     $("rangeLabel").textContent = `${from} → ${to}`;
 
     const ids = MEMBERS.map(m => m.user_id);
-    const { data: logs, error } = await db
-      .from("work_logs")
-      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount")
-      .in("user_id", ids)
-      .gte("work_date", from)
-      .lte("work_date", to)
-      .or("is_deleted.is.null,is_deleted.eq.false")
-      .order("work_date", { ascending: false })
-      .limit(500);
-    if (error) { $("memberRows").innerHTML = `<tr><td colspan="5" class="empty">${esc(error.message)}</td></tr>`; return; }
+    if (!ids.length) { $("memberRows").innerHTML = `<tr><td colspan="6" class="empty">No members yet</td></tr>`; return; }
 
-    const nameOf = (uid) => {
-      const m = MEMBERS.find(x => x.user_id === uid);
-      return m?.display_name || (logs.find(l => l.user_id === uid)?.employee_number ? "Tech #" + logs.find(l => l.user_id === uid).employee_number : "Tech");
-    };
+    let logs, prevLogs;
+    try {
+      const [pFrom, pTo] = priorRange(from, to);
+      [logs, prevLogs] = await Promise.all([
+        fetchLogs(ids, from, to),
+        fetchLogs(ids, pFrom, pTo).catch(() => []),
+      ]);
+    } catch (e) {
+      $("memberRows").innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message || "Failed to load")}</td></tr>`;
+      return;
+    }
 
-    // Per-member rollup
+    const nameOf = nameOfFactory(logs);
+
+    // Per-tech rollup, including days actually worked and comeback share.
     const agg = new Map();
-    for (const m of MEMBERS) agg.set(m.user_id, { jobs: 0, hours: 0, pay: 0, role: m.role });
-    for (const l of (logs || [])) {
+    for (const m of MEMBERS) {
+      agg.set(m.user_id, {
+        uid: m.user_id, name: nameOf(m.user_id), role: m.role,
+        jobs: 0, hours: 0, pay: 0, comebacks: 0, days: new Set(),
+      });
+    }
+    for (const l of logs) {
       const a = agg.get(l.user_id); if (!a) continue;
-      a.jobs++; a.hours += Number(l.flat_hours || 0); a.pay += Number(l.cash_amount || 0);
+      a.jobs++;
+      a.hours += Number(l.flat_hours || 0);
+      a.pay   += Number(l.cash_amount || 0);
+      if (l.is_comeback) a.comebacks++;
+      if (l.work_date) a.days.add(l.work_date);
     }
 
-    let tJobs = 0, tHours = 0, tPay = 0;
-    const rows = [];
-    for (const [uid, a] of agg) {
-      tJobs += a.jobs; tHours += a.hours; tPay += a.pay;
-      rows.push(`<tr>
-        <td>${esc(nameOf(uid))}${uid === UID ? ' <span class="cell-muted">(you)</span>' : ""}</td>
-        <td><span class="badge badge-${a.role}">${a.role}</span></td>
-        <td class="num">${a.jobs}</td>
-        <td class="num">${a.hours.toFixed(1)}</td>
-        <td class="num">${money(a.pay)}</td>
-      </tr>`);
-    }
-    $("memberRows").innerHTML = rows.join("") || `<tr><td colspan="5" class="empty">No members yet</td></tr>`;
+    LAST_ROWS = Array.from(agg.values()).map(a => {
+      const daysWorked = a.days.size;
+      return {
+        ...a,
+        daysWorked,
+        hrsPerDay:   daysWorked ? a.hours / daysWorked : 0,
+        comebackPct: a.jobs ? Math.round((a.comebacks / a.jobs) * 100) : 0,
+      };
+    });
+
+    const tJobs  = LAST_ROWS.reduce((s, r) => s + r.jobs, 0);
+    const tHours = LAST_ROWS.reduce((s, r) => s + r.hours, 0);
+    const tPay   = LAST_ROWS.reduce((s, r) => s + r.pay, 0);
+
+    const pJobs  = prevLogs.length;
+    const pHours = prevLogs.reduce((s, l) => s + Number(l.flat_hours || 0), 0);
+    const pPay   = prevLogs.reduce((s, l) => s + Number(l.cash_amount || 0), 0);
 
     $("statTechs").textContent = MEMBERS.length;
-    $("statJobs").textContent = tJobs;
+    $("statJobs").textContent  = tJobs;
     $("statHours").textContent = tHours.toFixed(1);
-    $("statPay").textContent = money(tPay);
+    $("statPay").textContent   = money(tPay);
+    $("deltaJobs").innerHTML   = deltaHtml(tJobs, pJobs);
+    $("deltaHours").innerHTML  = deltaHtml(tHours, pHours);
+    $("deltaPay").innerHTML    = deltaHtml(tPay, pPay);
+    $("deltaTechs").innerHTML  = `<span class="delta-flat">${LAST_ROWS.filter(r => r.jobs > 0).length} active</span>`;
 
-    $("logRows").innerHTML = (logs || []).slice(0, 50).map(l => `<tr>
+    drawOutputChart(logs, from, to);
+    drawInsight(LAST_ROWS, tHours);
+    drawMemberTable();
+
+    $("logRows").innerHTML = logs.slice(0, 50).map(l => `<tr>
       <td class="cell-muted">${esc(l.work_date)}</td>
       <td>${esc(nameOf(l.user_id))}</td>
       <td class="cell-muted">${esc(l.ro_number || "—")}</td>
-      <td>${esc(l.description || l.category || "—")}</td>
+      <td>${esc(l.description || l.category || "—")}${l.is_comeback ? ' <span class="flag-cb">CB</span>' : ""}</td>
       <td class="num">${Number(l.flat_hours || 0).toFixed(1)}</td>
       <td class="num">${money(l.cash_amount)}</td>
     </tr>`).join("") || `<tr><td colspan="6" class="empty">No jobs logged in this range</td></tr>`;
+  }
+
+  function drawMemberTable() {
+    const { key, asc } = SORT;
+    const rows = [...LAST_ROWS].sort((a, b) => {
+      const va = key === "name" ? a.name.toLowerCase() : a[key];
+      const vb = key === "name" ? b.name.toLowerCase() : b[key];
+      if (va < vb) return asc ? -1 : 1;
+      if (va > vb) return asc ? 1 : -1;
+      return 0;
+    });
+
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      th.classList.toggle("sorted", th.dataset.sort === key);
+      th.classList.toggle("asc", th.dataset.sort === key && asc);
+    });
+
+    const topPay = Math.max(0, ...LAST_ROWS.map(r => r.pay));
+    $("memberRows").innerHTML = rows.map(r => `<tr>
+      <td>${esc(r.name)}${r.uid === UID ? ' <span class="cell-muted">(you)</span>' : ""}${
+        r.pay > 0 && r.pay === topPay ? '<span class="top-tech">TOP</span>' : ""}
+        <div class="cell-muted" style="font-size:11px;">${esc(r.role)} · ${r.daysWorked} day${r.daysWorked === 1 ? "" : "s"}</div></td>
+      <td class="num">${r.jobs}</td>
+      <td class="num">${r.hours.toFixed(1)}</td>
+      <td class="num">${money(r.pay)}</td>
+      <td class="num">${r.hrsPerDay ? r.hrsPerDay.toFixed(1) : "—"}</td>
+      <td class="num ${r.comebackPct >= 10 && r.jobs >= 3 ? "flag-cb" : ""}">${r.jobs ? r.comebackPct + "%" : "—"}</td>
+    </tr>`).join("") || `<tr><td colspan="6" class="empty">No members yet</td></tr>`;
+  }
+
+  function drawOutputChart(logs, from, to) {
+    const byDay = new Map();
+    const start = new Date(from + "T00:00:00");
+    const end   = new Date(to + "T00:00:00");
+    // Cap the number of columns so a 30-day range stays readable.
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      byDay.set(d.toISOString().slice(0, 10), 0);
+    }
+    for (const l of logs) {
+      if (byDay.has(l.work_date)) byDay.set(l.work_date, byDay.get(l.work_date) + Number(l.flat_hours || 0));
+    }
+    const days = Array.from(byDay.entries());
+    const max  = Math.max(1, ...days.map(([, v]) => v));
+    const showLabel = days.length <= 14;
+
+    $("chartMeta").textContent = `${days.length} days · peak ${max.toFixed(1)}h`;
+    $("outputChart").innerHTML = days.map(([day, hrs]) => {
+      const dow = new Date(day + "T00:00:00").getDay();
+      const weekend = dow === 0 || dow === 6;
+      const pct = Math.round((hrs / max) * 100);
+      const lbl = showLabel ? day.slice(5).replace("-", "/") : "";
+      return `<div class="chart-col" title="${day}: ${hrs.toFixed(1)}h">
+        <div class="chart-bar ${weekend ? "is-weekend" : ""}" style="height:${Math.max(2, pct)}%"></div>
+        <span class="chart-lbl">${lbl}</span>
+      </div>`;
+    }).join("");
+  }
+
+  function drawInsight(rows, tHours) {
+    const el = $("teamInsight");
+    const active = rows.filter(r => r.jobs > 0);
+    if (active.length < 2) { el.style.display = "none"; return; }
+
+    const byRate = [...active].sort((a, b) => b.hrsPerDay - a.hrsPerDay);
+    const top = byRate[0];
+    const highCb = active.filter(r => r.jobs >= 3 && r.comebackPct >= 10)
+                         .sort((a, b) => b.comebackPct - a.comebackPct)[0];
+
+    const parts = [];
+    if (top.hrsPerDay > 0) {
+      parts.push(`<strong>${esc(top.name)}</strong> is turning the most hours per day worked (${top.hrsPerDay.toFixed(1)}h).`);
+    }
+    if (highCb) {
+      parts.push(`<strong>${esc(highCb.name)}</strong> has a ${highCb.comebackPct}% comeback rate — worth a conversation.`);
+    }
+    parts.push(`Shop total: ${tHours.toFixed(1)} flat hours across ${active.length} active techs.`);
+
+    el.innerHTML = parts.join(" ");
+    el.style.display = "";
+  }
+
+  function exportTeamCsv() {
+    if (!LAST_ROWS.length) return;
+    const head = ["Tech", "Role", "Jobs", "Flat Hours", "Earnings", "Days Worked", "Hours/Day", "Comeback %"];
+    const esc2 = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [head.map(esc2).join(",")];
+    for (const r of LAST_ROWS) {
+      lines.push([
+        r.name, r.role, r.jobs, r.hours.toFixed(1), r.pay.toFixed(2),
+        r.daysWorked, r.hrsPerDay.toFixed(2), r.comebackPct,
+      ].map(esc2).join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `${(SHOP?.name || "shop").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${$("rangeSel").value}.csv`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
   }
 
   init();
