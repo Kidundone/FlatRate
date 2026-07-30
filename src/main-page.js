@@ -2141,21 +2141,24 @@ async function shareDaySummary() {
     const ref = e.ref || e.ro || "—";
     const type = e.type || e.typeText || "—";
     const cb = e.isComeback ? " ↩️" : "";
-    return `  ${type}${cb}  ·  ${e.refType === "STOCK" ? "STK" : "RO"} ${ref}  ·  ${e.hours} hrs  ·  ${formatMoney(e.earnings)}`;
+    const roPrefix = e.refType === "STOCK" ? "STK" : "RO";
+    return `  ${type}${cb}  ·  ${roPrefix} ${ref}  ·  ${formatHours(e.hours)} hrs  ·  ${formatMoney(e.earnings)}`;
   });
 
-  const cbLine = comebacks.length
-    ? `⚠️ ${comebacks.length} comeback${comebacks.length > 1 ? "s" : ""} today`
-    : "";
+  const effRate = totals.hours > 0 ? round2(totals.dollars / totals.hours) : 0;
+  const cbCount = comebacks.length;
+  const cbLine = cbCount ? `⚠️ ${cbCount} comeback${cbCount > 1 ? "s" : ""}` : "✅ No comebacks";
+  const effLine = effRate > 0 ? `⚡ ${formatMoney(effRate)}/hr effective` : "";
 
   const text = [
-    `📋 Flatrate Buddy — ${dayLabel}`,
+    `📋 Flat-Rate Log — ${dayLabel}`,
     `Emp #${empId}`,
-    "",
+    `${"─".repeat(32)}`,
     ...lines,
-    "",
+    `${"─".repeat(32)}`,
     `🕐 ${formatHours(totals.hours)} hrs   💵 ${formatMoney(totals.dollars)}   📦 ${totals.count} job${totals.count !== 1 ? "s" : ""}`,
-    ...(cbLine ? ["", cbLine] : []),
+    ...(effLine ? [effLine] : []),
+    cbLine,
   ].join("\n");
 
   if (navigator.share) {
