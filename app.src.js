@@ -11299,6 +11299,8 @@ function openRequestModal(prefill = {}) {
   set("reqAmount",  prefill.amount);
   const err = document.getElementById("reqErr");
   if (err) { err.style.display = "none"; err.textContent = ""; }
+  const draftErr = document.getElementById("reqDraftErr");
+  if (draftErr) { draftErr.style.display = "none"; draftErr.textContent = ""; }
 
   applyKindHint();
   modal.style.display = "flex";
@@ -11319,6 +11321,92 @@ function closeRequestModal() {
   const m = document.getElementById("reqModal");
   if (m) m.style.display = "none";
   unlockBodyScroll();
+}
+
+/** Same auth-token dance photo-service.js uses for scan-ro — fresh token, retry once on 401. */
+async function _callDraftDispute(payload, timeoutMs = 15000) {
+  const sbInstance = window.__FR?.sb;
+  const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/draft-dispute`;
+
+  const getToken = async () => {
+    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
+    return session?.access_token || null;
+  };
+
+  const token = await getToken();
+  if (!token) throw new Error("auth_expired");
+
+  const doFetch = async (tok) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tok}`,
+          "apikey": window.__SUPABASE_CONFIG__.anonKey,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data?.error || `Draft failed (${res.status})`), { status: res.status });
+      return data;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("Taking too long — try again");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    return await doFetch(token);
+  } catch (e) {
+    if (e.status === 401) {
+      const fresh = await getToken();
+      if (fresh && fresh !== token) return await doFetch(fresh);
+    }
+    throw e;
+  }
+}
+
+async function draftDisputeText() {
+  const btn = document.getElementById("reqDraftBtn");
+  const err = document.getElementById("reqDraftErr");
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  if (err) { err.style.display = "none"; err.textContent = ""; }
+
+  const payload = {
+    kind:    REQ_KIND,
+    subject: val("reqSubject"),
+    ro:      REQ_KIND === "need_hours" ? "" : val("reqRo"),
+    date:    REQ_KIND === "need_hours" ? "" : val("reqDate"),
+    hours:   REQ_KIND === "need_hours" ? null : val("reqHours"),
+    amount:  REQ_KIND === "need_hours" ? null : val("reqAmount"),
+  };
+
+  if (btn) { btn.disabled = true; btn.textContent = "Drafting…"; }
+  try {
+    const { text } = await _callDraftDispute(payload);
+    const details = document.getElementById("reqDetails");
+    if (details && text) {
+      details.value = text;
+      details.focus();
+    }
+    haptic?.("light");
+  } catch (e) {
+    if (err) {
+      err.textContent = e?.message === "auth_expired"
+        ? "Sign back in to use the drafting tool."
+        : (e?.message || "Couldn't draft that — try again.");
+      err.style.display = "";
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "✍️ Draft for me"; }
+  }
 }
 
 async function submitRequest() {
@@ -11465,6 +11553,7 @@ function initRequestsUI() {
   document.getElementById("newRequestBtn")?.addEventListener("click", () => openRequestModal());
   document.getElementById("reqCancelBtn")?.addEventListener("click", closeRequestModal);
   document.getElementById("reqSubmitBtn")?.addEventListener("click", submitRequest);
+  document.getElementById("reqDraftBtn")?.addEventListener("click", draftDisputeText);
 
   document.getElementById("reqKinds")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-kind]");
