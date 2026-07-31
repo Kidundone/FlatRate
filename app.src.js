@@ -8443,6 +8443,10 @@ function renderBreakdownPage(period, customFrom, customTo) {
 // Below this many jobs a type's average is too noisy to call a trend.
 const SCORECARD_MIN_SAMPLE = 3;
 
+// How far apart two job types' $/hr need to be (in dollars) before we treat
+// the difference as real signal rather than rounding noise.
+const SCORECARD_RATE_EPSILON = 0.5;
+
 function computeJobScorecard(entries) {
   const map = new Map();
   for (const e of (entries || [])) {
@@ -8455,7 +8459,7 @@ function computeJobScorecard(entries) {
     map.set(name, cur);
   }
 
-  return Array.from(map.values()).map(t => {
+  const rows = Array.from(map.values()).map(t => {
     const hours = round1(t.hours);
     const earnings = round2(t.earnings);
     return {
@@ -8468,7 +8472,24 @@ function computeJobScorecard(entries) {
       comebackPct: t.count > 0 ? Math.round((t.comebacks / t.count) * 100) : 0,
       reliable:    t.count >= SCORECARD_MIN_SAMPLE,
     };
-  }).sort((a, b) => b.perHour - a.perHour || b.earnings - a.earnings);
+  });
+
+  // Most flat-rate techs are paid one personal rate per flag/book hour — pay
+  // is *calculated* as hours × that one rate, not measured independently. That
+  // makes $/hr mathematically identical across every job type by construction;
+  // it can never tell you anything. $/hr only carries real signal for techs
+  // whose effective rate genuinely differs by job (bonus/premium job types,
+  // manual per-entry rate overrides, etc). So: detect which case this is and
+  // rank + headline off whichever number actually varies.
+  const withHours = rows.filter(r => r.hours > 0);
+  const rates = withHours.map(r => r.perHour);
+  const rateVaries = rates.length >= 2 &&
+    (Math.max(...rates) - Math.min(...rates)) > SCORECARD_RATE_EPSILON;
+
+  const sortKey = rateVaries ? "perHour" : "perJob";
+  rows.sort((a, b) => b[sortKey] - a[sortKey] || b.earnings - a.earnings);
+
+  return { rows, rateVaries, sortKey };
 }
 
 function renderJobScorecard(entries) {
@@ -8480,27 +8501,35 @@ function renderJobScorecard(entries) {
       "Rank every job type by real dollars-per-hour so you know what to chase and what's quietly costing you.");
   }
 
-  const rows = computeJobScorecard(entries);
+  const { rows, rateVaries, sortKey } = computeJobScorecard(entries);
   if (!rows.length) { el.innerHTML = ""; return; }
 
   // Only crown a "best" when there's enough data to mean something, and when
   // there's actually something to compare it against.
   const reliable = rows.filter(r => r.reliable);
-  const best = reliable.length >= 2 ? reliable[0] : null;
+  const best  = reliable.length >= 2 ? reliable[0] : null;
   const worst = reliable.length >= 3 ? reliable[reliable.length - 1] : null;
 
   const headline = best
-    ? `<div class="jsHeadline">💡 <strong>${escapeHtml(best.name)}</strong> is your best earner at
-         <strong>${formatMoney(best.perHour)}/hr</strong>${
-           worst && worst.perHour > 0 && worst.name !== best.name
-             ? ` — that's ${(best.perHour / worst.perHour).toFixed(1)}× what ${escapeHtml(worst.name)} pays.`
-             : "."
-         }</div>`
+    ? (rateVaries
+        ? `<div class="jsHeadline">💡 <strong>${escapeHtml(best.name)}</strong> is your best earner at
+             <strong>${formatMoney(best.perHour)}/hr</strong>${
+               worst && worst.perHour > 0 && worst.name !== best.name
+                 ? ` — that's ${(best.perHour / worst.perHour).toFixed(1)}× what ${escapeHtml(worst.name)} pays.`
+                 : "."
+             }</div>`
+        : `<div class="jsHeadline">💡 <strong>${escapeHtml(best.name)}</strong> pays the most per job at
+             <strong>${formatMoney(best.perJob)}</strong>${
+               worst && worst.perJob > 0 && worst.name !== best.name
+                 ? ` — ${(best.perJob / worst.perJob).toFixed(1)}× what ${escapeHtml(worst.name)} pays.`
+                 : "."
+             } Your $/hr is the same across job types since it's flag hours × your flat rate — this is what actually varies.</div>`)
     : `<div class="jsHeadline jsHeadline--muted">Log at least ${SCORECARD_MIN_SAMPLE} of a job type to see which pays best.</div>`;
 
   const rowsHtml = rows.map(r => {
     const isBest = best && r.name === best.name;
     const hotCb  = r.comebackPct >= 20 && r.count >= SCORECARD_MIN_SAMPLE;
+    const rateVal = r[sortKey];
     return `
       <div class="jsRow${isBest ? " jsRow--best" : ""}">
         <div class="jsRowMain">
@@ -8510,11 +8539,13 @@ function renderJobScorecard(entries) {
             ${hotCb ? `<span class="jsBadge jsBadge--warn">${r.comebackPct}% CB</span>` : ""}
             ${!r.reliable ? '<span class="jsBadge jsBadge--thin">low data</span>' : ""}
           </div>
-          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} · ${r.avgHours}h avg · ${formatMoney(r.perJob)}/job</div>
+          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} · ${r.avgHours}h avg · ${
+            rateVaries ? `${formatMoney(r.perJob)}/job` : `${formatMoney(r.perHour)}/hr`
+          }</div>
         </div>
         <div class="jsRowRate">
-          <div class="jsRateVal">${r.perHour > 0 ? formatMoney(r.perHour) : "—"}</div>
-          <div class="jsRateLbl">per hour</div>
+          <div class="jsRateVal">${rateVal > 0 ? formatMoney(rateVal) : "—"}</div>
+          <div class="jsRateLbl">${rateVaries ? "per hour" : "per job"}</div>
         </div>
       </div>`;
   }).join("");
@@ -8522,7 +8553,7 @@ function renderJobScorecard(entries) {
   el.innerHTML = `
     <div class="jsHeader">
       <span class="jsTitle">🏆 Job Scorecard</span>
-      <span class="jsSubtitle">ranked by real $/hr</span>
+      <span class="jsSubtitle">${rateVaries ? "ranked by real $/hr" : "ranked by $/job"}</span>
     </div>
     ${headline}
     <div class="jsRows">${rowsHtml}</div>
