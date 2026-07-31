@@ -138,6 +138,27 @@
     .btn-sm.ok { border-color: var(--accent); color: var(--accent); }
     .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
     .cd-note { width: 100%; box-sizing: border-box; }
+
+    /* ── Job detail + proof photo ──────────────────────────────── */
+    .job-row { cursor: pointer; }
+    .job-row:hover td { background: var(--surface2); }
+    .has-photo { font-size: 12px; opacity: .85; }
+    .jd-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
+    @media (max-width: 520px) { .jd-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .jd-cell { background: var(--surface2); border-radius: 10px; padding: 9px 11px; min-width: 0; }
+    .jd-label { font-size: 10px; color: var(--muted2); letter-spacing: .03em; margin-bottom: 3px; }
+    .jd-val { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+    .jd-notes {
+      background: var(--surface2); border-radius: 10px; padding: 10px 12px;
+      font-size: 12.5px; color: var(--muted); line-height: 1.55; white-space: pre-wrap; margin-bottom: 14px;
+    }
+    .jd-photo-label { font-size: 11px; color: var(--muted2); letter-spacing: .03em; margin-bottom: 7px; }
+    .jd-photo-box img { width: 100%; border-radius: 12px; display: block; }
+    .jd-photo-hint { font-size: 10.5px; color: var(--muted2); margin-top: 6px; text-align: center; }
+    .jd-nophoto {
+      font-size: 12px; color: var(--muted); background: var(--surface2);
+      border-radius: 10px; padding: 14px; text-align: center; line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -279,6 +300,25 @@
           <thead><tr><th>Date</th><th>Tech</th><th>RO #</th><th>Job</th><th class="num">Hours</th><th class="num">Pay</th></tr></thead>
           <tbody id="logRows"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job detail drawer (manager) — full details + proof photo -->
+  <div id="jobDrawer" class="drawer" style="display:none;" role="dialog" aria-modal="true">
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="jdTitle">Job</div>
+          <div class="cell-muted" id="jdSub"></div>
+        </div>
+        <button type="button" class="btn-sm" id="jdCloseBtn">Close</button>
+      </div>
+      <div id="jdGrid" class="jd-grid"></div>
+      <div id="jdNotes" class="jd-notes" style="display:none;"></div>
+      <div id="jdPhotoWrap" class="jd-photo-wrap">
+        <div class="jd-photo-label">Proof photo</div>
+        <div id="jdPhotoBox" class="jd-photo-box"></div>
       </div>
     </div>
   </div>
@@ -489,7 +529,7 @@
   async function fetchLogs(ids, from, to) {
     const { data, error } = await db
       .from("work_logs")
-      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount, is_comeback")
+      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount, is_comeback, vin8, notes, photo_path")
       .in("user_id", ids)
       .gte("work_date", from)
       .lte("work_date", to)
@@ -589,14 +629,81 @@
     drawInsight(LAST_ROWS, tHours);
     drawMemberTable();
 
-    $("logRows").innerHTML = logs.slice(0, 50).map(l => `<tr>
+    RECENT_LOGS = logs.slice(0, 50);
+    $("logRows").innerHTML = RECENT_LOGS.map((l, i) => `<tr class="job-row" data-job="${i}">
       <td class="cell-muted">${esc(l.work_date)}</td>
       <td>${esc(nameOf(l.user_id))}</td>
       <td class="cell-muted">${esc(l.ro_number || "—")}</td>
-      <td>${esc(l.description || l.category || "—")}${l.is_comeback ? ' <span class="flag-cb">CB</span>' : ""}</td>
+      <td>${esc(l.description || l.category || "—")}${l.is_comeback ? ' <span class="flag-cb">CB</span>' : ""}${l.photo_path ? ' <span class="has-photo" title="Has proof photo">📷</span>' : ""}</td>
       <td class="num">${Number(l.flat_hours || 0).toFixed(1)}</td>
       <td class="num">${money(l.cash_amount)}</td>
     </tr>`).join("") || `<tr><td colspan="6" class="empty">No jobs logged in this range</td></tr>`;
+  }
+
+  /* ── Job detail + proof photo (manager) ─────────────────────── */
+  let RECENT_LOGS = [];
+
+  $("logRows").addEventListener("click", (e) => {
+    const tr = e.target.closest("[data-job]");
+    if (tr) openJob(Number(tr.dataset.job));
+  });
+  $("jdCloseBtn").addEventListener("click", closeJob);
+  $("jobDrawer").addEventListener("click", (e) => { if (e.target === $("jobDrawer")) closeJob(); });
+
+  function closeJob() {
+    const img = $("jdPhotoBox").querySelector("img");
+    if (img?.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
+    $("jdPhotoBox").innerHTML = "";
+    $("jobDrawer").style.display = "none";
+  }
+
+  async function openJob(idx) {
+    const l = RECENT_LOGS[idx];
+    if (!l) return;
+
+    $("jdTitle").textContent = l.ro_number ? `RO ${l.ro_number}` : (l.description || l.category || "Job");
+    $("jdSub").textContent   = `${nameOfFactory(RECENT_LOGS)(l.user_id)} · ${l.work_date || ""}`;
+
+    const cell = (label, val) => `<div class="jd-cell"><div class="jd-label">${label}</div><div class="jd-val">${val}</div></div>`;
+    $("jdGrid").innerHTML = [
+      cell("Job", esc(l.description || l.category || "—")),
+      cell("Flat hours", Number(l.flat_hours || 0).toFixed(1)),
+      cell("Earnings", money(l.cash_amount)),
+      cell("VIN", l.vin8 ? esc(l.vin8) : "—"),
+      cell("Employee #", l.employee_number ? esc(String(l.employee_number)) : "—"),
+      cell("Comeback", l.is_comeback ? '<span class="flag-cb">Yes</span>' : "No"),
+    ].join("");
+
+    const notesEl = $("jdNotes");
+    if (l.notes) { notesEl.textContent = l.notes; notesEl.style.display = ""; }
+    else notesEl.style.display = "none";
+
+    $("jobDrawer").style.display = "flex";
+    await loadJobPhoto(l);
+  }
+
+  async function loadJobPhoto(l) {
+    const box = $("jdPhotoBox");
+    if (!l.photo_path) {
+      box.innerHTML = `<div class="jd-nophoto">No photo attached to this job.</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="cell-muted">Loading photo…</div>`;
+    try {
+      // Download rather than link: the bucket is private, and this also proves
+      // the manager actually has read access rather than showing a broken image.
+      const { data: blob, error } = await db.storage.from("proofs").download(l.photo_path);
+      if (error) throw error;
+      const url = URL.createObjectURL(blob);
+      box.innerHTML = `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Proof photo for this job" /></a>
+        <div class="jd-photo-hint">Tap to open full size</div>`;
+    } catch (err) {
+      const msg = String(err?.message || err);
+      const denied = /not found|permission|denied|unauthor|row-level/i.test(msg);
+      box.innerHTML = `<div class="jd-nophoto">${denied
+        ? "Can't view this photo — manager photo access hasn't been enabled on this project yet."
+        : "Couldn't load the photo: " + esc(msg)}</div>`;
+    }
   }
 
   function drawMemberTable() {
