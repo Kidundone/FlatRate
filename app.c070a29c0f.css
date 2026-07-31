@@ -4601,6 +4601,26 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .recentTypeChip { transition: transform 140ms cubic-bezier(.34,1.56,.64,1); }
 .recentTypeChip:active { transform: scale(.9); }
 
+/* ── History search + row detail ───────────────────────────────────────────── */
+.entrySearchCount { font-size: 11px; color: var(--muted); margin-top: 6px; letter-spacing: .02em; }
+.bulkEntryVin {
+  font-size: 11px; color: var(--muted); margin-top: 2px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .04em;
+}
+.bulkEntryNotes {
+  font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bulkEntryPhoto {
+  flex: 0 0 auto; align-self: center;
+  width: 38px; height: 38px; margin-left: 8px;
+  background: var(--surface2); border: 1px solid var(--stroke2, var(--stroke));
+  border-radius: 10px; font-size: 17px; line-height: 1; cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 130ms cubic-bezier(.34,1.56,.64,1), border-color 120ms;
+}
+.bulkEntryPhoto:active { transform: scale(.88); border-color: var(--primary); }
+
 /* ── Requests to manager ───────────────────────────────────────────────────── */
 .reqBadge {
   display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 6px;

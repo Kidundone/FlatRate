@@ -10597,6 +10597,49 @@ async function renderBulkEntryList() {
     bar.style.display = "none";
   }
 
+  // Keep the full list in memory so search can filter the DATA, not the DOM.
+  // (Searching rendered text meant VIN and notes — which weren't displayed —
+  //  were impossible to find. That's how a logged car could go missing.)
+  _HISTORY_ENTRIES = entries;
+  drawHistoryRows(entries);
+}
+
+/** Everything about an entry a person might type into the search box. */
+function entrySearchBlob(e) {
+  return [
+    e.ro, e.ref, e.roNumber, e.ro_number,
+    e.vin8, e.vin,
+    e.type, e.typeText,
+    e.notes,
+    e.dayKey, e.workDate,
+    e.hours, e.earnings ?? e.dollars,
+  ].filter(v => v !== null && v !== undefined && v !== "")
+   .join(" ")
+   .toLowerCase();
+}
+
+/**
+ * Match every whitespace-separated term (AND), so "pdi 40534" narrows rather
+ * than widens. Digit-only terms also match loosely against RO/VIN so a partial
+ * VIN or the tail of an RO still finds the job.
+ */
+function entryMatchesQuery(e, q) {
+  if (!q) return true;
+  const blob = entrySearchBlob(e);
+  return q.split(/\s+/).filter(Boolean).every(term => blob.includes(term));
+}
+
+let _HISTORY_ENTRIES = [];
+
+function drawHistoryRows(entries) {
+  const container = document.getElementById("bulkEntryList");
+  if (!container) return;
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="muted small" style="padding:16px;">No jobs match that search.</div>`;
+    return;
+  }
+
   container.innerHTML = "";
   for (const e of entries) {
     const row = document.createElement("div");
@@ -10604,6 +10647,9 @@ async function renderBulkEntryList() {
     row.dataset.id = String(e.id ?? "");
     const ref = e.ro || e.ref || "";
     const refDisplay = ref ? escapeHtml(ref) : "<span class='bulkEntryNoRef'>no RO#</span>";
+    const vin   = (e.vin8 || e.vin || "").trim();
+    const notes = (e.notes || "").trim();
+    const hasPhoto = !!(e.photo_path || e.photoPath);
     row.innerHTML = `
       <label class="bulkEntryCheck" style="${_bulkSelectMode ? "" : "display:none;"}">
         <input type="checkbox" class="bulkCheck" />
@@ -10611,7 +10657,10 @@ async function renderBulkEntryList() {
       <div class="bulkEntryInfo">
         <div class="bulkEntryRef">${refDisplay} <span class="bulkEntryType">${escapeHtml(e.type || e.typeText || "—")}</span></div>
         <div class="bulkEntryMeta">${formatMoney(Number(e.earnings ?? e.dollars ?? 0))} · ${round1(Number(e.hours || 0))} hrs · ${e.dayKey || ""}</div>
+        ${vin ? `<div class="bulkEntryVin">VIN ${escapeHtml(vin)}</div>` : ""}
+        ${notes ? `<div class="bulkEntryNotes">${escapeHtml(notes)}</div>` : ""}
       </div>
+      ${hasPhoto ? `<button type="button" class="bulkEntryPhoto" data-photo-id="${escapeHtml(String(e.id ?? ""))}" aria-label="View photo">📷</button>` : ""}
     `;
     // Tap entire row to toggle checkbox in select mode
     row.addEventListener("click", (ev) => {
@@ -10794,17 +10843,48 @@ function initJobTypeBulkDelete() {
 function initEntrySearch() {
   const input = document.getElementById("entrySearchInput");
   if (!input) return;
-  input.addEventListener("input", () => {
+
+  const countEl = document.getElementById("entrySearchCount");
+
+  const runSearch = () => {
     const q = input.value.toLowerCase().trim();
-    document.querySelectorAll(".bulkEntryRow").forEach(row => {
-      if (!q) { row.hidden = false; return; }
-      const text = row.textContent.toLowerCase();
-      row.hidden = !text.includes(q);
-    });
-  });
+    const hits = q ? _HISTORY_ENTRIES.filter(e => entryMatchesQuery(e, q)) : _HISTORY_ENTRIES;
+    drawHistoryRows(hits);
+    if (countEl) {
+      if (!q) { countEl.style.display = "none"; }
+      else {
+        countEl.style.display = "";
+        countEl.textContent = `${hits.length} of ${_HISTORY_ENTRIES.length} job${_HISTORY_ENTRIES.length === 1 ? "" : "s"}`;
+      }
+    }
+  };
+
+  input.addEventListener("input", runSearch);
+  input.addEventListener("search", runSearch); // native clear (×) on type=search
+
   // Clear on tab switch (reset search)
   document.querySelectorAll(".moreTab").forEach(tab => {
-    tab.addEventListener("click", () => { input.value = ""; });
+    tab.addEventListener("click", () => {
+      input.value = "";
+      if (countEl) countEl.style.display = "none";
+      if (_HISTORY_ENTRIES.length) drawHistoryRows(_HISTORY_ENTRIES);
+    });
+  });
+
+  // Photo badge → open the proof photo for that job, from anywhere in history.
+  document.getElementById("bulkEntryList")?.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("[data-photo-id]");
+    if (!btn) return;
+    ev.stopPropagation();               // don't toggle the bulk-select checkbox
+    const id = btn.dataset.photoId;
+    const entry = _HISTORY_ENTRIES.find(e => String(e.id) === String(id));
+    if (!entry) return;
+    try {
+      haptic?.("light");
+      await openPhotoViewer(entry);
+    } catch (e) {
+      toast?.("Couldn't open photo");
+    }
   });
 }
 
