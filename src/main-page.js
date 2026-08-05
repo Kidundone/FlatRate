@@ -2080,10 +2080,41 @@ async function renderHistory() {
   }
 }
 
-// Cache signed URLs. Supabase URLs expire at 30 min so we treat anything
-// older than 25 min as stale and re-fetch before the browser sees a 403.
-const _thumbCache = new Map();
-const _THUMB_TTL_MS = 25 * 60 * 1000;
+// ── Shared photo URL cache ────────────────────────────────────────────────
+// Every photo view — thumbnail, the tap-to-enlarge modal, the full gallery
+// viewer — used to independently mint a brand-new signed URL (web) or
+// re-download the full image through the SDK (native/Capacitor, the actual
+// shipped app) on EVERY open, even to reopen a photo just viewed seconds
+// ago. That's the real source of "pulling up a photo takes too long": on
+// native there's no HTTP cache to fall back on at all, since .download()
+// is a fresh programmatic fetch every time, not a cacheable <img src>.
+// This cache is shared by every call site via getCachedPhotoUrl() below, so
+// a thumbnail that already loaded a photo makes the full-size view (or a
+// manager's job-detail drawer, which has its own copy of this pattern in
+// team.html) come back instantly instead of re-fetching.
+const _photoUrlCache = new Map(); // path -> { url, fetchedAt }
+const _PHOTO_CACHE_TTL_MS = 25 * 60 * 1000; // signed URLs last 30 min server-side
+const _PHOTO_CACHE_MAX = 60; // cap blob: URL accumulation on a long native session
+
+async function getCachedPhotoUrl(path) {
+  if (!path) return null;
+  const cached = _photoUrlCache.get(path);
+  if (cached && (Date.now() - cached.fetchedAt < _PHOTO_CACHE_TTL_MS)) {
+    return cached.url;
+  }
+  const url = await getPhotoUrl(path);
+  if (url) {
+    if (_photoUrlCache.size >= _PHOTO_CACHE_MAX) {
+      const oldestKey = _photoUrlCache.keys().next().value;
+      const oldest = _photoUrlCache.get(oldestKey);
+      if (oldest?.url?.startsWith("blob:")) URL.revokeObjectURL(oldest.url);
+      _photoUrlCache.delete(oldestKey);
+    }
+    _photoUrlCache.set(path, { url, fetchedAt: Date.now() });
+  }
+  return url;
+}
+
 let _thumbObs = null;
 
 function loadPhotoThumbs() {
@@ -2094,15 +2125,9 @@ function loadPhotoThumbs() {
   const load = async (img) => {
     const path = img.getAttribute("data-photo-path");
     if (!path) return;
-    const cached = _thumbCache.get(path);
-    const fresh = cached && (Date.now() - cached.fetchedAt < _THUMB_TTL_MS);
-    if (fresh && img.src) return; // still valid and already shown
+    if (img.src && _photoUrlCache.has(path)) return; // already showing the cached url
     try {
-      let url = fresh ? cached.url : null;
-      if (!url) {
-        url = await getPhotoUrl(path);
-        if (url) _thumbCache.set(path, { url, fetchedAt: Date.now() });
-      }
+      const url = await getCachedPhotoUrl(path);
       if (url) {
         img.src = url;
         img.closest(".entryThumbWrap")?.classList.add("loaded");

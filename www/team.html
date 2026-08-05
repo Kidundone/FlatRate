@@ -797,8 +797,8 @@
   $("jobDrawer").addEventListener("click", (e) => { if (e.target === $("jobDrawer")) closeJob(); });
 
   function closeJob() {
-    const img = $("jdPhotoBox").querySelector("img");
-    if (img?.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
+    // Not revoking the blob: URL here — it's cache-owned now (_jobPhotoCache
+    // above) and reused if the same job's photo is reopened later.
     $("jdPhotoBox").innerHTML = "";
     $("jobDrawer").style.display = "none";
   }
@@ -828,10 +828,22 @@
     await loadJobPhoto(l);
   }
 
+  // Reopening the same job (or clicking through several jobs on the same RO)
+  // used to re-download the full photo from scratch every time. Cache the
+  // blob: URL per path so a repeat view is instant instead of a fresh fetch.
+  const _jobPhotoCache = new Map(); // photo_path -> blob url
+  const _JOB_PHOTO_CACHE_MAX = 40;
+
   async function loadJobPhoto(l) {
     const box = $("jdPhotoBox");
     if (!l.photo_path) {
       box.innerHTML = `<div class="jd-nophoto">No photo attached to this job.</div>`;
+      return;
+    }
+    const cachedUrl = _jobPhotoCache.get(l.photo_path);
+    if (cachedUrl) {
+      box.innerHTML = `<a href="${cachedUrl}" target="_blank" rel="noopener"><img src="${cachedUrl}" alt="Proof photo for this job" /></a>
+        <div class="jd-photo-hint">Tap to open full size</div>`;
       return;
     }
     box.innerHTML = `<div class="cell-muted">Loading photo…</div>`;
@@ -841,6 +853,12 @@
       const { data: blob, error } = await db.storage.from("proofs").download(l.photo_path);
       if (error) throw error;
       const url = URL.createObjectURL(blob);
+      if (_jobPhotoCache.size >= _JOB_PHOTO_CACHE_MAX) {
+        const oldestKey = _jobPhotoCache.keys().next().value;
+        URL.revokeObjectURL(_jobPhotoCache.get(oldestKey));
+        _jobPhotoCache.delete(oldestKey);
+      }
+      _jobPhotoCache.set(l.photo_path, url);
       box.innerHTML = `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Proof photo for this job" /></a>
         <div class="jd-photo-hint">Tap to open full size</div>`;
     } catch (err) {

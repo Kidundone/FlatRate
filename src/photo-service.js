@@ -85,6 +85,12 @@ async function uploadProofPhoto({ sb, empId, logId, file, roNumber = null }) {
     .upload(path, uploadBlob, {
       contentType: "image/jpeg",
       upsert: true,
+      // Defense-in-depth alongside the client-side URL cache: lets any CDN/
+      // edge layer between Supabase and the client cache the bytes for a
+      // while too. Kept moderate (1 hour, not "immutable forever") since a
+      // retaken photo overwrites the same path with upsert:true — too long
+      // a value would risk serving stale bytes after a retake.
+      cacheControl: "3600",
     });
 
   if (error) throw error;
@@ -364,7 +370,7 @@ async function viewPhotoById(id) {
     return;
   }
 
-  const url = await getPhotoUrl(path);
+  const url = await getCachedPhotoUrl(path);
 
   // whatever modal you already use:
   openPhotoModal(url, path);
@@ -396,17 +402,17 @@ function openPhotoModal(url, pathLabel) {
 async function openPhoto(row) {
   const path = row?.photo_path || row?.photoPath;
   if (!path) return toast("No photo saved.");
-  const url = await getPhotoUrl(path);
+  const url = await getCachedPhotoUrl(path);
   openPhotoModal(url, path);
 }
 
 function closePhotoModal(){
   const shell = document.getElementById("photoModal");
   const img = document.getElementById("photoImg");
-  if (img) {
-    if (img.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
-    img.src = "";
-  }
+  // Not revoking blob: URLs here anymore — they're owned by the shared photo
+  // cache now (see getCachedPhotoUrl in main-page.js) and reused if the same
+  // photo is reopened. The cache revokes its own entries when it evicts them.
+  if (img) img.src = "";
   if (shell) {
     shell.classList.remove("open");
     shell.style.display = "";
@@ -415,7 +421,7 @@ function closePhotoModal(){
 }
 
 async function entryPhotoUrl(entry) {
-  return getPhotoUrl(entry?.photo_path);
+  return getCachedPhotoUrl(entry?.photo_path);
 }
 
 function entryHasPhoto(entry) {
@@ -521,7 +527,7 @@ async function openPhotoViewer(e){
 
   if (!e?.photo_path) return toast("No photo saved.");
 
-  const url = await getPhotoUrl(e.photo_path);
+  const url = await getCachedPhotoUrl(e.photo_path);
 
   applyPhotoLoadGuard(img, e.photo_path);
   img.src = url;
@@ -538,10 +544,8 @@ function closePhotoViewer(){
   const shell = document.getElementById("photoViewer");
   if (!shell) return;
   const img = document.getElementById("photoFull");
-  if (img) {
-    if (img.src?.startsWith("blob:")) URL.revokeObjectURL(img.src);
-    img.src = "";
-  }
+  // Same as closePhotoModal — the blob: URL is cache-owned now, not revoked here.
+  if (img) img.src = "";
   shell.classList.remove("open");
   shell.style.display = "none";
 }
