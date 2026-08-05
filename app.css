@@ -2041,6 +2041,28 @@ a.btn {
   letter-spacing: -.3px;
 }
 
+/* Persistent entry point to the Team dashboard — sits above the tab panels so
+   it's visible no matter which More sub-tab is open, since it was previously
+   only reachable from a buried Settings row or a tech-only "join" prompt. */
+.teamEntryBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  transition: transform 130ms cubic-bezier(.34,1.56,.64,1);
+}
+.teamEntryBanner:active { transform: scale(.985); }
+.teamEntryIcon { font-size: 22px; flex: 0 0 auto; line-height: 1; }
+.teamEntryBody { flex: 1; min-width: 0; }
+.teamEntryTitle { display: block; font-size: 14.5px; font-weight: 700; color: var(--text); }
+.teamEntrySub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.teamEntryGo { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+
 .moreCard { padding: 0; overflow: hidden; }
 
 .moreCardHeader {
