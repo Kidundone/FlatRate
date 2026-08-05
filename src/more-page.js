@@ -2742,6 +2742,7 @@ function startMoreTour() {
   function positionSpotlight(sel) {
     const spotlight = document.getElementById("tourSpotlight");
     if (!spotlight) return;
+    stopSpotlightTracking(spotlight);
     if (!sel) {
       spotlight.style.display = "none";
       spotlight.classList.remove("pulse");
@@ -2750,16 +2751,16 @@ function startMoreTour() {
       return;
     }
     const target = document.querySelector(sel);
-    if (!target) { spotlight.style.display = "none"; return; }
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (!target) {
+      spotlight.style.display = "none";
+      overlay.style.background = "rgba(0,0,0,0.72)";
+      overlay.classList.remove("tour-has-target");
+      return;
+    }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    setTimeout(() => {
-      const r = target.getBoundingClientRect();
-      const pad = 8;
-      spotlight.style.cssText = `display:block;top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;`;
-      spotlight.classList.add("pulse");
-    }, 300);
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    trackSpotlight(spotlight, target);
   }
 
   function runAction(actionStr) {
@@ -2819,7 +2820,11 @@ function startMoreTour() {
     overlay.style.background = "";
     overlay.classList.remove("tour-has-target");
     const spotlight = document.getElementById("tourSpotlight");
-    if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
+    if (spotlight) {
+      stopSpotlightTracking(spotlight);
+      spotlight.style.cssText = "display:none;";
+      spotlight.classList.remove("pulse");
+    }
     localStorage.setItem("fr_tour_done", "1");
     // Nudge PWA install if not yet installed
     if (window.__FR?.canInstall?.()) {

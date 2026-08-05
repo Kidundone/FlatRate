@@ -7602,6 +7602,58 @@ function maybeStartTour() {
   startTour();
 }
 
+// ── Shared spotlight positioning (used by the main tour and the More tour) ──
+// A fixed setTimeout guess for "has the smooth scroll finished" was the
+// source of the highlight box landing on the wrong spot: on a slow scroll,
+// a tab switch, or a details panel popping open, the guessed delay could
+// fire before layout actually settled, so the box got measured and locked
+// in mid-transition — a step or two off from the real element underneath.
+// This instead redraws every frame and only "locks in" (adds the pulse)
+// once the target's position holds steady for a few frames in a row, then
+// keeps tracking live so a later layout shift (keyboard, resize) doesn't
+// leave it stranded.
+function stopSpotlightTracking(spotlight) {
+  if (spotlight._rafId) { cancelAnimationFrame(spotlight._rafId); spotlight._rafId = null; }
+  spotlight._trackCleanup?.();
+  spotlight._trackCleanup = null;
+}
+
+function trackSpotlight(spotlight, target) {
+  const pad = 8;
+  const draw = () => {
+    const r = target.getBoundingClientRect();
+    spotlight.style.cssText = `display:block;top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
+  };
+
+  let stableFrames = 0, lastTop = null, lastLeft = null, frames = 0;
+  const MAX_FRAMES = 60; // ~1s safety cap at 60fps, in case it never truly settles
+
+  function tick() {
+    draw();
+    const r = target.getBoundingClientRect();
+    frames++;
+    if (lastTop !== null && Math.abs(r.top - lastTop) < 0.5 && Math.abs(r.left - lastLeft) < 0.5) {
+      stableFrames++;
+    } else {
+      stableFrames = 0;
+    }
+    lastTop = r.top; lastLeft = r.left;
+    if (stableFrames >= 3 || frames >= MAX_FRAMES) {
+      spotlight.classList.add("pulse");
+      const onMove = () => draw();
+      window.addEventListener("scroll", onMove, { passive: true, capture: true });
+      window.addEventListener("resize", onMove);
+      spotlight._trackCleanup = () => {
+        window.removeEventListener("scroll", onMove, { capture: true });
+        window.removeEventListener("resize", onMove);
+      };
+      return;
+    }
+    spotlight._rafId = requestAnimationFrame(tick);
+  }
+  spotlight._rafId = requestAnimationFrame(tick);
+}
+
 function startTour(force = false) {
   if (!force && localStorage.getItem("fr_tour_done")) return;
   const overlay  = document.getElementById("tourOverlay");
@@ -7625,6 +7677,7 @@ function startTour(force = false) {
   function positionSpotlight(elSel) {
     const spotlight = document.getElementById("tourSpotlight");
     if (!spotlight) return;
+    stopSpotlightTracking(spotlight);
     if (!elSel) {
       spotlight.style.display = "none";
       spotlight.classList.remove("pulse");
@@ -7639,15 +7692,10 @@ function startTour(force = false) {
       overlay.classList.remove("tour-has-target");
       return;
     }
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    setTimeout(() => {
-      const r = target.getBoundingClientRect();
-      const pad = 8;
-      spotlight.style.cssText = `display:block;top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
-      spotlight.classList.add("pulse");
-    }, 260);
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    trackSpotlight(spotlight, target);
   }
 
   function show(idx) {
@@ -7676,7 +7724,11 @@ function startTour(force = false) {
     overlay.style.background = "";
     overlay.classList.remove("tour-has-target");
     const spotlight = document.getElementById("tourSpotlight");
-    if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
+    if (spotlight) {
+      stopSpotlightTracking(spotlight);
+      spotlight.style.cssText = "display:none;";
+      spotlight.classList.remove("pulse");
+    }
     localStorage.setItem("fr_tour_done", "1");
     // Nudge PWA install if not yet installed
     if (window.__FR?.canInstall?.()) {
@@ -11436,6 +11488,7 @@ function startMoreTour() {
   function positionSpotlight(sel) {
     const spotlight = document.getElementById("tourSpotlight");
     if (!spotlight) return;
+    stopSpotlightTracking(spotlight);
     if (!sel) {
       spotlight.style.display = "none";
       spotlight.classList.remove("pulse");
@@ -11444,16 +11497,16 @@ function startMoreTour() {
       return;
     }
     const target = document.querySelector(sel);
-    if (!target) { spotlight.style.display = "none"; return; }
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (!target) {
+      spotlight.style.display = "none";
+      overlay.style.background = "rgba(0,0,0,0.72)";
+      overlay.classList.remove("tour-has-target");
+      return;
+    }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    setTimeout(() => {
-      const r = target.getBoundingClientRect();
-      const pad = 8;
-      spotlight.style.cssText = `display:block;top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;`;
-      spotlight.classList.add("pulse");
-    }, 300);
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    trackSpotlight(spotlight, target);
   }
 
   function runAction(actionStr) {
@@ -11513,7 +11566,11 @@ function startMoreTour() {
     overlay.style.background = "";
     overlay.classList.remove("tour-has-target");
     const spotlight = document.getElementById("tourSpotlight");
-    if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
+    if (spotlight) {
+      stopSpotlightTracking(spotlight);
+      spotlight.style.cssText = "display:none;";
+      spotlight.classList.remove("pulse");
+    }
     localStorage.setItem("fr_tour_done", "1");
     // Nudge PWA install if not yet installed
     if (window.__FR?.canInstall?.()) {
