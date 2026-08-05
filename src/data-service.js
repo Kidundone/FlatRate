@@ -238,7 +238,8 @@ function wireAuthUI() {
     setAuthMessage("Sending reset email...");
     setBusy(true, "reset");
     try {
-      const { error } = await client.auth.resetPasswordForEmail(email);
+      const callbackUrl = new URL("./auth-callback.html", window.location.href).href;
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: callbackUrl });
       if (error) return setAuthMessage(error.message, true);
       setAuthMessage("Password reset email sent. Check your inbox.");
     } catch (e) {

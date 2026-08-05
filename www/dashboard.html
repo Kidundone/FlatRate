@@ -124,6 +124,7 @@
     <input id="gatePass"  type="password" class="auth-input" placeholder="Password" />
     <button class="auth-btn" id="gateSignIn">Sign In</button>
     <div id="gateErr" class="auth-err"></div>
+    <a href="#" id="gateForgotBtn" style="text-align:center;font-size:13px;color:var(--primary);">Forgot password?</a>
   </div>
 </div>
 
@@ -226,7 +227,7 @@
     const email = document.getElementById("gateEmail").value.trim();
     const pass  = document.getElementById("gatePass").value;
     const errEl = document.getElementById("gateErr");
-    errEl.style.display = "none";
+    errEl.style.display = "none"; errEl.style.color = "";
     const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
     if (error || !ADMIN_EMAILS.includes(data?.user?.email)) {
       errEl.textContent = error?.message || "Access denied.";
@@ -239,6 +240,24 @@
 
   document.getElementById("gatePass").addEventListener("keydown", e => {
     if (e.key === "Enter") document.getElementById("gateSignIn").click();
+  });
+
+  document.getElementById("gateForgotBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById("gateErr");
+    errEl.style.display = "none";
+    const email = document.getElementById("gateEmail").value.trim();
+    if (!email) { errEl.textContent = "Enter your email above first."; errEl.style.display = ""; return; }
+    const btn = document.getElementById("gateForgotBtn");
+    const orig = btn.textContent;
+    btn.textContent = "Sending…";
+    const callbackUrl = new URL("./auth-callback.html", window.location.href).href;
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: callbackUrl });
+    btn.textContent = orig;
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    errEl.style.color = "var(--accent)";
+    errEl.textContent = "Check your email for a reset link.";
+    errEl.style.display = "";
   });
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {

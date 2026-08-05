@@ -88,6 +88,8 @@
     .panel-title { font-size: 15px; font-weight: 700; }
     .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .btn-sm:hover { color: var(--primary); border-color: var(--primary); }
+    .btn-sm:disabled { opacity: .5; cursor: default; }
+    .roster-actions { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
 
     .chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding-top: 6px; }
     .chart-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
@@ -227,6 +229,7 @@
     <input id="gatePass" class="input" type="password" placeholder="Password" autocomplete="current-password" />
     <div id="gateErr" class="err" style="text-align:center;"></div>
     <button id="gateSignIn" class="btn primary" type="button">Sign In</button>
+    <a href="#" id="gateForgotBtn" style="text-align:center;font-size:13px;">Forgot password?</a>
     <a href="./index.html" style="text-align:center;font-size:13px;">← Back to app</a>
   </div>
 </div>
@@ -344,11 +347,12 @@
             <th class="num" data-sort="pay">Earnings</th>
             <th class="num" data-sort="hrsPerDay" title="Flat hours per day worked">Hrs/Day</th>
             <th class="num" data-sort="comebackPct" title="Share of this tech's jobs marked as comebacks">CB&nbsp;%</th>
+            <th></th>
           </tr></thead>
           <tbody id="memberRows"></tbody>
         </table>
       </div>
-      <div class="table-note">Tap a column to sort. Hrs/Day counts only days a tech logged work.</div>
+      <div class="table-note">Tap a column to sort. Hrs/Day counts only days a tech logged work. Promote a co-manager before removing anyone — a shop always needs at least one.</div>
     </div>
 
     <div class="panel">
@@ -498,7 +502,7 @@
   }
 
   $("gateSignIn").addEventListener("click", async () => {
-    const errEl = $("gateErr"); errEl.style.display = "none";
+    const errEl = $("gateErr"); errEl.style.display = "none"; errEl.style.color = "";
     const { data, error } = await db.auth.signInWithPassword({
       email: $("gateEmail").value.trim(),
       password: $("gatePass").value,
@@ -509,6 +513,23 @@
     await loadShop();
   });
   $("gatePass").addEventListener("keydown", e => { if (e.key === "Enter") $("gateSignIn").click(); });
+
+  $("gateForgotBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const errEl = $("gateErr"); errEl.style.display = "none";
+    const email = $("gateEmail").value.trim();
+    if (!email) { errEl.textContent = "Enter your email above first."; errEl.style.display = ""; return; }
+    const btn = $("gateForgotBtn");
+    const orig = btn.textContent;
+    btn.textContent = "Sending…";
+    const callbackUrl = new URL("./auth-callback.html", window.location.href).href;
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: callbackUrl });
+    btn.textContent = orig;
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    errEl.style.color = "var(--accent)";
+    errEl.textContent = "Check your email for a reset link.";
+    errEl.style.display = "";
+  });
 
   /* ── Shop state ── */
   async function loadShop() {
@@ -610,7 +631,11 @@
       ? `Leave ${SHOP.name}? You're the only member — you can always create a new shop later, but you won't be able to rejoin this one as manager.`
       : `Leave ${SHOP.name}?`;
     if (!confirm(msg)) return;
-    await db.from("shop_members").delete().eq("shop_id", SHOP.id).eq("user_id", UID);
+    // The client-side check above is just a fast UX guard — leave_shop()
+    // enforces the same "always keep one manager" rule server-side, so it
+    // can't be bypassed by calling the API directly.
+    const { error } = await db.rpc("leave_shop");
+    if (error) { alert(error.message); return; }
     SHOP = null; MY_ROLE = null;
     show("shopView", false);
     await loadShop();
@@ -852,8 +877,43 @@
       <td class="num">${money(r.pay)}</td>
       <td class="num">${r.hrsPerDay ? r.hrsPerDay.toFixed(1) : "—"}</td>
       <td class="num ${r.comebackPct >= 10 && r.jobs >= 3 ? "flag-cb" : ""}">${r.jobs ? r.comebackPct + "%" : "—"}</td>
-    </tr>`).join("") || `<tr><td colspan="6" class="empty">No members yet</td></tr>`;
+      <td class="roster-actions">${r.uid === UID ? "" : `
+        <button type="button" class="btn-sm" data-role-toggle="${esc(r.uid)}" data-current-role="${esc(r.role)}">${r.role === "manager" ? "Demote" : "Promote"}</button>
+        <button type="button" class="btn-sm danger" data-remove-member="${esc(r.uid)}" data-member-name="${esc(r.name)}">Remove</button>
+      `}</td>
+    </tr>`).join("") || `<tr><td colspan="7" class="empty">No members yet</td></tr>`;
   }
+
+  $("memberRows").addEventListener("click", async (e) => {
+    const promoteBtn = e.target.closest("[data-role-toggle]");
+    if (promoteBtn) {
+      const uid = promoteBtn.dataset.roleToggle;
+      const nextRole = promoteBtn.dataset.currentRole === "manager" ? "tech" : "manager";
+      const verb = nextRole === "manager" ? "Promote" : "Demote";
+      if (!confirm(`${verb} this person to ${nextRole}?`)) return;
+      promoteBtn.disabled = true;
+      const { error } = await db.rpc("set_member_role", { p_shop: SHOP.id, p_user: uid, p_role: nextRole });
+      promoteBtn.disabled = false;
+      if (error) { alert(error.message); return; }
+      const roster = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", SHOP.id);
+      MEMBERS = roster.data || [];
+      await renderTeam();
+      return;
+    }
+    const removeBtn = e.target.closest("[data-remove-member]");
+    if (removeBtn) {
+      const uid = removeBtn.dataset.removeMember;
+      const name = removeBtn.dataset.memberName || "this person";
+      if (!confirm(`Remove ${name} from ${SHOP.name}? They'll need a new invite code to rejoin.`)) return;
+      removeBtn.disabled = true;
+      const { error } = await db.rpc("remove_member", { p_shop: SHOP.id, p_user: uid });
+      removeBtn.disabled = false;
+      if (error) { alert(error.message); return; }
+      const roster = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", SHOP.id);
+      MEMBERS = roster.data || [];
+      await renderTeam();
+    }
+  });
 
   function drawOutputChart(logs, from, to) {
     const byDay = new Map();
@@ -1143,7 +1203,7 @@
     {
       el: "#memberRows",
       title: "Your Roster",
-      body: "Every tech's jobs, hours, earnings, and comeback rate for the period. Tap a column header to sort — Hrs/Day and CB% are good ones to watch.",
+      body: "Every tech's jobs, hours, earnings, and comeback rate for the period. Tap a column header to sort — Hrs/Day and CB% are good ones to watch. Promote or remove anyone from here too — just always keep at least one manager.",
     },
     {
       el: "#exportTeamBtn",

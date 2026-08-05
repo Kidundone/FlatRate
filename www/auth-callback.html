@@ -101,8 +101,70 @@
       const client = window.supabase.createClient(cfg.url, cfg.anonKey);
       const el = document.getElementById("cbContent");
       let settled = false;
+      // Checked synchronously from the URL itself (Supabase puts
+      // type=recovery in the hash or query string) rather than relying on
+      // the PASSWORD_RECOVERY auth event alone — event timing vs. the
+      // getSession() promise isn't guaranteed, and a race there would let
+      // "You're in!" render first and lock out the actual reset form.
+      let isRecovery = /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+
+      // A password-reset link lands here the same way a signup-confirmation
+      // link does (both hand back a session) — without this branch, someone
+      // resetting their password saw "You're in! Follow these steps…" with
+      // no way to actually set a new password. onAuthStateChange fires
+      // PASSWORD_RECOVERY specifically for this case, ahead of the generic
+      // SIGNED_IN handling below.
+      function showRecoveryForm() {
+        if (settled) return;
+        settled = true;
+        el.innerHTML = `
+          <div class="cb-icon">🔑</div>
+          <div class="cb-title">Set a new password</div>
+          <div class="cb-sub">Choose a new password for your account.</div>
+          <div style="width:100%;text-align:left;">
+            <input id="newPw" type="password" placeholder="New password (min 6 characters)"
+              autocomplete="new-password"
+              style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--stroke2, #333);background:var(--surface2,#242427);color:#fff;font-size:15px;margin-bottom:10px;box-sizing:border-box;" />
+            <input id="newPw2" type="password" placeholder="Confirm new password"
+              autocomplete="new-password"
+              style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--stroke2, #333);background:var(--surface2,#242427);color:#fff;font-size:15px;margin-bottom:14px;box-sizing:border-box;" />
+            <div id="pwErr" style="color:#ed4956;font-size:13px;margin-bottom:12px;display:none;"></div>
+            <button id="pwSaveBtn" type="button" class="btn primary cb-cta">Save new password</button>
+          </div>
+        `;
+        const pw1 = document.getElementById("newPw");
+        const pw2 = document.getElementById("newPw2");
+        const err = document.getElementById("pwErr");
+        const btn = document.getElementById("pwSaveBtn");
+        const showErr = (msg) => { err.textContent = msg; err.style.display = ""; };
+        const submit = async () => {
+          err.style.display = "none";
+          const a = pw1.value, b = pw2.value;
+          if (!a || a.length < 6) return showErr("Password must be at least 6 characters.");
+          if (a !== b) return showErr("Passwords don't match.");
+          btn.disabled = true;
+          btn.textContent = "Saving…";
+          const { error } = await client.auth.updateUser({ password: a });
+          if (error) {
+            btn.disabled = false;
+            btn.textContent = "Save new password";
+            return showErr(error.message);
+          }
+          settled = false; // allow showSuccess to render over this
+          el.innerHTML = `
+            <div class="cb-icon">✅</div>
+            <div class="cb-title">Password updated</div>
+            <div class="cb-sub">You're signed in with your new password.</div>
+            <a class="btn primary cb-cta" href="./index.html">Continue to the app</a>
+          `;
+          settled = true;
+        };
+        btn.addEventListener("click", submit);
+        pw2.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      }
 
       function showSuccess(session) {
+        if (isRecovery) return; // recovery flow owns the screen once triggered
         if (settled) return;
         settled = true;
         const email = session?.user?.email || "";
@@ -142,13 +204,28 @@
         `;
       }
 
-      // onAuthStateChange fires SIGNED_IN when the hash tokens are processed
+      // Known from the URL already — show the form right away rather than
+      // waiting on the PASSWORD_RECOVERY event. Supabase's client detects
+      // and establishes the recovery session from the URL on init
+      // (detectSessionInUrl), so updateUser() below works regardless.
+      if (isRecovery) showRecoveryForm();
+
+      // onAuthStateChange fires SIGNED_IN when the hash tokens are processed,
+      // or PASSWORD_RECOVERY specifically when the link came from a
+      // "reset your password" email — kept as a safety net in case the URL
+      // check above ever misses a variant Supabase uses for this.
       client.auth.onAuthStateChange(function (event, session) {
-        if (session) showSuccess(session);
+        if (event === "PASSWORD_RECOVERY") {
+          isRecovery = true;
+          showRecoveryForm();
+          return;
+        }
+        if (session && !isRecovery) showSuccess(session);
       });
 
       // getSession triggers hash processing in Supabase v2; also covers direct navigation
       client.auth.getSession().then(function (r) {
+        if (isRecovery) return;
         if (r.data && r.data.session) {
           showSuccess(r.data.session);
         } else {
