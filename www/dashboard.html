@@ -207,7 +207,7 @@
 <script src="./vendor/supabase.js"></script>
 <script>
 (function () {
-  const ADMIN_EMAIL = "eamnelsonmalloy@yahoo.com";
+  const ADMIN_EMAILS = ["eamnelsonmalloy@yahoo.com", "eamnelsonmalloy@icloud.com"];
   const cfg = window.__SUPABASE_CONFIG__;
   const db  = window.supabase.createClient(cfg.url, cfg.anonKey);
 
@@ -228,7 +228,7 @@
     const errEl = document.getElementById("gateErr");
     errEl.style.display = "none";
     const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
-    if (error || data?.user?.email !== ADMIN_EMAIL) {
+    if (error || !ADMIN_EMAILS.includes(data?.user?.email)) {
       errEl.textContent = error?.message || "Access denied.";
       errEl.style.display = "";
       if (data?.session) await db.auth.signOut();
@@ -250,7 +250,7 @@
 
   /* ── Check existing session ── */
   db.auth.getSession().then(({ data }) => {
-    if (data?.session?.user?.email === ADMIN_EMAIL) showDashboard();
+    if (ADMIN_EMAILS.includes(data?.session?.user?.email)) showDashboard();
   });
 
   function showDashboard() {
