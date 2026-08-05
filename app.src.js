@@ -7112,7 +7112,7 @@ const TOUR_STEPS = [
   {
     el: '.tabItem[data-spa-page="stats"]',
     title: "Stats → Your Breakdown",
-    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range.",
+    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range. Scroll down to the Job Scorecard to see which job types actually pay best.",
   },
   {
     el: '.tabItem[data-spa-page="more"]',
@@ -11293,6 +11293,11 @@ window.initOweMe = initOweMe;
 
 /* ── More-page continuation tour ─────────────────── */
 const MORE_TOUR_STEPS = [
+  {
+    el: ".teamEntryBanner",
+    title: "Run a Shop, or on a Team? 🧑‍🔧",
+    body: "Tap this any time — create a shop and get an invite code for your techs, or join one your manager already set up. Managers get a full dashboard: every tech's jobs, hours, and pay in one place.",
+  },
   /* ── Job Types tab ─────────────────────── */
   {
     el: "#moreTabBar",
@@ -11312,6 +11317,12 @@ const MORE_TOUR_STEPS = [
     body: "All your saved templates live here. Pencil icon edits hours or rate. Trash deletes it. Hit Select to pick multiples and wipe them in one shot.",
     action: "switch-tab:jobs",
   },
+  {
+    el: "#typeCleanupScanBtn",
+    title: "Clean Up Messy Job Types 🧹",
+    body: "Typed 'pdi', 'P.D.I.', and 'pre delivery insp' as three different jobs? Tap Scan and I'll spot the ones that mean the same thing and let you merge them — so your stats aren't split across duplicates.",
+    action: "switch-tab:jobs;open-details:typeCleanupDetails",
+  },
   /* ── History tab ───────────────────────── */
   {
     el: "#insightsCard",
@@ -11322,7 +11333,7 @@ const MORE_TOUR_STEPS = [
   {
     el: "#entrySearchInput",
     title: "Search Every Job You've Logged",
-    body: "Type a job name, RO number, date — anything. Your full history filters in real time. Great for pulling up a specific car or disputing a flagged job.",
+    body: "Type a job name, RO number, STK number, VIN, date — anything. Your full history filters in real time, and every entry has its proof photo one tap away. Great for pulling up a specific car or disputing a flagged job.",
     action: "switch-tab:history",
   },
   {
@@ -11330,6 +11341,18 @@ const MORE_TOUR_STEPS = [
     title: "Bulk Delete",
     body: "Tap Select to enter selection mode, check individual rows or tap All, then hit Delete. Good for clearing out test entries after setup.",
     action: "switch-tab:history",
+  },
+  {
+    el: "#lostTimeCard",
+    title: "Where'd the Time Go? ⏳",
+    body: "Clock out with a gap between your shift and your flat hours, and I'll ask what ate it — parts chase, no work, a comeback. Track it here and you'll know exactly what's costing you real hours, not just guess.",
+    action: "switch-tab:history;open-details:lostTimeDetails",
+  },
+  {
+    el: "#requestsDetails",
+    title: "Send It Straight to Your Manager 📮",
+    body: "Missing work, short pay, or need more hours — file it here and it lands in your manager's inbox with a timestamp. Once you've picked the job, tap Draft for me and I'll write it up factual and ready to send.",
+    action: "switch-tab:history;open-details:requestsDetails",
   },
   {
     el: "#oweMeForm",
@@ -11409,7 +11432,15 @@ function startMoreTour() {
     }, 300);
   }
 
-  function runAction(action) {
+  function runAction(actionStr) {
+    if (!actionStr) return;
+    // A step can need more than one thing done before it's spotlight-ready
+    // (switch to the right tab AND pop a collapsed section open) — semicolon
+    // separates independent directives run in order.
+    actionStr.split(";").forEach(runOneAction);
+  }
+
+  function runOneAction(action) {
     if (!action) return;
     if (action.startsWith("switch-tab:")) {
       const tabName = action.split(":")[1];
@@ -11418,6 +11449,14 @@ function startMoreTour() {
     if (action === "open-paystub") {
       document.querySelector('.moreTab[data-tab="settings"]')?.click();
       const det = document.getElementById("payStubDetails");
+      if (det && !det.open) det.open = true;
+    }
+    // Generic: force open a collapsed <details> section so its content has
+    // real dimensions to spotlight — a closed <details> renders its children
+    // with a zero-size box, which would otherwise leave the tour highlighting
+    // nothing.
+    if (action.startsWith("open-details:")) {
+      const det = document.getElementById(action.split(":")[1]);
       if (det && !det.open) det.open = true;
     }
   }

@@ -3783,7 +3783,7 @@ const TOUR_STEPS = [
   {
     el: '.tabItem[data-spa-page="stats"]',
     title: "Stats → Your Breakdown",
-    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range.",
+    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range. Scroll down to the Job Scorecard to see which job types actually pay best.",
   },
   {
     el: '.tabItem[data-spa-page="more"]',
