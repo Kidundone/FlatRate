@@ -61,6 +61,7 @@
     .badge-manager { background: rgba(0,149,246,.15); color: var(--primary); }
     .badge-tech    { background: rgba(41,217,165,.15); color: var(--accent); }
 
+    .inviteRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
     .invite-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px dashed var(--stroke2); border-radius: var(--r); padding: 8px 14px; font-weight: 800; letter-spacing: .2em; font-size: 16px; cursor: pointer; }
     .invite-chip small { letter-spacing: 0; font-weight: 500; color: var(--muted2); }
 
@@ -220,8 +221,9 @@
     </div>
   </div>
 
-  <div id="inviteRow" style="display:none;margin-bottom:22px;">
-    <span class="invite-chip" id="inviteChip" title="Tap to copy">
+  <div id="inviteRow" class="inviteRow" style="display:none;">
+    <button class="btn primary" id="inviteShareBtn" type="button">📲 Invite a tech</button>
+    <span class="invite-chip" id="inviteChip" title="Tap to copy code">
       <span id="inviteCode"></span><small>tap to copy</small>
     </span>
   </div>
@@ -459,6 +461,28 @@
     try { await navigator.clipboard.writeText(SHOP?.invite_code || ""); $("inviteChip").querySelector("small").textContent = "copied!"; }
     catch { /* older browsers */ }
     setTimeout(() => { $("inviteChip").querySelector("small").textContent = "tap to copy"; }, 1500);
+  });
+
+  // One tap: bundles the app link + this shop's invite code into a single
+  // message a manager can text/email a new hire, instead of relaying the
+  // download link and the code separately.
+  $("inviteShareBtn").addEventListener("click", async () => {
+    const code = SHOP?.invite_code || "";
+    const shopName = SHOP?.name || "our shop";
+    const url = "https://app.nellylabs.dev/landing.html";
+    const text = `Join ${shopName} on Flatrate Buddy — the free app for tracking flat-rate jobs and catching short pay.\n\n1. Get the app: ${url}\n2. Open Team → Join a shop\n3. Enter invite code: ${code}`;
+    const btn = $("inviteShareBtn");
+    if (navigator.share) {
+      try { await navigator.share({ title: "Join us on Flatrate Buddy", text, url }); return; } catch { /* user cancelled or unsupported — fall through */ }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = "Copied — paste to send!";
+      setTimeout(() => { btn.textContent = orig; }, 1800);
+    } catch {
+      alert(text);
+    }
   });
 
   /* ── Create / join ── */
