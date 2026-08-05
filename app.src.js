@@ -6353,12 +6353,12 @@ function filterEntriesByEmp(entries, empId, allowAll = false){
 }
 
 async function requireAdmin() {
-  // TODO: This passcode is visible in the client bundle. Move admin export
-  // behind a server-side check (e.g. Supabase Edge Function) before shipping
-  // to production. This is an obscurity-only gate, not a security control.
-  const ADMIN_PASSCODE = "0231";
-  const pass = prompt("Admin export. Enter passcode:");
-  return pass === ADMIN_PASSCODE;
+  // Was a hardcoded passcode ("0231") sitting in plain text in the client
+  // bundle — visible to anyone who opened DevTools, not a real gate. Now
+  // tied to the actual signed-in account via isAdminAccount() (same
+  // allowlist used for the Pro bypass), so it's a real identity check
+  // instead of a guessable string.
+  return typeof isAdminAccount === "function" && isAdminAccount();
 }
 
 function rangeSubLabel(mode){

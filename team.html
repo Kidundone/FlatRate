@@ -595,7 +595,21 @@
 
   $("leaveBtn").addEventListener("click", async () => {
     if (!SHOP) return;
-    if (!confirm(`Leave ${SHOP.name}?`)) return;
+    // There's no "promote to manager" or "remove a tech" tool yet, so if the
+    // sole manager leaves while techs are still attached, the shop goes
+    // permanently headless — no one left who can pass is_shop_manager(),
+    // and rejoining via invite code only ever grants 'tech'. Block that
+    // specific case instead of letting it silently lock everyone out.
+    const managerCount = MEMBERS.filter(m => m.role === "manager").length;
+    const isSoleManager = MY_ROLE === "manager" && managerCount <= 1;
+    if (isSoleManager && MEMBERS.length > 1) {
+      alert(`You're the only manager of ${SHOP.name}. Leaving now would lock out the other ${MEMBERS.length - 1} member${MEMBERS.length - 1 === 1 ? "" : "s"} — nobody would be left who can manage the shop. There's no way to hand off manager access yet, so hold off leaving until that's built, or reach out about it.`);
+      return;
+    }
+    const msg = isSoleManager
+      ? `Leave ${SHOP.name}? You're the only member — you can always create a new shop later, but you won't be able to rejoin this one as manager.`
+      : `Leave ${SHOP.name}?`;
+    if (!confirm(msg)) return;
     await db.from("shop_members").delete().eq("shop_id", SHOP.id).eq("user_id", UID);
     SHOP = null; MY_ROLE = null;
     show("shopView", false);
