@@ -707,7 +707,23 @@ async function scanPhotoAndPrefillForm(file) {
 
   const hideAlts = () => { if (altChips) { altChips.innerHTML = ""; altChips.style.display = "none"; } };
 
-  const showAltJobChips = (altJobs) => {
+  // Book time printed directly on the document beats a remembered average —
+  // it reflects what THIS job actually pays, not what similar jobs paid before.
+  const _applyOcrHours = (jobName, jobHours) => {
+    const v = jobHours && Number(jobHours[jobName]);
+    const hoursEl = document.getElementById("hours");
+    if (Number.isFinite(v) && v > 0 && hoursEl) {
+      hoursEl.value = String(v);
+      // Marks it "already filled from a trusted source" so the saved
+      // per-type-default autofill (wired to typeText's change event) doesn't
+      // clobber it with a stale remembered average.
+      hoursEl.dataset.touched = "1";
+      return true;
+    }
+    return false;
+  };
+
+  const showAltJobChips = (altJobs, jobHours) => {
     if (!altChips || !altJobs.length || !typeEl) return;
     altChips.innerHTML = "";
     for (const j of altJobs) {
@@ -720,6 +736,11 @@ async function scanPhotoAndPrefillForm(file) {
         if (typeEl) {
           typeEl.value = j;
           typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+          // Switching jobs means any hours filled for the previous pick no
+          // longer apply — let the change handler re-decide from scratch.
+          const hoursEl = document.getElementById("hours");
+          if (hoursEl) delete hoursEl.dataset.touched;
+          _applyOcrHours(j, jobHours);
           typeEl.dispatchEvent(new Event("change", { bubbles: true }));
         }
         hideAlts();
@@ -741,7 +762,7 @@ async function scanPhotoAndPrefillForm(file) {
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
 
-    const { ro, vin, stk, jobs } = result || {};
+    const { ro, vin, stk, jobs, jobHours } = result || {};
     const filled = [];
 
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
@@ -773,11 +794,16 @@ async function scanPhotoAndPrefillForm(file) {
       const bestJob = ranked[0];
       typeEl.value = bestJob;
       typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      // If the document itself printed book time for this job, fill it before
+      // the change event fires — see _applyOcrHours for why this beats the
+      // saved per-type average.
+      const gotOcrHours = _applyOcrHours(bestJob, jobHours);
       typeEl.dispatchEvent(new Event("change", { bubbles: true }));
       filled.push(`Job: ${bestJob}`);
+      if (gotOcrHours) filled.push(`Hours: ${jobHours[bestJob]}`);
       // Show remaining jobs as tappable alternative chips
       const alts = ranked.slice(1);
-      if (alts.length) showAltJobChips(alts);
+      if (alts.length) showAltJobChips(alts, jobHours);
     }
 
     if (filled.length) {

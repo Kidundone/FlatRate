@@ -45,10 +45,15 @@ jobs: Array of work items. Rules:
   - For Repair Orders: each LINE OP (A, B, C…) with DESCRIPTIONS/INSTRUCTIONS text = one job entry (under 40 chars)
   - Return [] if nothing found
 
+jobHours: Object mapping a job name from the "jobs" array (EXACT same string) to a numeric flag/book hour value, ONLY when a number is clearly printed right next to that item — labels like "HRS", "HOURS", "FLAT RATE", "TIME", or a bare decimal like ".5" or "1.0" directly beside the line. Rules:
+  - Only include an entry when you can actually see a number for that specific job — do not guess, estimate, or fill in a "typical" time.
+  - Many prep checklists print NO hours at all (just checkboxes) — in that case return {} (empty object), that's expected and fine.
+  - Values are decimal hours (e.g. "30 MIN"→0.5, "1 HR 30 MIN"→1.5). Ignore dollar amounts — only hour/time values.
+
 IGNORE: Handwritten 5-digit numbers in colored marker (tech reach numbers, not RO/VIN/STK).
 
 Return ONLY this JSON, no markdown, no extra text:
-{"ro": "492043", "vin": "5J8YE1H80TL041284", "stk": "A7127", "jobs": ["PDI", "Safety check", "Remove plastics/wash wax"]}`;
+{"ro": "492043", "vin": "5J8YE1H80TL041284", "stk": "A7127", "jobs": ["PDI", "Safety check", "Remove plastics/wash wax"], "jobHours": {"PDI": 1.5}}`;
 
     const geminiBody = JSON.stringify({
       contents: [
@@ -103,7 +108,7 @@ Return ONLY this JSON, no markdown, no extra text:
     const textPart = parts.find((p: any) => p.text && !p.thought) || parts[0];
     const raw = textPart?.text?.trim() || "{}";
 
-    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null; jobs?: string[] } = {};
+    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null; jobs?: string[]; jobHours?: Record<string, unknown> } = {};
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
@@ -111,12 +116,29 @@ Return ONLY this JSON, no markdown, no extra text:
       parsed = {};
     }
 
+    const jobs = Array.isArray(parsed.jobs) ? parsed.jobs : [];
+
+    // Only keep jobHours entries that (a) name a job actually in `jobs` — never
+    // trust a key the model invented — and (b) hold a sane positive number.
+    // Cap at 24h: anything higher is almost certainly a misread, not a real
+    // flag-hour value, and would otherwise silently wreck a tech's pay math.
+    const jobHours: Record<string, number> = {};
+    if (parsed.jobHours && typeof parsed.jobHours === "object") {
+      for (const job of jobs) {
+        const v = Number((parsed.jobHours as Record<string, unknown>)[job]);
+        if (Number.isFinite(v) && v > 0 && v <= 24) {
+          jobHours[job] = Math.round(v * 10) / 10;
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ro: parsed.ro || null,
         vin: parsed.vin || null,
         stk: parsed.stk || null,
-        jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+        jobs,
+        jobHours,
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );

@@ -885,6 +885,7 @@ async function runOnce() {
     initOweMe?.();
     initSettingsUI?.();
     initFeedbackUI?.();
+    window.__FR?.initTypeCleanup?.();
     startMoreTour?.();
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();

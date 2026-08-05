@@ -4875,12 +4875,57 @@ const JOB_TYPE_ALIASES = [
   ["Misc",          /\bmisc\b/i],
 ];
 
+// A few canonicals are known by a short code that isn't just their label with
+// punctuation stripped (e.g. "Dealer Trade" -> "DT"). PDI/SPF already equal
+// their own compact label, so they don't need an entry here.
+const JOB_TYPE_SHORT_CODES = { dt: "Dealer Trade" };
+
+// Aliases this tech has explicitly confirmed via the "Clean up job types"
+// tool (Settings). Keyed by _compactTypeKey(), populated from Supabase at
+// boot by loadCustomTypeAliases() in more-page.js. Checked before anything
+// else, since these are confirmed merges rather than guesses.
+let CUSTOM_TYPE_ALIASES = new Map();
+
+// Strip everything but letters/digits and lowercase, so "P.D.I.", "pdi", and
+// "P-D-I" all collapse to the same "pdi" key.
+function _compactTypeKey(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// First letter of each significant word: "Pre Delivery Insp" -> "pdi". Catches
+// spelled-out abbreviations that share no literal substring with their acronym.
+const _ACRONYM_STOPWORDS = new Set(["a", "an", "the", "of", "and", "for", "to", "on"]);
+function _acronymKey(s) {
+  const words = String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w && !_ACRONYM_STOPWORDS.has(w));
+  if (words.length < 2) return "";
+  return words.map(w => w[0]).join("");
+}
+
 function normalizeJobType(raw) {
   const s = (raw || "").trim();
   if (!s) return "Unknown";
+  const compact = _compactTypeKey(s);
+  const acronym = _acronymKey(s);
+
+  // 1. Confirmed merges from this tech — most authoritative.
+  if (CUSTOM_TYPE_ALIASES.has(compact)) return CUSTOM_TYPE_ALIASES.get(compact);
+
+  // 2. High-precision matches: exact compact label, known short code, or a
+  //    spelled-out acronym. These run BEFORE the loose substring regexes below
+  //    because a precise match should never lose to a broad one — e.g.
+  //    "pre delivery insp" contains the literal substring "delivery" and would
+  //    otherwise get misfiled under the "Delivery" bucket instead of "PDI".
+  if (JOB_TYPE_SHORT_CODES[compact]) return JOB_TYPE_SHORT_CODES[compact];
+  for (const [canonical] of JOB_TYPE_ALIASES) {
+    const canonCompact = _compactTypeKey(canonical);
+    if (compact === canonCompact || (acronym && acronym === canonCompact)) return canonical;
+  }
+
+  // 3. Loose substring regex table (original behavior).
   for (const [canonical, ...patterns] of JOB_TYPE_ALIASES) {
     if (patterns.some(p => p.test(s))) return canonical;
   }
+
   // Fallback: return as-is but with consistent title casing
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -4926,7 +4971,7 @@ function renderDonutSVG(types, total) {
     <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
     ${arcs}
     <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
-    <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">jobs</text>
+    <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">${total === 1 ? "job" : "jobs"}</text>
   </svg>`;
 }
 
@@ -5100,7 +5145,7 @@ function renderBreakdownPage(period, customFrom, customTo) {
 
   if (summaryEl) {
     summaryEl.innerHTML = `
-      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">Jobs</div></div>
+      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">${totalCount === 1 ? "Job" : "Jobs"}</div></div>
       <div class="brkSumCell"><div class="brkSumVal">${totalHours}h</div><div class="brkSumLabel">Hours</div></div>
       <div class="brkSumCell"><div class="brkSumVal">${formatMoney(totalEarnings)}</div><div class="brkSumLabel">Pay</div></div>
     `;
@@ -5200,7 +5245,11 @@ function renderJobScorecard(entries) {
   }
 
   const { rows, rateVaries, sortKey } = computeJobScorecard(entries);
-  if (!rows.length) { el.innerHTML = ""; return; }
+  // Scorecard's whole point is comparing job types against each other — with
+  // only one type logged this period there's nothing to rank, so a "low data"
+  // stub here is just noise on top of what the donut/summary already show.
+  if (rows.length < 2) { el.innerHTML = ""; return; }
+  const totalCount = entries.length;
 
   // Only crown a "best" when there's enough data to mean something, and when
   // there's actually something to compare it against.
@@ -5228,6 +5277,7 @@ function renderJobScorecard(entries) {
     const isBest = best && r.name === best.name;
     const hotCb  = r.comebackPct >= 20 && r.count >= SCORECARD_MIN_SAMPLE;
     const rateVal = r[sortKey];
+    const pct = totalCount > 0 ? Math.round((r.count / totalCount) * 100) : 0;
     return `
       <div class="jsRow${isBest ? " jsRow--best" : ""}">
         <div class="jsRowMain">
@@ -5237,7 +5287,7 @@ function renderJobScorecard(entries) {
             ${hotCb ? `<span class="jsBadge jsBadge--warn">${r.comebackPct}% CB</span>` : ""}
             ${!r.reliable ? '<span class="jsBadge jsBadge--thin">low data</span>' : ""}
           </div>
-          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} · ${r.avgHours}h avg · ${
+          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} (${pct}%) · ${r.avgHours}h avg · ${
             rateVaries ? `${formatMoney(r.perJob)}/job` : `${formatMoney(r.perHour)}/hr`
           }</div>
         </div>

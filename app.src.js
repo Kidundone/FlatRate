@@ -369,6 +369,7 @@ async function bootAuth() {
         const rows = await safeLoadEntries();
         _lastLoadedAt = Date.now();
         loadSubscription().catch(() => {});
+        window.__FR?.loadCustomTypeAliases?.().catch(() => {});
 
         if (window.__PAGE__ === "main") {
           await refreshUI(rows);
@@ -3130,7 +3131,23 @@ async function scanPhotoAndPrefillForm(file) {
 
   const hideAlts = () => { if (altChips) { altChips.innerHTML = ""; altChips.style.display = "none"; } };
 
-  const showAltJobChips = (altJobs) => {
+  // Book time printed directly on the document beats a remembered average —
+  // it reflects what THIS job actually pays, not what similar jobs paid before.
+  const _applyOcrHours = (jobName, jobHours) => {
+    const v = jobHours && Number(jobHours[jobName]);
+    const hoursEl = document.getElementById("hours");
+    if (Number.isFinite(v) && v > 0 && hoursEl) {
+      hoursEl.value = String(v);
+      // Marks it "already filled from a trusted source" so the saved
+      // per-type-default autofill (wired to typeText's change event) doesn't
+      // clobber it with a stale remembered average.
+      hoursEl.dataset.touched = "1";
+      return true;
+    }
+    return false;
+  };
+
+  const showAltJobChips = (altJobs, jobHours) => {
     if (!altChips || !altJobs.length || !typeEl) return;
     altChips.innerHTML = "";
     for (const j of altJobs) {
@@ -3143,6 +3160,11 @@ async function scanPhotoAndPrefillForm(file) {
         if (typeEl) {
           typeEl.value = j;
           typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+          // Switching jobs means any hours filled for the previous pick no
+          // longer apply — let the change handler re-decide from scratch.
+          const hoursEl = document.getElementById("hours");
+          if (hoursEl) delete hoursEl.dataset.touched;
+          _applyOcrHours(j, jobHours);
           typeEl.dispatchEvent(new Event("change", { bubbles: true }));
         }
         hideAlts();
@@ -3164,7 +3186,7 @@ async function scanPhotoAndPrefillForm(file) {
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
 
-    const { ro, vin, stk, jobs } = result || {};
+    const { ro, vin, stk, jobs, jobHours } = result || {};
     const filled = [];
 
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
@@ -3196,11 +3218,16 @@ async function scanPhotoAndPrefillForm(file) {
       const bestJob = ranked[0];
       typeEl.value = bestJob;
       typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      // If the document itself printed book time for this job, fill it before
+      // the change event fires — see _applyOcrHours for why this beats the
+      // saved per-type average.
+      const gotOcrHours = _applyOcrHours(bestJob, jobHours);
       typeEl.dispatchEvent(new Event("change", { bubbles: true }));
       filled.push(`Job: ${bestJob}`);
+      if (gotOcrHours) filled.push(`Hours: ${jobHours[bestJob]}`);
       // Show remaining jobs as tappable alternative chips
       const alts = ranked.slice(1);
-      if (alts.length) showAltJobChips(alts);
+      if (alts.length) showAltJobChips(alts, jobHours);
     }
 
     if (filled.length) {
@@ -8177,12 +8204,57 @@ const JOB_TYPE_ALIASES = [
   ["Misc",          /\bmisc\b/i],
 ];
 
+// A few canonicals are known by a short code that isn't just their label with
+// punctuation stripped (e.g. "Dealer Trade" -> "DT"). PDI/SPF already equal
+// their own compact label, so they don't need an entry here.
+const JOB_TYPE_SHORT_CODES = { dt: "Dealer Trade" };
+
+// Aliases this tech has explicitly confirmed via the "Clean up job types"
+// tool (Settings). Keyed by _compactTypeKey(), populated from Supabase at
+// boot by loadCustomTypeAliases() in more-page.js. Checked before anything
+// else, since these are confirmed merges rather than guesses.
+let CUSTOM_TYPE_ALIASES = new Map();
+
+// Strip everything but letters/digits and lowercase, so "P.D.I.", "pdi", and
+// "P-D-I" all collapse to the same "pdi" key.
+function _compactTypeKey(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// First letter of each significant word: "Pre Delivery Insp" -> "pdi". Catches
+// spelled-out abbreviations that share no literal substring with their acronym.
+const _ACRONYM_STOPWORDS = new Set(["a", "an", "the", "of", "and", "for", "to", "on"]);
+function _acronymKey(s) {
+  const words = String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w && !_ACRONYM_STOPWORDS.has(w));
+  if (words.length < 2) return "";
+  return words.map(w => w[0]).join("");
+}
+
 function normalizeJobType(raw) {
   const s = (raw || "").trim();
   if (!s) return "Unknown";
+  const compact = _compactTypeKey(s);
+  const acronym = _acronymKey(s);
+
+  // 1. Confirmed merges from this tech — most authoritative.
+  if (CUSTOM_TYPE_ALIASES.has(compact)) return CUSTOM_TYPE_ALIASES.get(compact);
+
+  // 2. High-precision matches: exact compact label, known short code, or a
+  //    spelled-out acronym. These run BEFORE the loose substring regexes below
+  //    because a precise match should never lose to a broad one — e.g.
+  //    "pre delivery insp" contains the literal substring "delivery" and would
+  //    otherwise get misfiled under the "Delivery" bucket instead of "PDI".
+  if (JOB_TYPE_SHORT_CODES[compact]) return JOB_TYPE_SHORT_CODES[compact];
+  for (const [canonical] of JOB_TYPE_ALIASES) {
+    const canonCompact = _compactTypeKey(canonical);
+    if (compact === canonCompact || (acronym && acronym === canonCompact)) return canonical;
+  }
+
+  // 3. Loose substring regex table (original behavior).
   for (const [canonical, ...patterns] of JOB_TYPE_ALIASES) {
     if (patterns.some(p => p.test(s))) return canonical;
   }
+
   // Fallback: return as-is but with consistent title casing
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -8228,7 +8300,7 @@ function renderDonutSVG(types, total) {
     <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
     ${arcs}
     <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
-    <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">jobs</text>
+    <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">${total === 1 ? "job" : "jobs"}</text>
   </svg>`;
 }
 
@@ -8402,7 +8474,7 @@ function renderBreakdownPage(period, customFrom, customTo) {
 
   if (summaryEl) {
     summaryEl.innerHTML = `
-      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">Jobs</div></div>
+      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">${totalCount === 1 ? "Job" : "Jobs"}</div></div>
       <div class="brkSumCell"><div class="brkSumVal">${totalHours}h</div><div class="brkSumLabel">Hours</div></div>
       <div class="brkSumCell"><div class="brkSumVal">${formatMoney(totalEarnings)}</div><div class="brkSumLabel">Pay</div></div>
     `;
@@ -8502,7 +8574,11 @@ function renderJobScorecard(entries) {
   }
 
   const { rows, rateVaries, sortKey } = computeJobScorecard(entries);
-  if (!rows.length) { el.innerHTML = ""; return; }
+  // Scorecard's whole point is comparing job types against each other — with
+  // only one type logged this period there's nothing to rank, so a "low data"
+  // stub here is just noise on top of what the donut/summary already show.
+  if (rows.length < 2) { el.innerHTML = ""; return; }
+  const totalCount = entries.length;
 
   // Only crown a "best" when there's enough data to mean something, and when
   // there's actually something to compare it against.
@@ -8530,6 +8606,7 @@ function renderJobScorecard(entries) {
     const isBest = best && r.name === best.name;
     const hotCb  = r.comebackPct >= 20 && r.count >= SCORECARD_MIN_SAMPLE;
     const rateVal = r[sortKey];
+    const pct = totalCount > 0 ? Math.round((r.count / totalCount) * 100) : 0;
     return `
       <div class="jsRow${isBest ? " jsRow--best" : ""}">
         <div class="jsRowMain">
@@ -8539,7 +8616,7 @@ function renderJobScorecard(entries) {
             ${hotCb ? `<span class="jsBadge jsBadge--warn">${r.comebackPct}% CB</span>` : ""}
             ${!r.reliable ? '<span class="jsBadge jsBadge--thin">low data</span>' : ""}
           </div>
-          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} · ${r.avgHours}h avg · ${
+          <div class="jsRowSub">${r.count} job${r.count === 1 ? "" : "s"} (${pct}%) · ${r.avgHours}h avg · ${
             rateVaries ? `${formatMoney(r.perJob)}/job` : `${formatMoney(r.perHour)}/hr`
           }</div>
         </div>
@@ -10925,6 +11002,224 @@ window.initBulkDelete = initBulkDelete;
 window.initJobTypeBulkDelete = initJobTypeBulkDelete;
 window.initEntrySearch = initEntrySearch;
 
+/* ── Job type cleanup (AI-assisted merge) ─────────────────────────────────
+ * Techs type the same job a dozen different ways ("pdi", "P.D.I.", "pre
+ * delivery insp"), which fragments Job Scorecard / Type Breakdown data.
+ * normalizeJobType() (main-page.js) already catches known patterns via a
+ * hardcoded alias table plus punctuation/acronym matching. This tool handles
+ * the long tail: it sends whatever's left unrecognized to a Gemini edge
+ * function, which suggests groupings, and the tech approves per-group before
+ * anything is saved. Nothing here ever rewrites a past entry's `type` field —
+ * confirmed merges are stored as rows in job_type_aliases and consulted by
+ * normalizeJobType() at display time, so it's fully reversible (delete the
+ * row, the merge undoes itself).
+ */
+
+async function loadCustomTypeAliases() {
+  if (!window.CURRENT_UID) return;
+  try {
+    const { data, error } = await sb()
+      .from("job_type_aliases")
+      .select("raw_text, canonical")
+      .eq("user_id", window.CURRENT_UID);
+    if (error) throw error;
+    const map = new Map();
+    for (const row of (data || [])) {
+      map.set(_compactTypeKey(row.raw_text), row.canonical);
+    }
+    CUSTOM_TYPE_ALIASES = map;
+  } catch (e) {
+    console.warn("[job-type-aliases] load failed", e);
+  }
+}
+
+// Mirrors normalizeJobType()'s matching steps (short codes, compact/acronym,
+// regex table, confirmed aliases) WITHOUT the final title-case fallback —
+// returns true if the string is already handled by something, false if it's
+// a genuine candidate for the AI to look at.
+function _typeIsAlreadyRecognized(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return true;
+  const compact = _compactTypeKey(s);
+  const acronym = _acronymKey(s);
+  if (CUSTOM_TYPE_ALIASES.has(compact)) return true;
+  if (JOB_TYPE_SHORT_CODES[compact]) return true;
+  for (const [canonical] of JOB_TYPE_ALIASES) {
+    const canonCompact = _compactTypeKey(canonical);
+    if (compact === canonCompact || (acronym && acronym === canonCompact)) return true;
+  }
+  for (const [, ...patterns] of JOB_TYPE_ALIASES) {
+    if (patterns.some(p => p.test(s))) return true;
+  }
+  return false;
+}
+
+function gatherUnclusteredTypeCandidates() {
+  const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
+  const counts = new Map();
+  for (const e of entries) {
+    const raw = String(e.typeText || e.type || "").trim();
+    if (!raw || _typeIsAlreadyRecognized(raw)) continue;
+    counts.set(raw, (counts.get(raw) || 0) + 1);
+  }
+  return Array.from(counts, ([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** Same auth-token dance the other edge-function callers use. */
+async function _callClusterJobTypes(payload, timeoutMs = 20000) {
+  const sbInstance = window.__FR?.sb;
+  const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/cluster-job-types`;
+
+  const getToken = async () => {
+    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
+    return session?.access_token || null;
+  };
+
+  const token = await getToken();
+  if (!token) throw new Error("auth_expired");
+
+  const doFetch = async (tok) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tok}`,
+          "apikey": window.__SUPABASE_CONFIG__.anonKey,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data?.error || `Scan failed (${res.status})`), { status: res.status });
+      return data;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("Taking too long — try again");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    return await doFetch(token);
+  } catch (e) {
+    if (e.status === 401) {
+      const fresh = await getToken();
+      if (fresh && fresh !== token) return await doFetch(fresh);
+    }
+    throw e;
+  }
+}
+
+let _TYPE_CLEANUP_GROUPS = [];
+
+async function scanForTypeCleanup() {
+  const btn    = document.getElementById("typeCleanupScanBtn");
+  const status = document.getElementById("typeCleanupStatus");
+  const results = document.getElementById("typeCleanupResults");
+  const setStatus = (msg) => { if (status) status.textContent = msg; };
+
+  const candidates = gatherUnclusteredTypeCandidates();
+  if (candidates.length < 2) {
+    setStatus("Nothing to clean up — every job type you've logged is already recognized.");
+    if (results) results.innerHTML = "";
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Scanning…"; }
+  setStatus(`Checking ${candidates.length} unrecognized job type${candidates.length === 1 ? "" : "s"}…`);
+  try {
+    const { groups } = await _callClusterJobTypes({ items: candidates });
+    _TYPE_CLEANUP_GROUPS = Array.isArray(groups) ? groups : [];
+    if (!_TYPE_CLEANUP_GROUPS.length) {
+      setStatus("No matching job types found to merge — they all look distinct.");
+      if (results) results.innerHTML = "";
+    } else {
+      setStatus(`Found ${_TYPE_CLEANUP_GROUPS.length} group${_TYPE_CLEANUP_GROUPS.length === 1 ? "" : "s"} to review:`);
+      renderTypeCleanupGroups();
+    }
+  } catch (e) {
+    setStatus(e?.message === "auth_expired" ? "Sign back in to use this." : (e?.message || "Couldn't scan — try again."));
+    if (results) results.innerHTML = "";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Scan my job types"; }
+  }
+}
+
+function renderTypeCleanupGroups() {
+  const results = document.getElementById("typeCleanupResults");
+  if (!results) return;
+  results.innerHTML = _TYPE_CLEANUP_GROUPS.map((g, gi) => `
+    <div class="tcGroup" data-group="${gi}">
+      <div class="tcGroupHead">
+        <span class="tcGroupInto">Merge into</span>
+        <input class="fr26Input tcCanonicalInput" value="${escapeHtml(g.canonical)}" maxlength="60" />
+      </div>
+      <div class="tcVariants">
+        ${g.variants.map((v, vi) => `
+          <label class="tcVariant">
+            <input type="checkbox" checked data-variant="${vi}" />
+            <span>${escapeHtml(v)}</span>
+          </label>`).join("")}
+      </div>
+      <button type="button" class="btn primary tcApplyBtn" data-group="${gi}">Merge</button>
+    </div>`).join("");
+}
+
+async function applyTypeCleanupGroup(groupIndex) {
+  const card = document.querySelector(`.tcGroup[data-group="${groupIndex}"]`);
+  const g = _TYPE_CLEANUP_GROUPS[groupIndex];
+  if (!card || !g) return;
+
+  const canonical = (card.querySelector(".tcCanonicalInput")?.value || "").trim();
+  if (!canonical) { toast?.("Give it a name first."); return; }
+
+  const checked = Array.from(card.querySelectorAll(".tcVariant input:checked"))
+    .map(cb => g.variants[Number(cb.dataset.variant)])
+    .filter(Boolean);
+  if (checked.length < 1) { toast?.("Check at least one to merge."); return; }
+
+  const btn = card.querySelector(".tcApplyBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Merging…"; }
+  try {
+    const rows = checked.map(raw_text => ({
+      user_id: window.CURRENT_UID,
+      raw_text,
+      canonical,
+    }));
+    const { error } = await sb().from("job_type_aliases").upsert(rows, { onConflict: "user_id,raw_text" });
+    if (error) throw error;
+
+    for (const raw_text of checked) {
+      CUSTOM_TYPE_ALIASES.set(_compactTypeKey(raw_text), canonical);
+    }
+
+    haptic?.("success");
+    toast?.(`Merged ${checked.length} into "${canonical}" — check Job Scorecard next time you're on Stats`);
+    card.remove();
+  } catch (e) {
+    toast?.(e?.message || "Couldn't save — try again.");
+    if (btn) { btn.disabled = false; btn.textContent = "Merge"; }
+  }
+}
+
+function initTypeCleanup() {
+  document.getElementById("typeCleanupScanBtn")?.addEventListener("click", scanForTypeCleanup);
+  document.getElementById("typeCleanupResults")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tcApplyBtn");
+    if (btn) applyTypeCleanupGroup(Number(btn.dataset.group));
+  });
+}
+
+window.__FR = window.__FR || {};
+window.__FR.loadCustomTypeAliases = loadCustomTypeAliases;
+window.__FR.initTypeCleanup = initTypeCleanup;
+
 // ═══════════════════════════════════════════════════════════════
 // OWE ME TRACKER
 // ═══════════════════════════════════════════════════════════════
@@ -12510,6 +12805,7 @@ async function runOnce() {
     initOweMe?.();
     initSettingsUI?.();
     initFeedbackUI?.();
+    window.__FR?.initTypeCleanup?.();
     startMoreTour?.();
     scheduleShiftReminder?.();
     schedulePaydayReminder?.();

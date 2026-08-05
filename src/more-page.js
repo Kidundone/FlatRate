@@ -2330,6 +2330,224 @@ window.initBulkDelete = initBulkDelete;
 window.initJobTypeBulkDelete = initJobTypeBulkDelete;
 window.initEntrySearch = initEntrySearch;
 
+/* ── Job type cleanup (AI-assisted merge) ─────────────────────────────────
+ * Techs type the same job a dozen different ways ("pdi", "P.D.I.", "pre
+ * delivery insp"), which fragments Job Scorecard / Type Breakdown data.
+ * normalizeJobType() (main-page.js) already catches known patterns via a
+ * hardcoded alias table plus punctuation/acronym matching. This tool handles
+ * the long tail: it sends whatever's left unrecognized to a Gemini edge
+ * function, which suggests groupings, and the tech approves per-group before
+ * anything is saved. Nothing here ever rewrites a past entry's `type` field —
+ * confirmed merges are stored as rows in job_type_aliases and consulted by
+ * normalizeJobType() at display time, so it's fully reversible (delete the
+ * row, the merge undoes itself).
+ */
+
+async function loadCustomTypeAliases() {
+  if (!window.CURRENT_UID) return;
+  try {
+    const { data, error } = await sb()
+      .from("job_type_aliases")
+      .select("raw_text, canonical")
+      .eq("user_id", window.CURRENT_UID);
+    if (error) throw error;
+    const map = new Map();
+    for (const row of (data || [])) {
+      map.set(_compactTypeKey(row.raw_text), row.canonical);
+    }
+    CUSTOM_TYPE_ALIASES = map;
+  } catch (e) {
+    console.warn("[job-type-aliases] load failed", e);
+  }
+}
+
+// Mirrors normalizeJobType()'s matching steps (short codes, compact/acronym,
+// regex table, confirmed aliases) WITHOUT the final title-case fallback —
+// returns true if the string is already handled by something, false if it's
+// a genuine candidate for the AI to look at.
+function _typeIsAlreadyRecognized(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return true;
+  const compact = _compactTypeKey(s);
+  const acronym = _acronymKey(s);
+  if (CUSTOM_TYPE_ALIASES.has(compact)) return true;
+  if (JOB_TYPE_SHORT_CODES[compact]) return true;
+  for (const [canonical] of JOB_TYPE_ALIASES) {
+    const canonCompact = _compactTypeKey(canonical);
+    if (compact === canonCompact || (acronym && acronym === canonCompact)) return true;
+  }
+  for (const [, ...patterns] of JOB_TYPE_ALIASES) {
+    if (patterns.some(p => p.test(s))) return true;
+  }
+  return false;
+}
+
+function gatherUnclusteredTypeCandidates() {
+  const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
+  const counts = new Map();
+  for (const e of entries) {
+    const raw = String(e.typeText || e.type || "").trim();
+    if (!raw || _typeIsAlreadyRecognized(raw)) continue;
+    counts.set(raw, (counts.get(raw) || 0) + 1);
+  }
+  return Array.from(counts, ([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** Same auth-token dance the other edge-function callers use. */
+async function _callClusterJobTypes(payload, timeoutMs = 20000) {
+  const sbInstance = window.__FR?.sb;
+  const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/cluster-job-types`;
+
+  const getToken = async () => {
+    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
+    return session?.access_token || null;
+  };
+
+  const token = await getToken();
+  if (!token) throw new Error("auth_expired");
+
+  const doFetch = async (tok) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tok}`,
+          "apikey": window.__SUPABASE_CONFIG__.anonKey,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data?.error || `Scan failed (${res.status})`), { status: res.status });
+      return data;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("Taking too long — try again");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    return await doFetch(token);
+  } catch (e) {
+    if (e.status === 401) {
+      const fresh = await getToken();
+      if (fresh && fresh !== token) return await doFetch(fresh);
+    }
+    throw e;
+  }
+}
+
+let _TYPE_CLEANUP_GROUPS = [];
+
+async function scanForTypeCleanup() {
+  const btn    = document.getElementById("typeCleanupScanBtn");
+  const status = document.getElementById("typeCleanupStatus");
+  const results = document.getElementById("typeCleanupResults");
+  const setStatus = (msg) => { if (status) status.textContent = msg; };
+
+  const candidates = gatherUnclusteredTypeCandidates();
+  if (candidates.length < 2) {
+    setStatus("Nothing to clean up — every job type you've logged is already recognized.");
+    if (results) results.innerHTML = "";
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Scanning…"; }
+  setStatus(`Checking ${candidates.length} unrecognized job type${candidates.length === 1 ? "" : "s"}…`);
+  try {
+    const { groups } = await _callClusterJobTypes({ items: candidates });
+    _TYPE_CLEANUP_GROUPS = Array.isArray(groups) ? groups : [];
+    if (!_TYPE_CLEANUP_GROUPS.length) {
+      setStatus("No matching job types found to merge — they all look distinct.");
+      if (results) results.innerHTML = "";
+    } else {
+      setStatus(`Found ${_TYPE_CLEANUP_GROUPS.length} group${_TYPE_CLEANUP_GROUPS.length === 1 ? "" : "s"} to review:`);
+      renderTypeCleanupGroups();
+    }
+  } catch (e) {
+    setStatus(e?.message === "auth_expired" ? "Sign back in to use this." : (e?.message || "Couldn't scan — try again."));
+    if (results) results.innerHTML = "";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Scan my job types"; }
+  }
+}
+
+function renderTypeCleanupGroups() {
+  const results = document.getElementById("typeCleanupResults");
+  if (!results) return;
+  results.innerHTML = _TYPE_CLEANUP_GROUPS.map((g, gi) => `
+    <div class="tcGroup" data-group="${gi}">
+      <div class="tcGroupHead">
+        <span class="tcGroupInto">Merge into</span>
+        <input class="fr26Input tcCanonicalInput" value="${escapeHtml(g.canonical)}" maxlength="60" />
+      </div>
+      <div class="tcVariants">
+        ${g.variants.map((v, vi) => `
+          <label class="tcVariant">
+            <input type="checkbox" checked data-variant="${vi}" />
+            <span>${escapeHtml(v)}</span>
+          </label>`).join("")}
+      </div>
+      <button type="button" class="btn primary tcApplyBtn" data-group="${gi}">Merge</button>
+    </div>`).join("");
+}
+
+async function applyTypeCleanupGroup(groupIndex) {
+  const card = document.querySelector(`.tcGroup[data-group="${groupIndex}"]`);
+  const g = _TYPE_CLEANUP_GROUPS[groupIndex];
+  if (!card || !g) return;
+
+  const canonical = (card.querySelector(".tcCanonicalInput")?.value || "").trim();
+  if (!canonical) { toast?.("Give it a name first."); return; }
+
+  const checked = Array.from(card.querySelectorAll(".tcVariant input:checked"))
+    .map(cb => g.variants[Number(cb.dataset.variant)])
+    .filter(Boolean);
+  if (checked.length < 1) { toast?.("Check at least one to merge."); return; }
+
+  const btn = card.querySelector(".tcApplyBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Merging…"; }
+  try {
+    const rows = checked.map(raw_text => ({
+      user_id: window.CURRENT_UID,
+      raw_text,
+      canonical,
+    }));
+    const { error } = await sb().from("job_type_aliases").upsert(rows, { onConflict: "user_id,raw_text" });
+    if (error) throw error;
+
+    for (const raw_text of checked) {
+      CUSTOM_TYPE_ALIASES.set(_compactTypeKey(raw_text), canonical);
+    }
+
+    haptic?.("success");
+    toast?.(`Merged ${checked.length} into "${canonical}" — check Job Scorecard next time you're on Stats`);
+    card.remove();
+  } catch (e) {
+    toast?.(e?.message || "Couldn't save — try again.");
+    if (btn) { btn.disabled = false; btn.textContent = "Merge"; }
+  }
+}
+
+function initTypeCleanup() {
+  document.getElementById("typeCleanupScanBtn")?.addEventListener("click", scanForTypeCleanup);
+  document.getElementById("typeCleanupResults")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tcApplyBtn");
+    if (btn) applyTypeCleanupGroup(Number(btn.dataset.group));
+  });
+}
+
+window.__FR = window.__FR || {};
+window.__FR.loadCustomTypeAliases = loadCustomTypeAliases;
+window.__FR.initTypeCleanup = initTypeCleanup;
+
 // ═══════════════════════════════════════════════════════════════
 // OWE ME TRACKER
 // ═══════════════════════════════════════════════════════════════

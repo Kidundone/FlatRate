@@ -79,6 +79,7 @@ async function bootAuth() {
         const rows = await safeLoadEntries();
         _lastLoadedAt = Date.now();
         loadSubscription().catch(() => {});
+        window.__FR?.loadCustomTypeAliases?.().catch(() => {});
 
         if (window.__PAGE__ === "main") {
           await refreshUI(rows);
