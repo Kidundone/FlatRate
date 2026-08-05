@@ -160,6 +160,58 @@
       font-size: 12px; color: var(--muted); background: var(--surface2);
       border-radius: 10px; padding: 14px; text-align: center; line-height: 1.5;
     }
+
+    /* ── Guided tour (self-contained port of the app tour engine) ───────── */
+    #tourOverlay {
+      position: fixed; inset: 0; z-index: 10000; pointer-events: all;
+      background: rgba(0,0,0,.72); transition: background 300ms ease;
+    }
+    #tourOverlay.tour-has-target { background: transparent; }
+    #tourOverlay:not(.tour-has-target) .tourTooltip { top: 50%; bottom: auto; transform: translateY(-50%); }
+    #tourSpotlight {
+      position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.72);
+      border: 2.5px solid var(--primary); pointer-events: none; display: none;
+      transition: top 420ms cubic-bezier(.34,1.3,.64,1), left 420ms cubic-bezier(.34,1.3,.64,1),
+                  width 420ms cubic-bezier(.34,1.3,.64,1), height 420ms cubic-bezier(.34,1.3,.64,1);
+    }
+    @keyframes tourPulse {
+      0%,100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 rgba(0,149,246,.7), 0 0 0 0 rgba(0,149,246,.3); }
+      60%     { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 10px rgba(0,149,246,0), 0 0 0 20px rgba(0,149,246,0); }
+    }
+    #tourSpotlight.pulse { animation: tourPulse 1.8s cubic-bezier(.4,0,.6,1) infinite; }
+    .tourTooltip {
+      position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
+      background: var(--surface); border: 1px solid rgba(0,149,246,.25); border-radius: 18px;
+      padding: 20px 18px 16px; box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(0,149,246,.1);
+      z-index: 10001; max-width: 520px; margin: 0 auto;
+      animation: tourTooltipIn 480ms cubic-bezier(.34,1.4,.64,1) both;
+    }
+    @keyframes tourTooltipIn { from { opacity: 0; transform: translateY(36px) scale(.93); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .tourTooltip.step-enter .tourStepLabel { animation: tourContentIn 280ms cubic-bezier(.4,0,.2,1) both; }
+    .tourTooltip.step-enter .tourTitle     { animation: tourContentIn 300ms cubic-bezier(.4,0,.2,1) 40ms both; }
+    .tourTooltip.step-enter .tourBody      { animation: tourContentIn 300ms cubic-bezier(.4,0,.2,1) 90ms both; }
+    @keyframes tourContentIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .tourMascotBar { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .tourMascotAvatar {
+      width: 46px; height: 46px; border-radius: 22%; background: #0b1220; border: 2px solid var(--primary);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;
+      animation: mascotBob 2.8s ease-in-out infinite; box-shadow: 0 0 12px rgba(37,99,235,.25);
+    }
+    @keyframes mascotBob { 0%,100% { transform: translateY(0) rotate(-1deg); } 45% { transform: translateY(-5px) rotate(1.5deg); } 70% { transform: translateY(-2px) rotate(0deg); } }
+    .tourMascotName { font-size: 13px; font-weight: 800; color: var(--primary); letter-spacing: .03em; }
+    .tourMascotSub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tourHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .tourStepLabel { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--primary); }
+    .tourSkip { background: none; border: none; padding: 0; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .tourSkip:hover { color: var(--text); }
+    .tourTitle { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: -.2px; }
+    .tourBody  { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
+    .tourFooter { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .tourDots { display: flex; gap: 5px; align-items: center; }
+    .tourDot { height: 6px; width: 6px; border-radius: 3px; background: var(--stroke2); transition: width 300ms cubic-bezier(.34,1.4,.64,1), background 200ms ease; }
+    .tourDot--active { width: 20px; background: var(--primary); }
+    #tourNextBtn { transition: transform 100ms ease, opacity 100ms ease; min-width: 80px; }
+    #tourNextBtn:active { transform: scale(.94); opacity: .85; }
   </style>
 </head>
 <body>
@@ -186,10 +238,13 @@
       <div class="page-title">Team</div>
       <div class="page-sub">Create a shop for your team, or join one with an invite code.</div>
     </div>
-    <a href="./index.html" class="btn">← App</a>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button id="teamTourBtn" class="btn" type="button">🎓 Take the tour</button>
+      <a href="./index.html" class="btn">← App</a>
+    </div>
   </div>
   <div class="grid2">
-    <div class="card">
+    <div class="card" id="createShopCard">
       <h2>Create a shop</h2>
       <p class="sub">You'll be the manager and get an invite code to share with your techs.</p>
       <div class="field"><label>Shop name</label><input id="createShopName" class="input" placeholder="Northside Auto" /></div>
@@ -197,7 +252,7 @@
       <div id="createErr" class="err"></div>
       <button id="createShopBtn" class="btn primary" type="button">Create Shop</button>
     </div>
-    <div class="card">
+    <div class="card" id="joinShopCard">
       <h2>Join a shop</h2>
       <p class="sub">Ask your manager for the 6-character invite code.</p>
       <div class="field"><label>Invite code</label><input id="joinCode" class="input" placeholder="AB12CD" style="text-transform:uppercase;letter-spacing:.15em;" maxlength="6" /></div>
@@ -216,6 +271,7 @@
       <div class="page-sub" id="shopSub"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button id="teamTourBtnShop" class="btn" type="button">🎓 Take the tour</button>
       <a href="./index.html" class="btn">← App</a>
       <button id="leaveBtn" class="btn danger" type="button">Leave</button>
     </div>
@@ -360,6 +416,32 @@
   </div>
 </div>
 
+<!-- Guided tour overlay -->
+<div id="tourOverlay" style="display:none;" aria-modal="true" role="dialog" aria-label="Team dashboard tour">
+  <div id="tourSpotlight"></div>
+  <div id="tourTooltip" class="tourTooltip">
+    <div class="tourMascotBar">
+      <div class="tourMascotAvatar">
+        <img src="./icon-192.png" width="42" height="42" alt="FR Buddy" style="border-radius:50%;display:block;" />
+      </div>
+      <div>
+        <div class="tourMascotName">FR Buddy</div>
+        <div class="tourMascotSub">Your team dashboard guide 🧑‍🔧</div>
+      </div>
+    </div>
+    <div class="tourHeader">
+      <span id="tourStep" class="tourStepLabel"></span>
+      <button id="tourSkipBtn" class="tourSkip" type="button">Skip tour</button>
+    </div>
+    <div id="tourTitle" class="tourTitle"></div>
+    <div id="tourBody" class="tourBody"></div>
+    <div class="tourFooter">
+      <div id="tourDots" class="tourDots"></div>
+      <button id="tourNextBtn" class="btn primary" type="button">Next</button>
+    </div>
+  </div>
+</div>
+
 <script>
   window.__SUPABASE_CONFIG__ = {
     url: "https://lfnydhidbwfyfjafazdy.supabase.co",
@@ -431,11 +513,11 @@
   /* ── Shop state ── */
   async function loadShop() {
     const { data: mem, error } = await db.from("shop_members").select("shop_id, role").eq("user_id", UID).maybeSingle();
-    if (error || !mem) { show("setupView", true); show("shopView", false); return; }
+    if (error || !mem) { show("setupView", true); show("shopView", false); startTeamTour(false); return; }
     MY_ROLE = mem.role;
 
     const { data: shop } = await db.from("shops").select("*").eq("id", mem.shop_id).maybeSingle();
-    if (!shop) { show("setupView", true); return; }
+    if (!shop) { show("setupView", true); startTeamTour(false); return; }
     SHOP = shop;
 
     const { data: roster } = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", shop.id);
@@ -455,6 +537,7 @@
       await renderTeam();
       await loadClaims();
     }
+    startTeamTour(false);
   }
 
   $("inviteChip").addEventListener("click", async () => {
@@ -992,6 +1075,173 @@
     document.body.appendChild(a); a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
   }
+
+  /* ── Guided tour ──────────────────────────────────────────────────────
+   * Self-contained port of the app's mascot-spotlight tour, adapted for
+   * this page. Three step lists depending on where the account stands:
+   * no shop yet, manager of a shop, or tech member of a shop.
+   */
+  const TEAM_TOUR_SETUP_STEPS = [
+    {
+      el: null,
+      title: "Welcome to Team 🧑‍🔧",
+      body: "This is where a service adviser runs their shop — invite techs, watch output, and handle requests. Let's get a shop set up.",
+    },
+    {
+      el: "#createShopCard",
+      title: "Create a Shop",
+      body: "Name your shop, add your display name, and hit Create. You're automatically the manager — no separate signup for that.",
+    },
+    {
+      el: "#joinShopCard",
+      title: "Or Join One",
+      body: "Already have an invite code from a manager? Drop it in here instead to join their shop as a tech.",
+      last: true,
+    },
+  ];
+
+  const TEAM_TOUR_MANAGER_STEPS = [
+    {
+      el: null,
+      title: "Your Shop Dashboard 🧑‍🔧",
+      body: "Everything a service adviser needs: your team's output, requests from techs, and a full roster — all in one place. Quick tour.",
+    },
+    {
+      el: "#inviteShareBtn",
+      title: "Invite a Tech 📲",
+      body: "One tap sends the app link and your shop's invite code together — text it, email it, whatever's fastest. New hires don't need anything else to get started.",
+    },
+    {
+      el: "#rangeSel",
+      title: "Pick a Period",
+      body: "This week, last week, or the last 30 days — every number below updates to match, with a comparison against the period before it.",
+    },
+    {
+      el: "#outputChart",
+      title: "Shop Output",
+      body: "Total flat hours logged across your whole team for the period, at a glance.",
+    },
+    {
+      el: "#claimFilter",
+      title: "Requests From Techs 📮",
+      body: "Missing work, short pay, or a tech asking for more hours — it lands here with a timestamp. Tap one to reply and resolve it, or mark it declined with a note.",
+    },
+    {
+      el: "#memberRows",
+      title: "Your Roster",
+      body: "Every tech's jobs, hours, earnings, and comeback rate for the period. Tap a column header to sort — Hrs/Day and CB% are good ones to watch.",
+    },
+    {
+      el: "#exportTeamBtn",
+      title: "Export to CSV",
+      body: "Need the numbers in a spreadsheet — payroll, a meeting, whatever? One tap downloads the current roster table.",
+    },
+    {
+      el: "#logRows",
+      title: "Recent Jobs",
+      body: "Every job logged shop-wide, newest first. Tap any row to see the full detail and proof photo, if the tech attached one.",
+    },
+    {
+      el: null,
+      title: "That's the Dashboard ✓",
+      body: "Replay this any time from the 🎓 Take the tour button up top — handy when you're walking a new service adviser through it live.",
+      last: true,
+    },
+  ];
+
+  const TEAM_TOUR_TECH_STEPS = [
+    {
+      el: null,
+      title: "You're on the Team ✓",
+      body: "Your manager can see every job you log in Flatrate Buddy — it's shared automatically, no extra steps. Keep logging jobs in the app like normal.",
+      last: true,
+    },
+  ];
+
+  function currentTeamTourSteps() {
+    if (!SHOP) return TEAM_TOUR_SETUP_STEPS;
+    return MY_ROLE === "manager" ? TEAM_TOUR_MANAGER_STEPS : TEAM_TOUR_TECH_STEPS;
+  }
+
+  function startTeamTour(force = false) {
+    if (!force && localStorage.getItem("fr_team_tour_done")) return;
+    const steps = currentTeamTourSteps();
+    const overlay = $("tourOverlay"), nextBtn = $("tourNextBtn"), skipBtn = $("tourSkipBtn");
+    if (!overlay || !nextBtn || !skipBtn || !steps.length) return;
+
+    let step = 0;
+
+    function buildDots() {
+      const container = $("tourDots");
+      if (!container) return;
+      container.innerHTML = "";
+      steps.forEach((_, i) => {
+        const d = document.createElement("div");
+        d.className = "tourDot" + (i === step ? " tourDot--active" : "");
+        container.appendChild(d);
+      });
+    }
+
+    function positionSpotlight(elSel) {
+      const spotlight = $("tourSpotlight");
+      if (!spotlight) return;
+      const target = elSel ? document.querySelector(elSel) : null;
+      if (!target) {
+        spotlight.style.display = "none";
+        spotlight.classList.remove("pulse");
+        overlay.style.background = "rgba(0,0,0,.72)";
+        overlay.classList.remove("tour-has-target");
+        return;
+      }
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      overlay.style.background = "transparent";
+      overlay.classList.add("tour-has-target");
+      setTimeout(() => {
+        const r = target.getBoundingClientRect();
+        const pad = 8;
+        spotlight.style.cssText = `display:block;top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
+        spotlight.classList.add("pulse");
+      }, 260);
+    }
+
+    function show(idx) {
+      const s = steps[idx];
+      $("tourStep").textContent = `${idx + 1} of ${steps.length}`;
+      $("tourTitle").textContent = s.title;
+      $("tourBody").textContent = s.body;
+      nextBtn.textContent = idx === steps.length - 1 ? "Done" : "Next →";
+      overlay.style.display = "block";
+      buildDots();
+      positionSpotlight(s.el);
+      const tooltip = $("tourTooltip");
+      if (tooltip) {
+        tooltip.classList.remove("step-enter");
+        void tooltip.offsetWidth;
+        tooltip.classList.add("step-enter");
+      }
+    }
+
+    function endTour() {
+      overlay.style.display = "none";
+      overlay.style.background = "";
+      overlay.classList.remove("tour-has-target");
+      const spotlight = $("tourSpotlight");
+      if (spotlight) { spotlight.style.cssText = "display:none;"; spotlight.classList.remove("pulse"); }
+      localStorage.setItem("fr_team_tour_done", "1");
+    }
+
+    nextBtn.onclick = () => {
+      step++;
+      if (step >= steps.length) endTour();
+      else show(step);
+    };
+    skipBtn.onclick = endTour;
+
+    show(0);
+  }
+
+  $("teamTourBtn")?.addEventListener("click", () => startTeamTour(true));
+  $("teamTourBtnShop")?.addEventListener("click", () => startTeamTour(true));
 
   init();
 })();
