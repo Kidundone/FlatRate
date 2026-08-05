@@ -218,6 +218,8 @@ async function startCheckout(plan) {
 }
 
 function requirePro(action) {
+  // Admin (app owner's own testing account): never gated.
+  if (typeof isAdminAccount === "function" && isAdminAccount()) return true;
   // Beta (__BILLING__.live === false): all features free — never gate.
   if (!billingLive()) return true;
   if (isPro()) return true;

@@ -6639,6 +6639,13 @@ function renderList(entries, mode){
     let sx = 0, sy = 0, lx = 0, tracking = false, swiping = false, dir = null;
 
     inner.addEventListener("touchstart", ev => {
+      // A touch that starts on a real button/checkbox/link is a tap on that
+      // control, full stop — never let the swipe state machine grab it (that
+      // was the source of buttons occasionally "not being the one that fired").
+      if (ev.target?.closest?.("button, input, .itemActions, .itemRef, .itemCheck, [data-action]")) {
+        tracking = false;
+        return;
+      }
       sx = lx = ev.touches[0].clientX;
       sy = ev.touches[0].clientY;
       tracking = true; swiping = false; dir = null;
@@ -6649,10 +6656,15 @@ function renderList(entries, mode){
       lx = ev.touches[0].clientX;
       const dx = lx - sx, dy = ev.touches[0].clientY - sy;
       if (!swiping) {
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        // Require a deliberate, clearly-horizontal drag before hijacking the
+        // touch as a swipe — a plain tap on a button always has a little
+        // finger jitter, and treating that jitter as "swiping" was
+        // preventDefault()-ing the tap out from under whatever button it
+        // started on.
+        if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.5) {
           swiping = true; dir = dx < 0 ? "left" : "right";
           row.classList.add("swiping");
-        } else if (Math.abs(dy) > 8) { tracking = false; return; }
+        } else if (Math.abs(dy) > 12 || Math.abs(dx) > 16) { tracking = false; return; }
       }
       if (swiping) {
         ev.preventDefault();
@@ -7768,9 +7780,19 @@ function updateClockInDisplay() {
  * record and their evidence in a dispute; holding that hostage would be wrong.
  *
  * While billing is off (beta) this returns false, so nothing is locked.
+ *
+ * Admin accounts (the app owner's own account, for testing) always see
+ * everything unlocked, regardless of billing state — so testing never gets
+ * blocked by the paywall it's testing around.
  */
+const ADMIN_EMAILS = ["eamnelsonmalloy@icloud.com"];
+function isAdminAccount() {
+  const email = (typeof window !== "undefined" && window.CURRENT_USER_EMAIL) || "";
+  return ADMIN_EMAILS.includes(String(email).toLowerCase());
+}
 function proLocked() {
   try {
+    if (isAdminAccount()) return false;
     if (typeof billingLive !== "function") return false;
     if (!billingLive()) return false;
     return !(typeof isPro === "function" && isPro());
@@ -8890,6 +8912,8 @@ async function startCheckout(plan) {
 }
 
 function requirePro(action) {
+  // Admin (app owner's own testing account): never gated.
+  if (typeof isAdminAccount === "function" && isAdminAccount()) return true;
   // Beta (__BILLING__.live === false): all features free — never gate.
   if (!billingLive()) return true;
   if (isPro()) return true;

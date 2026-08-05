@@ -643,18 +643,20 @@ main {
 .itemHeadline {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   flex-wrap: nowrap;
   overflow: hidden;
 }
 
 .itemCheck {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
   margin: 0;
   accent-color: var(--primary);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .itemRef {
@@ -754,12 +756,12 @@ main {
 .itemActions {
   margin-top: 8px;
   display: flex;
-  gap: 6px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 .iBtn {
-  padding: 7px 14px;
-  min-height: 34px;
+  padding: 10px 16px;
+  min-height: 40px;
   font-size: 12px;
   font-weight: 600;
   border-radius: var(--r-pill);
@@ -771,6 +773,7 @@ main {
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  touch-action: manipulation;
 }
 .iBtn:active { background: var(--surface3); transform: scale(.94); }
 .iBtn--danger { color: var(--danger); border-color: rgba(237,73,86,.25); background: rgba(237,73,86,.06); }
@@ -2867,13 +2870,13 @@ body.compact .list    { gap: 1px; }
 }
 .typeRowActions {
   display: flex;
-  gap: 6px;
+  gap: 10px;
   flex-shrink: 0;
 }
 .typeRowActions .iBtn {
-  padding: 5px 12px;
+  padding: 8px 14px;
   font-size: 12px;
-  min-height: 32px;
+  min-height: 38px;
 }
 .typeEditForm {
   margin-top: 10px;
