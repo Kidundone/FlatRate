@@ -694,9 +694,6 @@ function _rankJobsForUser(jobs, empId) {
 async function scanPhotoAndPrefillForm(file) {
   if (!file) return;
 
-  // A fresh scan invalidates any multi-job queue left over from a previous one.
-  window._ocrJobQueue = [];
-
   const scanStatus   = document.getElementById("photoScanStatus");
   const altChips     = document.getElementById("scanJobAlternatives");
   const refEl        = document.getElementById("ref");
@@ -730,16 +727,15 @@ async function scanPhotoAndPrefillForm(file) {
     return false;
   };
 
-  // Multi-select: an RO/checklist often has several jobs worth logging off
-  // one scan. Every ranked job (the auto-filled pick plus its alternatives)
-  // gets a toggleable chip. Whichever chip is checked FIRST (in ranked
-  // order) drives the form's type/hours right now; any additional checked
-  // chips get queued in window._ocrJobQueue and are surfaced one at a time
-  // after each save (see continueOcrJobQueue, called from saveEntry).
+  // Multi-select: a Get Ready checklist or RO often has several jobs on the
+  // SAME piece of paper that get logged as one combined entry (e.g. a
+  // re-clean bundled with a finance FPF). Every ranked job (the auto-filled
+  // pick plus its alternatives) gets a toggleable chip; whichever chips are
+  // checked get merged into ONE entry — their names joined and their book
+  // hours added together — rather than creating separate entries.
   const showAltJobChips = (rankedJobs, jobHours, primaryJob) => {
     if (!altChips || !rankedJobs.length || !typeEl) return;
     altChips.innerHTML = "";
-    window._ocrJobQueue = [];
 
     const hint = document.createElement("div");
     hint.className = "fr26ScanJobHint";
@@ -747,27 +743,35 @@ async function scanPhotoAndPrefillForm(file) {
 
     const applySelection = () => {
       const checked = Array.from(altChips.querySelectorAll(".fr26ScanJobAlt.selected"));
+      const hoursEl = document.getElementById("hours");
       if (!checked.length) {
-        window._ocrJobQueue = [];
         hint.style.display = "none";
         return;
       }
-      const [primaryBtn, ...restBtns] = checked;
-      const primaryName = primaryBtn.dataset.job;
-      typeEl.value = primaryName;
+      const names = checked.map(b => b.dataset.job);
+      typeEl.value = names.join(" + ").slice(0, 120);
       typeEl.dispatchEvent(new Event("input", { bubbles: true }));
-      // Switching jobs means any hours filled for the previous pick no
-      // longer apply — let the change handler re-decide from scratch.
-      const hoursEl = document.getElementById("hours");
+
+      // Add together the book hours for every selected job we actually have
+      // a printed number for. If nothing selected has a known hour, leave
+      // the hours field alone for manual entry rather than guessing.
+      let sum = 0, knownCount = 0;
+      for (const n of names) {
+        const v = Number(jobHours?.[n]);
+        if (Number.isFinite(v) && v > 0) { sum += v; knownCount++; }
+      }
       if (hoursEl) delete hoursEl.dataset.touched;
-      _applyOcrHours(primaryName, jobHours);
+      if (knownCount > 0) {
+        const rounded = Math.round(sum * 10) / 10;
+        if (hoursEl) { hoursEl.value = String(rounded); hoursEl.dataset.touched = "1"; }
+      }
       typeEl.dispatchEvent(new Event("change", { bubbles: true }));
-      window._ocrJobQueue = restBtns.map(b => ({
-        name: b.dataset.job,
-        hours: Number(jobHours?.[b.dataset.job]) || null,
-      }));
-      if (restBtns.length) {
-        hint.textContent = `+ ${restBtns.length} more job${restBtns.length !== 1 ? "s" : ""} queued — you'll be prompted after you save this one`;
+
+      if (names.length > 1) {
+        const missing = names.length - knownCount;
+        hint.textContent = missing > 0
+          ? `${names.length} jobs combined — book time missing for ${missing}, double-check hours`
+          : `${names.length} jobs combined — hours added together`;
         hint.style.display = "";
       } else {
         hint.style.display = "none";
@@ -887,51 +891,6 @@ async function scanPhotoAndPrefillForm(file) {
     showStatus(`Scan failed: ${msg.slice(0, 50) || "unknown error"}`);
     setTimeout(() => showStatus(""), 5000);
   }
-}
-
-/**
- * Called by saveEntry (main-page.js) right after a save clears the form, when
- * a multi-select OCR scan left more jobs queued. Refills the form with the
- * next queued job — reusing the same RO/STK/VIN the whole scan shared — so
- * the tech just checks the hours and hits Save again for each remaining line.
- */
-function continueOcrJobQueue(job, ctx, remainingCount) {
-  if (!job) return;
-  const refEl      = document.getElementById("ref");
-  const vinEl      = document.getElementById("vin8");
-  const typeEl     = document.getElementById("typeText");
-  const hoursEl    = document.getElementById("hours");
-  const scanStatus = document.getElementById("photoScanStatus");
-
-  if (refEl && ctx?.ref) {
-    refEl.value = ctx.ref;
-    document.getElementById(ctx.refType === "STK" ? "refTypeSTK" : "refTypeRO")?.click();
-  }
-  if (vinEl && ctx?.vin8) vinEl.value = ctx.vin8;
-  if (typeEl) {
-    typeEl.value = job.name;
-    typeEl.dispatchEvent(new Event("input", { bubbles: true }));
-  }
-  if (hoursEl) {
-    if (Number.isFinite(job.hours) && job.hours > 0) {
-      hoursEl.value = String(job.hours);
-      hoursEl.dataset.touched = "1";
-    } else {
-      hoursEl.value = "";
-      hoursEl.dataset.touched = "";
-    }
-  }
-  if (typeEl) typeEl.dispatchEvent(new Event("change", { bubbles: true }));
-  updateEarningsPreview?.();
-
-  if (scanStatus) {
-    scanStatus.textContent = `📋 Next from this scan: ${job.name}` + (remainingCount ? ` · ${remainingCount} more after this` : "");
-    scanStatus.style.display = "";
-    scanStatus.className = "fr26ScanStatus";
-  }
-  setTimeout(() => {
-    document.getElementById("hours")?.focus();
-  }, 80);
 }
 
 async function autoScanPhotoAndPatch(file, entryId, currentRef, currentVin8) {

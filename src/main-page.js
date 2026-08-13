@@ -270,10 +270,6 @@ async function handleDeleteEntry(entry, ev) {
 function handleClear(ev, options = {}) {
   if (ev) ev.preventDefault();
   clearDraft();
-  // Any leftover multi-job OCR queue belongs to the form state being wiped
-  // right now — saveEntry() snapshots it before calling handleClear when it
-  // needs to carry it into the next job (see continueOcrJobQueue).
-  window._ocrJobQueue = [];
   const preserveType = !!options.preserveType;
   const preservedType = preserveType ? String(options.typeValue || getLastWorkType()).trim() : "";
   setEditingEntry(null);
@@ -1736,22 +1732,7 @@ async function saveEntry(entry, options = {}) {
     setTimeout(() => updateRepeatChip?.(), 400);
   }
 
-  // Snapshot any multi-job OCR queue before handleClear wipes it — a
-  // multi-select scan queues the remaining jobs here so each one can be
-  // logged as its own entry, one save at a time, without re-scanning.
-  const _ocrQueueSnapshot = (!isEdit && Array.isArray(window._ocrJobQueue) && window._ocrJobQueue.length)
-    ? window._ocrJobQueue.slice()
-    : null;
-  const _ocrCtx = { ref: entry.ref, refType: entry.refType, vin8: entry.vin8 };
-
   handleClear(null, { preserveType, typeValue: preservedType });
-
-  if (_ocrQueueSnapshot) {
-    const next = _ocrQueueSnapshot.shift();
-    window._ocrJobQueue = _ocrQueueSnapshot;
-    continueOcrJobQueue?.(next, _ocrCtx, _ocrQueueSnapshot.length);
-  }
-
   return _savedEntry;
 }
 
