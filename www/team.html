@@ -86,10 +86,13 @@
     .panel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 14px; padding: 16px; margin-bottom: 18px; }
     .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
     .panel-title { font-size: 15px; font-weight: 700; }
-    .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 9px 14px; min-height: 36px; font-size: 12px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
     .btn-sm:hover { color: var(--primary); border-color: var(--primary); }
     .btn-sm:disabled { opacity: .5; cursor: default; }
-    .roster-actions { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
+    /* Promote/Remove sit right next to each other in a narrow table cell —
+       one of the easiest places to tap the wrong one. Bigger targets + more
+       gap between them (table already scrolls horizontally if needed). */
+    .roster-actions { display: flex; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
 
     .chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding-top: 6px; }
     .chart-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }

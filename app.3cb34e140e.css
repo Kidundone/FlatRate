@@ -878,6 +878,7 @@ a.btn {
   justify-content: center;
   gap: 8px;
   padding: 9px 16px;
+  min-height: 40px;
   border-radius: var(--r-pill);
   border: 1px solid var(--stroke2);
   background: var(--surface2);
@@ -915,12 +916,17 @@ a.btn {
 }
 
 /* ── Segmented controls ──────────────────────────── */
+/* Every segmented toggle in the app (RO/STK, Hours/Pay, history range,
+   dark mode, pay period) shares these two classes — this is one of the most
+   common "tapped one, hit the neighbor" spots since options sit shoulder to
+   shoulder. A slightly bigger gap + a real min-height fixes all of them
+   app-wide from one place. */
 .seg {
   display: inline-flex;
   background: var(--surface2);
   border-radius: var(--r-md);
   padding: 3px;
-  gap: 2px;
+  gap: 4px;
   border: 1px solid var(--stroke);
 }
 
@@ -928,7 +934,8 @@ a.btn {
   border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 7px 14px;
+  padding: 9px 14px;
+  min-height: 38px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -3057,7 +3064,7 @@ body.compact .list    { gap: 1px; }
 /* RO# always-visible row */
 .fr26RowRef .fr26LabelRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .fr26RefTypeSeg { font-size: 11px; }
-.fr26RefTypeSeg .segBtn { padding: 4px 10px; font-size: 11px; min-height: 30px; }
+.fr26RefTypeSeg .segBtn { padding: 8px 12px; font-size: 11px; min-height: 36px; }
 
 .moreCardHeaderRow {
   display: flex;
