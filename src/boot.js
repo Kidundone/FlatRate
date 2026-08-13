@@ -1013,10 +1013,20 @@ window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.7": [
+    "📸 OCR scans are faster and more reliable — fixed a bug causing scan failures",
+    "Scan a whole RO and combine multiple jobs into one entry, hours added together",
+    "Password reset now actually works everywhere in the app",
+    "Team dashboard: promote, demote, or remove techs right from the roster",
+    "Invite techs with one tap — shares the app link + join code together",
+    "Photos open instantly on repeat views instead of reloading every time",
+    "Fixed the app sliding side to side and delayed vibration feedback",
+    "Buttons throughout the app are bigger and more precise — fewer mis-taps",
+  ],
   "1.6": [
     "🏆 New Job Scorecard — see which job types actually pay best per hour",
     "Spots your top earner and flags jobs with high comeback rates",
