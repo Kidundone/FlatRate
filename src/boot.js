@@ -19,14 +19,15 @@ function logErr(label) {
 (function killHorizontalBounce() {
   let startX = 0, startY = 0, decided = false, blockHorizontal = false, allowNative = false;
 
-  function scrollsHorizontally(el) {
-    while (el && el !== document.body && el !== document.documentElement) {
-      const cs = window.getComputedStyle(el);
-      if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && el.scrollWidth > el.clientWidth) return true;
-      el = el.parentElement;
-    }
-    return false;
-  }
+  // Every element that intentionally scrolls sideways (chip rows, period
+  // tabs, action strips), collected once instead of walking the DOM with
+  // getComputedStyle() on every single touch. That per-touch style-recalc
+  // was cheap-looking but ran on EVERY tap anywhere in the app, and was the
+  // real cause of the whole app feeling laggy/delayed (haptics included) —
+  // closest() against a plain selector list is a native, non-layout-forcing
+  // call and doesn't have that cost.
+  const H_SCROLL_SELECTOR = ".statsChipsWrap, .mnthBarsScroll, .fr26QuickHours, " +
+    ".fr26QuickTools, .pillRow, .entryActions, .hcActionRow, .recentTypeChips";
 
   document.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) { allowNative = true; return; }
@@ -34,7 +35,7 @@ function logErr(label) {
     startY = e.touches[0].clientY;
     decided = false;
     blockHorizontal = false;
-    allowNative = scrollsHorizontally(e.target);
+    allowNative = !!(e.target && e.target.closest && e.target.closest(H_SCROLL_SELECTOR));
   }, { passive: true });
 
   document.addEventListener("touchmove", (e) => {
