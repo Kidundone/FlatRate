@@ -293,6 +293,19 @@ function handleClear(ev, options = {}) {
   if (typeChipEl) typeChipEl.style.display = "none";
   if (notesEl) notesEl.value = "";
   clearPickedPhoto();
+  // The OCR scan status line and job chips are part of the form's state,
+  // not a separate thing to tidy up by hand — wipe them here too so
+  // scan → log → scan → log flows without any manual cleanup in between.
+  const scanStatusEl = document.getElementById("photoScanStatus");
+  if (scanStatusEl) {
+    scanStatusEl.textContent = "";
+    scanStatusEl.style.display = "none";
+    scanStatusEl.className = "fr26ScanStatus";
+  }
+  const scanAltsEl = document.getElementById("scanJobAlternatives");
+  if (scanAltsEl) { scanAltsEl.innerHTML = ""; scanAltsEl.style.display = "none"; }
+  const scanHeroBtn = document.getElementById("scanRoHeroBtn");
+  if (scanHeroBtn) scanHeroBtn.classList.remove("scanning");
   // Reset date picker to today
   const datePickerEl = document.getElementById("entryDate");
   if (datePickerEl) datePickerEl.value = todayKeyLocal();
