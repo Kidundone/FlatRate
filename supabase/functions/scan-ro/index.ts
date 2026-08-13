@@ -73,6 +73,12 @@ Return ONLY this JSON, no markdown, no extra text:
       },
     });
 
+    // 429 (rate limit) and 503 (overloaded) were the only retried statuses —
+    // 504 (gateway timeout, which is what was actually showing up) fell
+    // straight through to a hard failure on the first hiccup. 502/504 are
+    // just as transient as 503 for a public API like Gemini's, so they get
+    // the same retry treatment.
+    const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
     const RETRIES = 3;
     let geminiRes!: Response;
     for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -83,8 +89,7 @@ Return ONLY this JSON, no markdown, no extra text:
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
       );
-      // retry on 503 (overloaded) or 429 (rate limit)
-      if (geminiRes.status !== 503 && geminiRes.status !== 429) break;
+      if (!RETRYABLE_STATUSES.has(geminiRes.status)) break;
       console.warn(`Gemini ${geminiRes.status} on attempt ${attempt + 1}, retrying...`);
     }
 

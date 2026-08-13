@@ -3119,6 +3119,9 @@ function _rankJobsForUser(jobs, empId) {
 async function scanPhotoAndPrefillForm(file) {
   if (!file) return;
 
+  // A fresh scan invalidates any multi-job queue left over from a previous one.
+  window._ocrJobQueue = [];
+
   const scanStatus   = document.getElementById("photoScanStatus");
   const altChips     = document.getElementById("scanJobAlternatives");
   const refEl        = document.getElementById("ref");
@@ -3152,32 +3155,66 @@ async function scanPhotoAndPrefillForm(file) {
     return false;
   };
 
-  const showAltJobChips = (altJobs, jobHours) => {
-    if (!altChips || !altJobs.length || !typeEl) return;
+  // Multi-select: an RO/checklist often has several jobs worth logging off
+  // one scan. Every ranked job (the auto-filled pick plus its alternatives)
+  // gets a toggleable chip. Whichever chip is checked FIRST (in ranked
+  // order) drives the form's type/hours right now; any additional checked
+  // chips get queued in window._ocrJobQueue and are surfaced one at a time
+  // after each save (see continueOcrJobQueue, called from saveEntry).
+  const showAltJobChips = (rankedJobs, jobHours, primaryJob) => {
+    if (!altChips || !rankedJobs.length || !typeEl) return;
     altChips.innerHTML = "";
-    for (const j of altJobs) {
+    window._ocrJobQueue = [];
+
+    const hint = document.createElement("div");
+    hint.className = "fr26ScanJobHint";
+    hint.style.display = "none";
+
+    const applySelection = () => {
+      const checked = Array.from(altChips.querySelectorAll(".fr26ScanJobAlt.selected"));
+      if (!checked.length) {
+        window._ocrJobQueue = [];
+        hint.style.display = "none";
+        return;
+      }
+      const [primaryBtn, ...restBtns] = checked;
+      const primaryName = primaryBtn.dataset.job;
+      typeEl.value = primaryName;
+      typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      // Switching jobs means any hours filled for the previous pick no
+      // longer apply — let the change handler re-decide from scratch.
+      const hoursEl = document.getElementById("hours");
+      if (hoursEl) delete hoursEl.dataset.touched;
+      _applyOcrHours(primaryName, jobHours);
+      typeEl.dispatchEvent(new Event("change", { bubbles: true }));
+      window._ocrJobQueue = restBtns.map(b => ({
+        name: b.dataset.job,
+        hours: Number(jobHours?.[b.dataset.job]) || null,
+      }));
+      if (restBtns.length) {
+        hint.textContent = `+ ${restBtns.length} more job${restBtns.length !== 1 ? "s" : ""} queued — you'll be prompted after you save this one`;
+        hint.style.display = "";
+      } else {
+        hint.style.display = "none";
+      }
+      updateEarningsPreview?.();
+    };
+
+    for (const j of rankedJobs) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "fr26HourBtn fr26ScanJobAlt";
+      btn.dataset.job = j;
       btn.textContent = j;
+      if (j === primaryJob) btn.classList.add("selected");
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        if (typeEl) {
-          typeEl.value = j;
-          typeEl.dispatchEvent(new Event("input", { bubbles: true }));
-          // Switching jobs means any hours filled for the previous pick no
-          // longer apply — let the change handler re-decide from scratch.
-          const hoursEl = document.getElementById("hours");
-          if (hoursEl) delete hoursEl.dataset.touched;
-          _applyOcrHours(j, jobHours);
-          typeEl.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        hideAlts();
-        updateEarningsPreview?.();
-        document.getElementById("hours")?.focus();
+        btn.classList.toggle("selected");
+        applySelection();
       });
       altChips.appendChild(btn);
     }
+    altChips.appendChild(hint);
     altChips.style.display = "";
   };
 
@@ -3230,9 +3267,10 @@ async function scanPhotoAndPrefillForm(file) {
       typeEl.dispatchEvent(new Event("change", { bubbles: true }));
       filled.push(`Job: ${bestJob}`);
       if (gotOcrHours) filled.push(`Hours: ${jobHours[bestJob]}`);
-      // Show remaining jobs as tappable alternative chips
-      const alts = ranked.slice(1);
-      if (alts.length) showAltJobChips(alts, jobHours);
+      // Show every detected job as a toggleable chip (best pick pre-checked) —
+      // checking more than one queues them to be logged as separate entries,
+      // one after another, once this save goes through.
+      if (ranked.length > 1) showAltJobChips(ranked, jobHours, bestJob);
     }
 
     if (filled.length) {
@@ -3274,6 +3312,51 @@ async function scanPhotoAndPrefillForm(file) {
     showStatus(`Scan failed: ${msg.slice(0, 50) || "unknown error"}`);
     setTimeout(() => showStatus(""), 5000);
   }
+}
+
+/**
+ * Called by saveEntry (main-page.js) right after a save clears the form, when
+ * a multi-select OCR scan left more jobs queued. Refills the form with the
+ * next queued job — reusing the same RO/STK/VIN the whole scan shared — so
+ * the tech just checks the hours and hits Save again for each remaining line.
+ */
+function continueOcrJobQueue(job, ctx, remainingCount) {
+  if (!job) return;
+  const refEl      = document.getElementById("ref");
+  const vinEl      = document.getElementById("vin8");
+  const typeEl     = document.getElementById("typeText");
+  const hoursEl    = document.getElementById("hours");
+  const scanStatus = document.getElementById("photoScanStatus");
+
+  if (refEl && ctx?.ref) {
+    refEl.value = ctx.ref;
+    document.getElementById(ctx.refType === "STK" ? "refTypeSTK" : "refTypeRO")?.click();
+  }
+  if (vinEl && ctx?.vin8) vinEl.value = ctx.vin8;
+  if (typeEl) {
+    typeEl.value = job.name;
+    typeEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  if (hoursEl) {
+    if (Number.isFinite(job.hours) && job.hours > 0) {
+      hoursEl.value = String(job.hours);
+      hoursEl.dataset.touched = "1";
+    } else {
+      hoursEl.value = "";
+      hoursEl.dataset.touched = "";
+    }
+  }
+  if (typeEl) typeEl.dispatchEvent(new Event("change", { bubbles: true }));
+  updateEarningsPreview?.();
+
+  if (scanStatus) {
+    scanStatus.textContent = `📋 Next from this scan: ${job.name}` + (remainingCount ? ` · ${remainingCount} more after this` : "");
+    scanStatus.style.display = "";
+    scanStatus.className = "fr26ScanStatus";
+  }
+  setTimeout(() => {
+    document.getElementById("hours")?.focus();
+  }, 80);
 }
 
 async function autoScanPhotoAndPatch(file, entryId, currentRef, currentVin8) {
@@ -3604,6 +3687,10 @@ async function handleDeleteEntry(entry, ev) {
 function handleClear(ev, options = {}) {
   if (ev) ev.preventDefault();
   clearDraft();
+  // Any leftover multi-job OCR queue belongs to the form state being wiped
+  // right now — saveEntry() snapshots it before calling handleClear when it
+  // needs to carry it into the next job (see continueOcrJobQueue).
+  window._ocrJobQueue = [];
   const preserveType = !!options.preserveType;
   const preservedType = preserveType ? String(options.typeValue || getLastWorkType()).trim() : "";
   setEditingEntry(null);
@@ -5066,7 +5153,22 @@ async function saveEntry(entry, options = {}) {
     setTimeout(() => updateRepeatChip?.(), 400);
   }
 
+  // Snapshot any multi-job OCR queue before handleClear wipes it — a
+  // multi-select scan queues the remaining jobs here so each one can be
+  // logged as its own entry, one save at a time, without re-scanning.
+  const _ocrQueueSnapshot = (!isEdit && Array.isArray(window._ocrJobQueue) && window._ocrJobQueue.length)
+    ? window._ocrJobQueue.slice()
+    : null;
+  const _ocrCtx = { ref: entry.ref, refType: entry.refType, vin8: entry.vin8 };
+
   handleClear(null, { preserveType, typeValue: preservedType });
+
+  if (_ocrQueueSnapshot) {
+    const next = _ocrQueueSnapshot.shift();
+    window._ocrJobQueue = _ocrQueueSnapshot;
+    continueOcrJobQueue?.(next, _ocrCtx, _ocrQueueSnapshot.length);
+  }
+
   return _savedEntry;
 }
 

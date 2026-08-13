@@ -1510,6 +1510,20 @@ a.btn {
   background: var(--primary);
   color: #fff;
 }
+.fr26ScanJobAlt.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.fr26ScanJobAlt.selected::before {
+  content: "✓ ";
+}
+.fr26ScanJobHint {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 2px;
+}
 
 .fr26QuickTools {
   display: flex;

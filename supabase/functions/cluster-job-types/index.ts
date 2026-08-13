@@ -89,6 +89,9 @@ Return ONLY this JSON shape, no markdown, no extra text:
       },
     });
 
+    // 502/504 (gateway errors) are just as transient as 503/429 for a
+    // public API like Gemini's — retry all four instead of only 503/429.
+    const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
     const RETRIES = 3;
     let geminiRes!: Response;
     for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -97,7 +100,7 @@ Return ONLY this JSON shape, no markdown, no extra text:
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
       );
-      if (geminiRes.status !== 503 && geminiRes.status !== 429) break;
+      if (!RETRYABLE_STATUSES.has(geminiRes.status)) break;
     }
 
     if (!geminiRes.ok) {
