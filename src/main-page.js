@@ -1526,25 +1526,59 @@ function initPullToRefresh() {
   if (!bar) {
     bar = document.createElement("div");
     bar.id = "ptrBar";
-    bar.innerHTML = '<div id="ptrDot"></div><span>Refreshing…</span>';
+    bar.innerHTML = '<div id="ptrDot"></div><span id="ptrLabel">Pull to refresh</span>';
     const hero = document.querySelector(".heroSection");
     if (hero) hero.insertAdjacentElement("beforebegin", bar);
     else document.body.prepend(bar);
   }
-  let startY = 0, active = false;
-  document.addEventListener("touchstart", e => { if (window.scrollY === 0) { startY = e.touches[0].clientY; active = false; } }, { passive:true });
+  const label = document.getElementById("ptrLabel");
+  const dot = () => document.getElementById("ptrDot");
+  const TRIGGER = 60, MAX_H = 92, SETTLE_H = 40;
+  let startY = 0, tracking = false, pulling = false, armed = false;
+
+  document.addEventListener("touchstart", e => {
+    tracking = window.scrollY === 0;
+    startY = tracking ? e.touches[0].clientY : 0;
+    armed = false;
+  }, { passive: true });
+
   document.addEventListener("touchmove", e => {
-    if (window.scrollY > 0) return;
-    if (e.touches[0].clientY - startY > 60 && !active) { active = true; bar.classList.add("active"); }
-  }, { passive:true });
+    if (!tracking || window.scrollY > 0) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) return;
+    if (!pulling) { pulling = true; bar.classList.add("pulling"); }
+    // Rubber-band: the bar follows the finger at roughly half speed and
+    // caps out, so it never feels like it's stretching forever.
+    bar.style.height = Math.min(MAX_H, dy * 0.55) + "px";
+    const nowArmed = dy > TRIGGER;
+    if (nowArmed !== armed) {
+      armed = nowArmed;
+      bar.classList.toggle("armed", armed);
+      if (label) label.textContent = armed ? "Release to refresh" : "Pull to refresh";
+      if (armed) haptic("selection");
+    }
+  }, { passive: true });
+
   document.addEventListener("touchend", async () => {
-    if (!active) return;
-    active = false;
-    const dot = document.getElementById("ptrDot");
-    if (dot) dot.classList.add("spin");
+    if (!pulling) return;
+    pulling = false;
+    bar.classList.remove("pulling");
+    if (!armed) { bar.style.height = "0px"; return; }
+    armed = false;
+    bar.classList.remove("armed");
+    bar.style.height = SETTLE_H + "px";
+    if (label) label.textContent = "Refreshing…";
+    dot()?.classList.add("spin");
     try { await safeLoadEntries(); } catch {}
-    if (dot) dot.classList.remove("spin");
-    bar.classList.remove("active");
+    dot()?.classList.remove("spin");
+    if (label) label.textContent = "Updated";
+    bar.classList.add("done");
+    haptic("success");
+    setTimeout(() => {
+      bar.classList.remove("done");
+      bar.style.height = "0px";
+      if (label) label.textContent = "Pull to refresh";
+    }, 550);
   });
 }
 
@@ -3181,6 +3215,10 @@ function renderList(entries, mode){
   const list = $("entryList");
   if (!list) return;
   list.innerHTML = "";
+  // Staggered entrance: each row's CSS animation-delay ticks up a little so
+  // the list flows in on every render (including pull-to-refresh) instead of
+  // popping in all at once. Capped so a long list doesn't feel sluggish.
+  let __rowStagger = 0;
 
   const dayKey = selectedHistoryDayKey();
   const { start: weekStart, end: weekEnd } = selectedListWeekRange();
@@ -3221,7 +3259,8 @@ function renderList(entries, mode){
 
   const buildEntry = (e) => {
     const row = document.createElement("div");
-    row.className = hlQ ? "item" : "item collapsed";
+    row.className = (hlQ ? "item" : "item collapsed") + " entryPopIn";
+    row.style.animationDelay = (Math.min(__rowStagger++, 10) * 26) + "ms";
     const tc = (e.type || e.typeText || "").toLowerCase().replace(/\s+/g, "");
     const tcMap = { sold: "sold", warranty: "warranty", fpf: "fpf", preowned: "preowned", "pre-owned": "preowned" };
     row.dataset.tc = tcMap[tc] || "default";

@@ -306,14 +306,29 @@ async function compressImageFileToDataUrl(file, maxW = 1200, quality = 0.75, enh
     try {
       const imageData = ctx.getImageData(0, 0, w, h);
       const d = imageData.data;
-      // Contrast factor >1 = more contrast; combined with slight brightness boost
+      // Contrast is a plain multiplier here (1.35 = 35% more contrast),
+      // combined with a slight brightness boost.
+      //
+      // NOTE: this used to run through the classic Photoshop-style contrast
+      // formula `259*(C+255) / (255*(259-C))`, but that formula expects C in
+      // [-255, 255] directly — feeding it `contrast * 255` (344.25) pushed
+      // the denominator negative, which silently INVERTED blacks/whites at
+      // the extremes instead of boosting contrast. Every "enhanced" OCR scan
+      // was quietly getting a partially negative image. Simple linear
+      // contrast (below) is what "contrast = 1.35" actually meant.
       const contrast = 1.35;
       const brightness = 10;
-      const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+      // Precompute a 256-entry lookup table instead of redoing this same
+      // math for every one of the (up to) millions of RGB subpixels — this
+      // was the single biggest chunk of on-device time in the scan
+      // pipeline, all before the network call even starts.
+      // Uint8ClampedArray auto-clamps to 0-255 on assignment.
+      const lut = new Uint8ClampedArray(256);
+      for (let v = 0; v < 256; v++) lut[v] = (v - 128) * contrast + 128 + brightness;
       for (let i = 0; i < d.length; i += 4) {
-        d[i]   = Math.min(255, Math.max(0, factor * (d[i]   - 128) + 128 + brightness));
-        d[i+1] = Math.min(255, Math.max(0, factor * (d[i+1] - 128) + 128 + brightness));
-        d[i+2] = Math.min(255, Math.max(0, factor * (d[i+2] - 128) + 128 + brightness));
+        d[i]   = lut[d[i]];
+        d[i+1] = lut[d[i+1]];
+        d[i+2] = lut[d[i+2]];
       }
       ctx.putImageData(imageData, 0, 0);
     } catch { /* cross-origin or tainted canvas — skip enhancement */ }
@@ -701,12 +716,20 @@ async function scanPhotoAndPrefillForm(file) {
   const typeEl       = document.getElementById("typeText");
   const detailsPanel = document.getElementById("detailsPanel");
   const detailsBtn   = document.getElementById("toggleDetailsBtn");
+  const heroBtn      = document.getElementById("scanRoHeroBtn");
+  const heroLabel    = heroBtn?.querySelector(".scanHeroLabel");
+  const heroLabelText = heroLabel?.textContent || "Scan Repair Order";
 
   const showStatus = (msg, isScanning = false) => {
-    if (!scanStatus) return;
-    scanStatus.textContent = msg;
-    scanStatus.style.display = msg ? "" : "none";
-    scanStatus.className = "fr26ScanStatus" + (isScanning ? " scanning" : "");
+    if (scanStatus) {
+      scanStatus.textContent = msg;
+      scanStatus.style.display = msg ? "" : "none";
+      scanStatus.className = "fr26ScanStatus" + (isScanning ? " scanning" : "");
+    }
+    // Sweep animation + label swap on the hero button itself — the tech's
+    // eyes are on the button they just tapped, not the status line below it.
+    if (heroBtn) heroBtn.classList.toggle("scanning", isScanning);
+    if (heroLabel) heroLabel.textContent = isScanning ? "Scanning…" : heroLabelText;
   };
 
   const hideAlts = () => { if (altChips) { altChips.innerHTML = ""; altChips.style.display = "none"; } };
@@ -801,8 +824,12 @@ async function scanPhotoAndPrefillForm(file) {
   hideAlts();
 
   try {
-    // High-res + enhanced for document scanning: checkboxes, circles, and strikethroughs need crisp edges
-    const dataUrl  = await compressImageFileToDataUrl(file, 1200, 0.82, true);
+    // Enhanced for document scanning (checkboxes, circles, strikethroughs need
+    // crisp edges) but trimmed down from 1200px/0.82 — this is the interactive
+    // path the tech is actively staring at, so shaving pixels here cuts both
+    // the on-device processing time and the upload/model time without a
+    // noticeable accuracy hit.
+    const dataUrl  = await compressImageFileToDataUrl(file, 1050, 0.78, true);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);

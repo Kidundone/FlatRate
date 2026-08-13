@@ -1413,6 +1413,8 @@ a.btn {
 }
 
 .scanHeroBtn {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1431,11 +1433,38 @@ a.btn {
   transform: scale(.97);
   box-shadow: 0 2px 8px rgba(37,99,235,.20);
 }
+/* Scanning state: a bright bar sweeps across like a flatbed scanner, so the
+   OCR wait reads as active progress instead of a frozen button. */
+.scanHeroBtn.scanning {
+  cursor: default;
+}
+.scanHeroBtn.scanning::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -35%;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  animation: scanSweepBar 1.15s ease-in-out infinite;
+}
+@keyframes scanSweepBar {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+.scanHeroBtn.scanning .scanHeroIcon {
+  animation: scanIconPulse 1.15s ease-in-out infinite;
+}
+@keyframes scanIconPulse {
+  0%, 100% { opacity: .7; transform: scale(1); }
+  50%      { opacity: 1;  transform: scale(1.12); }
+}
 .scanHeroIcon {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
   opacity: .95;
+  transition: opacity .15s, transform .15s;
 }
 .scanHeroLabel {
   font-size: 16px;
@@ -4071,14 +4100,21 @@ body.compact .list    { gap: 1px; }
 /* Pull-to-refresh */
 #ptrBar {
   height:0; overflow:hidden; display:flex; align-items:center;
-  justify-content:center; gap:7px; font-size:11px; color:var(--primary);
-  transition:height 200ms ease; background:var(--bg);
+  justify-content:center; gap:7px; font-size:11px; font-weight:600; color:var(--primary);
+  transition:height 220ms cubic-bezier(.34,1.56,.64,1), color 150ms; background:var(--bg);
 }
-#ptrBar.active { height:34px; }
+/* No transition while the finger is actually down — height tracks the drag
+   1:1 (rubber-banded) instead of lagging behind it. */
+#ptrBar.pulling { transition: color 150ms; }
+#ptrBar.armed { color: #22c55e; }
+#ptrBar.done { color: #22c55e; }
 #ptrDot {
-  width:14px; height:14px; border:2px solid var(--primary);
+  width:14px; height:14px; border:2px solid currentColor;
   border-top-color:transparent; border-radius:50%;
+  transition: transform 220ms cubic-bezier(.34,1.56,.64,1), border-color 150ms;
 }
+#ptrBar.armed #ptrDot { transform: scale(1.2) rotate(180deg); }
+#ptrBar.done #ptrDot { border-color: #22c55e; border-top-color: #22c55e; transform: scale(1.05); }
 @keyframes spinDot { to { transform:rotate(360deg); } }
 #ptrDot.spin { animation:spinDot 500ms linear infinite; }
 
@@ -4547,6 +4583,15 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 input.fr26Input:focus, textarea.fr26Input:focus {
   animation: inputFocusPop 180ms ease forwards;
 }
+
+/* Entry list rows flow in on every render (save, refresh, filter change)
+   instead of popping in all at once — each row's JS-set animation-delay
+   staggers them slightly. */
+@keyframes entryPopIn {
+  0%   { opacity: 0; transform: translateY(8px) scale(.985); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.entryPopIn { animation: entryPopIn 260ms cubic-bezier(.22,1,.36,1) backwards; }
 
 /* Chip bounce on programmatic select */
 @keyframes chipSelect {
