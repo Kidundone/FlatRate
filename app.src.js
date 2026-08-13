@@ -12214,6 +12214,48 @@ function logErr(label) {
   };
 }
 
+// Kill the native iOS "rubber-band" side-to-side wobble — this is a
+// Capacitor app, not a webpage, and shouldn't be draggable off-center.
+// The root WKWebView bounces on both axes by default; the main Log page
+// still relies on the ROOT view scrolling vertically (it isn't wrapped in
+// its own fixed-position panel like #spa-more/#spa-stats are), so we can't
+// just disable scrolling outright — only the horizontal component gets
+// blocked, and only for gestures that aren't inside something meant to
+// scroll sideways (chip rows, period tabs, etc. keep working normally).
+(function killHorizontalBounce() {
+  let startX = 0, startY = 0, decided = false, blockHorizontal = false, allowNative = false;
+
+  function scrollsHorizontally(el) {
+    while (el && el !== document.body && el !== document.documentElement) {
+      const cs = window.getComputedStyle(el);
+      if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && el.scrollWidth > el.clientWidth) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) { allowNative = true; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    decided = false;
+    blockHorizontal = false;
+    allowNative = scrollsHorizontally(e.target);
+  }, { passive: true });
+
+  document.addEventListener("touchmove", (e) => {
+    if (allowNative || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!decided) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // too small to tell yet
+      decided = true;
+      blockHorizontal = Math.abs(dx) > Math.abs(dy);
+    }
+    if (blockHorizontal) e.preventDefault();
+  }, { passive: false });
+})();
+
 window.BUILD = "20260624-stable";
 const BUILD_TAG = "stable";
 const FEATURE_FREEZE = Object.freeze({

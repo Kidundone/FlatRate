@@ -73,7 +73,7 @@
 
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-html { height: 100%; overflow-x: hidden; }
+html { height: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
 
 /* ── WKWebView tap & gesture performance ─────────────────────────────────────
    touch-action:manipulation tells iOS "no double-tap zoom, no wait" — eliminates
@@ -99,6 +99,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 /* iOS-safe body scroll lock when overlay is open */
@@ -127,6 +128,7 @@ button, a, [role="button"], summary, label { touch-action: manipulation; }
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   background: var(--bg);
   z-index: 10;
   /* Slid off-screen right by default; CSS moves it on-screen for the active page */
@@ -144,6 +146,7 @@ body[data-page="more"] #spa-more {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
   background: var(--bg);
   z-index: 10;
   transform: translateX(100%);
