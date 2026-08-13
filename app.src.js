@@ -320,8 +320,23 @@ async function bootAuth() {
     await initAuth();
     return;
   }
-  const { data, error } = await client.auth.getSession();
-  if (error) console.error("getSession error:", error);
+  // getSession() can need a network round-trip to refresh an expired token,
+  // and on a bad connection (shop wifi, weak cell signal) that request can
+  // hang indefinitely with no timeout of its own. Without a bound here, one
+  // stuck request left the ENTIRE app stuck on the splash screen forever —
+  // no error, no recovery, just a permanent black screen. Bounded to 8s:
+  // real signal responds fast; a hung request never will. On timeout we
+  // just continue as "no session yet" — the onAuthStateChange listener
+  // registered below will still pick up the real session once the
+  // connection recovers.
+  let data = null;
+  try {
+    const res = await withTimeout(client.auth.getSession(), 8000, "getSession timed out");
+    data = res?.data || null;
+    if (res?.error) console.error("getSession error:", res.error);
+  } catch (e) {
+    console.warn("[bootAuth] getSession timed out — continuing without a session for now:", e?.message || e);
+  }
   await setUidFromSession(data?.session || null);
 
   await initAuth();
