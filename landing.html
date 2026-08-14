@@ -122,6 +122,9 @@
     <a href="https://app.nellylabs.dev" class="btnPrimary">📱 Open Flatrate Buddy — Free</a>
   </div>
   <p class="heroSub">No download required · Works on iPhone, Android &amp; desktop · Free to start</p>
+  <div id="iosTip" style="display:none; max-width:440px; margin:20px auto 0; background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:14px 18px; font-size:13.5px; color:var(--muted); text-align:left;">
+    <strong style="color:var(--fg);">📲 On iPhone?</strong> After it opens in Safari, tap the <strong>Share</strong> icon, then <strong>Add to Home Screen</strong> — so it opens like a real app every time you log a job.
+  </div>
 </div>
 
 <div style="padding: 0 24px;">
@@ -271,6 +274,17 @@
   </div>
   <div class="footerCopy">© 2026 Flatrate Buddy. All rights reserved.</div>
 </footer>
+
+<script>
+  (function () {
+    var ua = navigator.userAgent || "";
+    var isIOS = /iPhone|iPad|iPod/.test(ua) || (ua.indexOf("Macintosh") > -1 && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      var tip = document.getElementById("iosTip");
+      if (tip) tip.style.display = "block";
+    }
+  })();
+</script>
 
 </body>
 </html>

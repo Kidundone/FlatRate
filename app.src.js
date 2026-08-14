@@ -13218,6 +13218,26 @@ document.getElementById("installDismissBtn")?.addEventListener("click", () => {
 window.__FR.canInstall   = () => !!_deferredInstallPrompt;
 window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click();
 
+/* ── iOS "Add to Home Screen" nudge (no beforeinstallprompt on iOS Safari) ── */
+(function iosInstallBanner() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
+  const isStandalone = window.navigator.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches;
+  if (!isIOS || isStandalone) return;
+  if (localStorage.getItem("fr26_ios_install_dismissed")) return;
+  const banner = document.getElementById("installBanner");
+  if (!banner) return;
+  banner.innerHTML =
+    '<span>📲 Add to Home Screen: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong></span>' +
+    '<div class="u-row" style="gap:8px;"><button class="btn primary" id="iosInstallGotItBtn" type="button">Got it</button></div>';
+  banner.style.display = "";
+  document.getElementById("iosInstallGotItBtn")?.addEventListener("click", () => {
+    localStorage.setItem("fr26_ios_install_dismissed", "1");
+    banner.style.display = "none";
+  });
+})();
+
 /* ── What's New changelog ───────────────────────── */
 const APP_VERSION = "1.7";
 const LS_SEEN_VER = "fr_seen_version";
