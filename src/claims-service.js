@@ -133,10 +133,16 @@ async function renderRequests() {
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */
 
-function openRequestModal(prefill = {}) {
+async function openRequestModal(prefill = {}) {
   const modal = document.getElementById("reqModal");
   const kinds = document.getElementById("reqKinds");
   if (!modal || !kinds) return;
+
+  if (!window.CURRENT_UID) { toast?.("Sign in first to send a request"); return; }
+  if (!(await isInShop())) {
+    toast?.("Join a shop from the Team page to send requests to a manager");
+    return;
+  }
 
   REQ_KIND = prefill.kind || "missing_work";
   kinds.innerHTML = CLAIM_KINDS.map(k => `

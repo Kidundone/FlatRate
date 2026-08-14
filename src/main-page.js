@@ -3311,6 +3311,7 @@ function renderList(entries, mode){
           <button class="iBtn" data-action="edit">Edit</button>
           <button class="iBtn${e.isComeback ? " iBtn--active" : ""}" data-action="toggle-cb">${e.isComeback ? "CB ✓" : "CB"}</button>
           ${(e.ref || e.ro) ? `<button class="iBtn iBtn--sameRO" data-action="same-ro" title="New job on same RO">+RO</button>` : ""}
+          <button class="iBtn" data-action="dispute" title="Ask your manager about this job">🚩 Flag</button>
           <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
           ${hasPhoto ? `<button class="iBtn" data-action="view-photo" data-id="${e.id}">Photo</button>` : ""}
         </div>
@@ -3360,6 +3361,25 @@ function renderList(entries, mode){
       document.getElementById("hours")?.focus();
       document.querySelector(".fr26Wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
       toast(`RO ${e.ref || e.ro} loaded — add next job`);
+    });
+
+    // ── 🚩 Flag: send this exact job to the manager, prefilled ────
+    inner.querySelector('[data-action="dispute"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const typeLabel = e.type || e.typeText || "";
+      const refLbl = e.refType === "STOCK" ? "STK" : "RO";
+      const refVal = e.ref || e.ro || "";
+      const subjectParts = [];
+      if (refVal) subjectParts.push(`${refLbl} ${refVal}`);
+      if (typeLabel) subjectParts.push(typeLabel);
+      window.__FR?.openRequestModal?.({
+        kind: "short_pay",
+        subject: (subjectParts.join(" — ") || "Possible short pay").slice(0, 140),
+        ro: refVal,
+        date: e.work_date || "",
+        hours: e.hours != null ? String(e.hours) : "",
+        amount: e.earnings != null ? Number(e.earnings).toFixed(2) : "",
+      });
     });
 
     // ── Action buttons ───────────────────────────────────────────

@@ -6729,6 +6729,7 @@ function renderList(entries, mode){
           <button class="iBtn" data-action="edit">Edit</button>
           <button class="iBtn${e.isComeback ? " iBtn--active" : ""}" data-action="toggle-cb">${e.isComeback ? "CB ✓" : "CB"}</button>
           ${(e.ref || e.ro) ? `<button class="iBtn iBtn--sameRO" data-action="same-ro" title="New job on same RO">+RO</button>` : ""}
+          <button class="iBtn" data-action="dispute" title="Ask your manager about this job">🚩 Flag</button>
           <button class="iBtn iBtn--danger" data-del="${e.id}">Delete</button>
           ${hasPhoto ? `<button class="iBtn" data-action="view-photo" data-id="${e.id}">Photo</button>` : ""}
         </div>
@@ -6778,6 +6779,25 @@ function renderList(entries, mode){
       document.getElementById("hours")?.focus();
       document.querySelector(".fr26Wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
       toast(`RO ${e.ref || e.ro} loaded — add next job`);
+    });
+
+    // ── 🚩 Flag: send this exact job to the manager, prefilled ────
+    inner.querySelector('[data-action="dispute"]')?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const typeLabel = e.type || e.typeText || "";
+      const refLbl = e.refType === "STOCK" ? "STK" : "RO";
+      const refVal = e.ref || e.ro || "";
+      const subjectParts = [];
+      if (refVal) subjectParts.push(`${refLbl} ${refVal}`);
+      if (typeLabel) subjectParts.push(typeLabel);
+      window.__FR?.openRequestModal?.({
+        kind: "short_pay",
+        subject: (subjectParts.join(" — ") || "Possible short pay").slice(0, 140),
+        ro: refVal,
+        date: e.work_date || "",
+        hours: e.hours != null ? String(e.hours) : "",
+        amount: e.earnings != null ? Number(e.earnings).toFixed(2) : "",
+      });
     });
 
     // ── Action buttons ───────────────────────────────────────────
@@ -9843,24 +9863,32 @@ function buildReviewEntryRow(entry) {
   const facts = getEntryRecordFacts(entry);
   const review = facts.review;
   const refLabel = entry.refType === "STOCK" ? "STK" : "RO";
+  const typeLabel = entry.type || entry.typeText || "";
+  const dateLabel = formatDayLabel(facts.dayKey) || facts.dayKey;
+  const metaBits = [dateLabel];
+  if (facts.vin8 && facts.vin8 !== "-") metaBits.push(`VIN ${facts.vin8}`);
+  if (review.hasPhoto) metaBits.push("📷 photo attached");
+
   const row = document.createElement("div");
-  row.className = "item";
+  row.className = "reviewItem";
   row.innerHTML = `
-    <div class="itemTop">
-      <div>
-        <div class="mono">${escapeHtml(refLabel)}: ${escapeHtml(entry.ref || entry.ro || "-")} <span class="muted">(${escapeHtml(entry.type || entry.typeText || "")})</span></div>
-        <div class="small">Date: <span class="mono">${escapeHtml(facts.dayKey)}</span> • VIN8: <span class="mono">${escapeHtml(facts.vin8)}</span> • Photo: ${escapeHtml(facts.photoText)}</div>
-        <div class="small">Created: ${escapeHtml(facts.createdText)} • Updated: ${escapeHtml(facts.updatedText)}</div>
-        ${entry.notes ? `<div class="small" style="margin-top:6px;">${escapeHtml(entry.notes)}</div>` : ""}
-      </div>
-      <div class="right">
-        <div class="mono">${String(entry.hours)} hrs @ ${formatMoney(entry.rate)}</div>
-        <div style="margin-top:6px;font-size:16px;">${formatMoney(entry.earnings)}</div>
-        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-          ${review.hasPhoto ? `<button class="btn" type="button" data-review-photo="${escapeHtml(String(entry.id ?? ""))}">View Photo</button>` : ""}
-          <button class="btn danger" data-del="${entry.id}">Delete</button>
+    <div class="reviewItemTop">
+      <div class="reviewItemLeft">
+        <div class="reviewItemHead">
+          ${typeLabel ? typeBadgeHtml(typeLabel) : ""}
+          <span class="reviewItemRef mono">${escapeHtml(refLabel)}: ${escapeHtml(entry.ref || entry.ro || "-")}</span>
         </div>
+        <div class="reviewItemMeta">${escapeHtml(metaBits.join(" · "))}</div>
+        ${entry.notes ? `<div class="reviewItemNotes">${escapeHtml(entry.notes)}</div>` : ""}
       </div>
+      <div class="reviewItemRight">
+        <div class="reviewItemPay">${formatMoney(entry.earnings)}</div>
+        <div class="reviewItemHrs">${formatHours(entry.hours)} hrs @ ${formatMoney(entry.rate)}</div>
+      </div>
+    </div>
+    <div class="reviewItemActions">
+      ${review.hasPhoto ? `<button class="iBtn" type="button" data-review-photo="${escapeHtml(String(entry.id ?? ""))}">📷 View Photo</button>` : ""}
+      <button class="iBtn iBtn--danger" data-del="${entry.id}">🗑 Delete</button>
     </div>
   `;
 
@@ -11890,10 +11918,16 @@ async function renderRequests() {
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */
 
-function openRequestModal(prefill = {}) {
+async function openRequestModal(prefill = {}) {
   const modal = document.getElementById("reqModal");
   const kinds = document.getElementById("reqKinds");
   if (!modal || !kinds) return;
+
+  if (!window.CURRENT_UID) { toast?.("Sign in first to send a request"); return; }
+  if (!(await isInShop())) {
+    toast?.("Join a shop from the Team page to send requests to a manager");
+    return;
+  }
 
   REQ_KIND = prefill.kind || "missing_work";
   kinds.innerHTML = CLAIM_KINDS.map(k => `

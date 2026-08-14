@@ -931,24 +931,32 @@ function buildReviewEntryRow(entry) {
   const facts = getEntryRecordFacts(entry);
   const review = facts.review;
   const refLabel = entry.refType === "STOCK" ? "STK" : "RO";
+  const typeLabel = entry.type || entry.typeText || "";
+  const dateLabel = formatDayLabel(facts.dayKey) || facts.dayKey;
+  const metaBits = [dateLabel];
+  if (facts.vin8 && facts.vin8 !== "-") metaBits.push(`VIN ${facts.vin8}`);
+  if (review.hasPhoto) metaBits.push("📷 photo attached");
+
   const row = document.createElement("div");
-  row.className = "item";
+  row.className = "reviewItem";
   row.innerHTML = `
-    <div class="itemTop">
-      <div>
-        <div class="mono">${escapeHtml(refLabel)}: ${escapeHtml(entry.ref || entry.ro || "-")} <span class="muted">(${escapeHtml(entry.type || entry.typeText || "")})</span></div>
-        <div class="small">Date: <span class="mono">${escapeHtml(facts.dayKey)}</span> • VIN8: <span class="mono">${escapeHtml(facts.vin8)}</span> • Photo: ${escapeHtml(facts.photoText)}</div>
-        <div class="small">Created: ${escapeHtml(facts.createdText)} • Updated: ${escapeHtml(facts.updatedText)}</div>
-        ${entry.notes ? `<div class="small" style="margin-top:6px;">${escapeHtml(entry.notes)}</div>` : ""}
-      </div>
-      <div class="right">
-        <div class="mono">${String(entry.hours)} hrs @ ${formatMoney(entry.rate)}</div>
-        <div style="margin-top:6px;font-size:16px;">${formatMoney(entry.earnings)}</div>
-        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-          ${review.hasPhoto ? `<button class="btn" type="button" data-review-photo="${escapeHtml(String(entry.id ?? ""))}">View Photo</button>` : ""}
-          <button class="btn danger" data-del="${entry.id}">Delete</button>
+    <div class="reviewItemTop">
+      <div class="reviewItemLeft">
+        <div class="reviewItemHead">
+          ${typeLabel ? typeBadgeHtml(typeLabel) : ""}
+          <span class="reviewItemRef mono">${escapeHtml(refLabel)}: ${escapeHtml(entry.ref || entry.ro || "-")}</span>
         </div>
+        <div class="reviewItemMeta">${escapeHtml(metaBits.join(" · "))}</div>
+        ${entry.notes ? `<div class="reviewItemNotes">${escapeHtml(entry.notes)}</div>` : ""}
       </div>
+      <div class="reviewItemRight">
+        <div class="reviewItemPay">${formatMoney(entry.earnings)}</div>
+        <div class="reviewItemHrs">${formatHours(entry.hours)} hrs @ ${formatMoney(entry.rate)}</div>
+      </div>
+    </div>
+    <div class="reviewItemActions">
+      ${review.hasPhoto ? `<button class="iBtn" type="button" data-review-photo="${escapeHtml(String(entry.id ?? ""))}">📷 View Photo</button>` : ""}
+      <button class="iBtn iBtn--danger" data-del="${entry.id}">🗑 Delete</button>
     </div>
   `;
 
