@@ -167,12 +167,23 @@ function showSpaPage(name) {
   }
 
   // Stats / Breakdown page
+  // Stats offers "This Year" and "All Time", but the app only keeps the last
+  // 90 days in memory by default — so without pulling full history first those
+  // periods silently under-report (they'd chart 90 days and call it a year).
+  // Same full-history load the More page does, just triggered from here too.
   if (name === "stats") {
+    const drawStats = () => window.__FR?.[_statsPageLoaded ? "renderBreakdownPage" : "initBreakdownPage"]?.(
+      _statsPageLoaded ? (window.__STATS_PERIOD__ || "week") : undefined
+    );
     if (!_statsPageLoaded) {
-      _statsPageLoaded = true;
-      setTimeout(() => window.__FR?.initBreakdownPage?.(), 150);
+      setTimeout(() => { window.__FR?.initBreakdownPage?.(); _statsPageLoaded = true; }, 150);
     } else {
-      setTimeout(() => window.__FR?.renderBreakdownPage?.(window.__STATS_PERIOD__ || "week"), 100);
+      setTimeout(drawStats, 100);
+    }
+    if (!_fullHistoryLoaded) {
+      safeLoadEntries?.({ fullHistory: true })
+        .then(() => window.__FR?.renderBreakdownPage?.(window.__STATS_PERIOD__ || "week"))
+        .catch(logErr("statsFullHistory"));
     }
   }
 }
