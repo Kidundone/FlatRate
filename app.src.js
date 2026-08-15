@@ -12222,6 +12222,21 @@ function logErr(label) {
   }, { passive: false });
 })();
 
+// target="_blank" links (Terms, Privacy, upgrade modal footer) have no
+// default behavior inside a Capacitor WKWebView — there's no browser chrome
+// to open a new tab in, so taps on them silently did nothing. Open them in
+// the native in-app browser instead; on the web/PWA build target="_blank"
+// already works natively, so just let those through untouched.
+document.addEventListener("click", (e) => {
+  const a = e.target?.closest?.('a[target="_blank"]');
+  if (!a || !a.href) return;
+  const cap = window.Capacitor;
+  const Browser = cap?.Plugins?.Browser;
+  if (!cap?.isNativePlatform?.() || !Browser) return;
+  e.preventDefault();
+  Browser.open({ url: a.href }).catch(() => { window.location.href = a.href; });
+});
+
 window.BUILD = "20260624-stable";
 const BUILD_TAG = "stable";
 const FEATURE_FREEZE = Object.freeze({
