@@ -5117,6 +5117,23 @@ function computeTypeBreakdown(entries) {
     .sort((a, b) => b.count - a.count);
 }
 
+/** Count a number up from 0 on screen. `fmt` renders each frame's value. */
+function animateCount(el, to, fmt = (v) => String(Math.round(v)), ms = 620) {
+  if (!el) return;
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (reduce || !Number.isFinite(to) || to === 0) { el.textContent = fmt(to || 0); return; }
+  const start = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / ms);
+    // easeOutCubic — fast start, gentle settle
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(to * eased);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = fmt(to);
+  };
+  requestAnimationFrame(step);
+}
+
 function renderDonutSVG(types, total) {
   const r = 36, C = 2 * Math.PI * r;
   if (!total) {
@@ -5132,9 +5149,14 @@ function renderDonutSVG(types, total) {
   types.forEach((t, i) => {
     const color  = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
     const segLen = Math.max(0, (t.count / total) * C - GAP);
-    arcs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="14"
-      stroke-dasharray="${segLen.toFixed(2)} ${(C - segLen).toFixed(2)}"
+    // Rendered collapsed (0-length) and expanded to its real length on the next
+    // frame — that's what produces the sweep-in. data-dash carries the target.
+    arcs += `<circle class="brkArc" cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="14"
+      data-type="${escapeHtml(t.name)}"
+      data-dash="${segLen.toFixed(2)} ${(C - segLen).toFixed(2)}"
+      stroke-dasharray="0 ${C.toFixed(2)}"
       stroke-dashoffset="${(-(cum + GAP / 2)).toFixed(2)}"
+      style="transition-delay:${i * 70}ms"
       transform="rotate(-90 50 50)"/>`;
     cum += segLen;
   });
@@ -5314,12 +5336,22 @@ function renderBreakdownPage(period, customFrom, customTo) {
     <div class="brkLegend">${legendHtml || '<span class="muted small">No entries</span>'}</div>
   `;
 
+  // Sweep the donut segments open on the next frame (see renderDonutSVG).
+  requestAnimationFrame(() => {
+    chartEl.querySelectorAll(".brkArc").forEach(arc => {
+      if (arc.dataset.dash) arc.setAttribute("stroke-dasharray", arc.dataset.dash);
+    });
+  });
+
   if (summaryEl) {
     summaryEl.innerHTML = `
-      <div class="brkSumCell"><div class="brkSumVal">${totalCount}</div><div class="brkSumLabel">${totalCount === 1 ? "Job" : "Jobs"}</div></div>
-      <div class="brkSumCell"><div class="brkSumVal">${totalHours}h</div><div class="brkSumLabel">Hours</div></div>
-      <div class="brkSumCell"><div class="brkSumVal">${formatMoney(totalEarnings)}</div><div class="brkSumLabel">Pay</div></div>
+      <div class="brkSumCell"><div class="brkSumVal" id="brkSumJobs">0</div><div class="brkSumLabel">${totalCount === 1 ? "Job" : "Jobs"}</div></div>
+      <div class="brkSumCell"><div class="brkSumVal" id="brkSumHours">0h</div><div class="brkSumLabel">Hours</div></div>
+      <div class="brkSumCell"><div class="brkSumVal" id="brkSumPay">$0</div><div class="brkSumLabel">Pay</div></div>
     `;
+    animateCount(document.getElementById("brkSumJobs"),  totalCount);
+    animateCount(document.getElementById("brkSumHours"), totalHours,    v => `${(Math.round(v * 10) / 10).toFixed(1)}h`);
+    animateCount(document.getElementById("brkSumPay"),   totalEarnings, v => formatMoney(v));
   }
 
   renderJobScorecard(entries);
@@ -5331,18 +5363,59 @@ function renderBreakdownPage(period, customFrom, customTo) {
   listEl.innerHTML = types.map((t, i) => {
     const color = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
     const pct   = totalCount > 0 ? Math.round((t.count / totalCount) * 100) : 0;
-    return `<div class="brkRow">
-      <span class="brkDot" style="background:${color};margin-top:3px;flex-shrink:0;"></span>
-      <div class="brkRowBody">
-        <div class="brkRowName">${escapeHtml(t.name)}</div>
-        <div class="brkRowCount">${t.count} of ${totalCount} jobs · ${pct}%</div>
-      </div>
-      <div class="brkRowRight">
-        <div class="brkRowEarnings">${formatMoney(t.earnings)}</div>
-        <div class="brkRowHours">${t.hours.toFixed(1)} hrs</div>
-      </div>
+    // Each row is tappable: it opens the actual jobs behind the number, so the
+    // chart is a way into the work rather than a dead end.
+    const jobs = entries
+      .filter(e => normalizeJobType((e.typeText || e.type || "").trim()) === t.name)
+      .sort((a, b) => String(b.dayKey || "").localeCompare(String(a.dayKey || "")));
+    const jobsHtml = jobs.map(e => {
+      const refLbl = e.refType === "STOCK" ? "STK" : "RO";
+      const ref = e.ref || e.ro || "—";
+      return `<div class="brkJob">
+        <div class="brkJobLeft">
+          <span class="brkJobRef mono">${escapeHtml(refLbl)} ${escapeHtml(String(ref))}</span>
+          <span class="brkJobDate">${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}</span>
+        </div>
+        <div class="brkJobRight">
+          <span class="brkJobPay">${formatMoney(e.earnings)}</span>
+          <span class="brkJobHrs">${formatHours(e.hours)}h</span>
+        </div>
+      </div>`;
+    }).join("");
+    return `<div class="brkRowWrap">
+      <button type="button" class="brkRow" data-brk-type="${escapeHtml(t.name)}" aria-expanded="false">
+        <span class="brkDot" style="background:${color};margin-top:3px;flex-shrink:0;"></span>
+        <div class="brkRowBody">
+          <div class="brkRowName">${escapeHtml(t.name)}</div>
+          <div class="brkRowCount">${t.count} of ${totalCount} jobs · ${pct}%</div>
+          <div class="brkRowBar"><span style="width:${pct}%;background:${color};"></span></div>
+        </div>
+        <div class="brkRowRight">
+          <div class="brkRowEarnings">${formatMoney(t.earnings)}</div>
+          <div class="brkRowHours">${t.hours.toFixed(1)} hrs</div>
+        </div>
+        <span class="brkRowChev" aria-hidden="true"></span>
+      </button>
+      <div class="brkRowJobs">${jobsHtml}</div>
     </div>`;
   }).join("");
+
+  // Expand/collapse a type to reveal the jobs inside it (one open at a time).
+  listEl.querySelectorAll("[data-brk-type]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const wrap = btn.closest(".brkRowWrap");
+      const open = wrap?.classList.contains("open");
+      listEl.querySelectorAll(".brkRowWrap.open").forEach(w => {
+        w.classList.remove("open");
+        w.querySelector("[data-brk-type]")?.setAttribute("aria-expanded", "false");
+      });
+      if (!open && wrap) {
+        wrap.classList.add("open");
+        btn.setAttribute("aria-expanded", "true");
+      }
+      haptic?.("selection");
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════

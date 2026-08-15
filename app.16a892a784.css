@@ -320,6 +320,76 @@ body[data-page="stats"] #spa-stats {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  width: 100%;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 140ms var(--ease, ease), transform 120ms var(--ease, ease);
+}
+.brkRow:active { transform: scale(.985); background: var(--surface3, var(--card-bg)); }
+
+/* Donut segments sweep open on render */
+.brkArc { transition: stroke-dasharray 620ms cubic-bezier(.22,1,.36,1); }
+
+/* Share-of-work bar under each type name */
+.brkRowBar {
+  margin-top: 7px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface2, rgba(255,255,255,.07));
+  overflow: hidden;
+}
+.brkRowBar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  animation: brkBarGrow 620ms cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes brkBarGrow { from { width: 0; } }
+
+/* Chevron rotates when the type is expanded */
+.brkRowChev {
+  align-self: center;
+  width: 7px; height: 7px;
+  border-right: 2px solid var(--muted, #6b7280);
+  border-bottom: 2px solid var(--muted, #6b7280);
+  transform: rotate(45deg);
+  transition: transform 200ms var(--ease, ease);
+  flex-shrink: 0;
+}
+.brkRowWrap.open .brkRowChev { transform: rotate(-135deg); }
+
+/* The jobs behind a type — collapsed until tapped */
+.brkRowJobs {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 280ms var(--ease, ease), opacity 200ms var(--ease, ease);
+  opacity: 0;
+}
+.brkRowWrap.open .brkRowJobs { max-height: 1200px; opacity: 1; }
+.brkJob {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--stroke);
+}
+.brkJob:last-child { border-bottom: none; }
+.brkJobLeft  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brkJobRef   { font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.brkJobDate  { font-size: 11px; color: var(--muted); }
+.brkJobRight { text-align: right; flex-shrink: 0; }
+.brkJobPay   { display: block; font-size: 13.5px; font-weight: 700; color: var(--accent); }
+.brkJobHrs   { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Inline width="pct%" still applies — only the growth animation is dropped. */
+  .brkArc, .brkRowBar > span, .brkRowJobs, .brkRowChev { transition: none; animation: none; }
 }
 .brkRowBody {
   flex: 1;
