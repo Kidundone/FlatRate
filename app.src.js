@@ -3064,11 +3064,28 @@ async function openPhotoViewer(e){
 
   if (!shell || !img || !meta || !dl) return;
 
-  if (!e?.photo_path) return toast("No photo saved.");
+  // Photos are stored under three different fields depending on how the entry
+  // was created (cloud upload, legacy local save, or a not-yet-uploaded capture).
+  // entryHasStoredPhoto() accepts all three, so anything that checks it — the
+  // dispute evidence cards, history rows — would show a photo button that this
+  // function then refused to open, because it only ever looked at photo_path.
+  // Proof failing to open is the app failing at its whole job.
+  const storedPath = e?.photo_path || e?.photoPath || "";
+  const inlineData = e?.photoDataUrl || "";
 
-  const url = await getCachedPhotoUrl(e.photo_path);
+  if (!storedPath && !inlineData) return toast("No photo saved on this job.");
 
-  applyPhotoLoadGuard(img, e.photo_path);
+  let url = inlineData;
+  if (!url) {
+    try {
+      url = await getCachedPhotoUrl(storedPath);
+    } catch (err) {
+      console.error("[openPhotoViewer]", err);
+    }
+    if (!url) return toast("Couldn't load that photo — check your connection.");
+    applyPhotoLoadGuard(img, storedPath);
+  }
+
   img.src = url;
   dl.href = url;
 
@@ -10471,21 +10488,41 @@ function renderMissingWorkReview() {
 
   listEl.innerHTML = html;
 
-  // Wire the evidence buttons against the entries we actually matched, so a
-  // lookup can't miss (ids are strings in some paths, numbers in others).
-  const byId = new Map((match.picks || []).map(e => [String(e.id ?? ""), e]));
+  // Keep the matched entries reachable by id for the delegated handler below.
+  _mwEntriesById = new Map((match.picks || []).map(e => [String(e.id ?? ""), e]));
+  wireMissingWorkActions();
+}
 
-  listEl.querySelectorAll("[data-mw-photo]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const e = byId.get(btn.dataset.mwPhoto);
-      if (e) { haptic?.("light"); openPhotoViewer(e); }
-    });
-  });
+/* Entries behind the evidence cards, by id. */
+let _mwEntriesById = new Map();
 
-  listEl.querySelectorAll("[data-mw-flag]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const e = byId.get(btn.dataset.mwFlag);
-      if (!e) return;
+/**
+ * One delegated listener for the whole app, wired once.
+ *
+ * These buttons were previously bound per-render, which meant any redraw of the
+ * list (saving a stub, switching weeks) silently detached them and the proof
+ * stopped opening. Delegation off document survives every re-render.
+ */
+function wireMissingWorkActions() {
+  if (window.__mwActionsWired) return;
+  window.__mwActionsWired = true;
+
+  document.addEventListener("click", (ev) => {
+    const photoBtn = ev.target?.closest?.("[data-mw-photo]");
+    if (photoBtn) {
+      ev.preventDefault();
+      const e = _mwEntriesById.get(photoBtn.dataset.mwPhoto);
+      if (!e) return toast?.("Couldn't find that job.");
+      haptic?.("light");
+      openPhotoViewer(e);
+      return;
+    }
+
+    const flagBtn = ev.target?.closest?.("[data-mw-flag]");
+    if (flagBtn) {
+      ev.preventDefault();
+      const e = _mwEntriesById.get(flagBtn.dataset.mwFlag);
+      if (!e) return toast?.("Couldn't find that job.");
       haptic?.("light");
       const refLbl = e.refType === "STOCK" ? "STK" : "RO";
       const refVal = e.ref || e.ro || "";
@@ -10500,7 +10537,7 @@ function renderMissingWorkReview() {
         hours: e.hours != null ? String(e.hours) : "",
         amount: e.earnings != null ? Number(e.earnings).toFixed(2) : "",
       });
-    });
+    }
   });
 }
 window.renderMissingWorkReview = renderMissingWorkReview;

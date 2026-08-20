@@ -540,11 +540,28 @@ async function openPhotoViewer(e){
 
   if (!shell || !img || !meta || !dl) return;
 
-  if (!e?.photo_path) return toast("No photo saved.");
+  // Photos are stored under three different fields depending on how the entry
+  // was created (cloud upload, legacy local save, or a not-yet-uploaded capture).
+  // entryHasStoredPhoto() accepts all three, so anything that checks it — the
+  // dispute evidence cards, history rows — would show a photo button that this
+  // function then refused to open, because it only ever looked at photo_path.
+  // Proof failing to open is the app failing at its whole job.
+  const storedPath = e?.photo_path || e?.photoPath || "";
+  const inlineData = e?.photoDataUrl || "";
 
-  const url = await getCachedPhotoUrl(e.photo_path);
+  if (!storedPath && !inlineData) return toast("No photo saved on this job.");
 
-  applyPhotoLoadGuard(img, e.photo_path);
+  let url = inlineData;
+  if (!url) {
+    try {
+      url = await getCachedPhotoUrl(storedPath);
+    } catch (err) {
+      console.error("[openPhotoViewer]", err);
+    }
+    if (!url) return toast("Couldn't load that photo — check your connection.");
+    applyPhotoLoadGuard(img, storedPath);
+  }
+
   img.src = url;
   dl.href = url;
 
