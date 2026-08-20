@@ -1050,10 +1050,10 @@ async function renderReview(){
   let slice = all;
   if (range === "week") {
     const ws = startOfWeekLocal(new Date());
-    slice = all.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+    slice = all.filter(e => inWeek(payDayKeyFor(e), ws));
   } else if (range === "lastweek") {
     const { ws } = getLastWeekRange();
-    slice = all.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+    slice = all.filter(e => inWeek(payDayKeyFor(e), ws));
   } else if (range === "month") {
     const ms = startOfMonthLocal(new Date());
     slice = all.filter(e => inMonth(e.dayKey || dayKeyFromISO(e.createdAt), ms));
@@ -1159,6 +1159,8 @@ window.__FR.initFeedbackUI = initFeedbackUI;
 
 function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
+  const payDayEl      = document.getElementById("payWeekStartDay");
+  const payCutoffEl   = document.getElementById("payWeekCutoff");
   const compactToggle = document.getElementById("settingsCompactList");
   const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
@@ -1213,6 +1215,24 @@ function initSettingsUI() {
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
     window.__FR?.refreshRateBanner?.();
   };
+  // ── Pay week boundary ──
+  const pw = getPayWeekConfig();
+  if (payDayEl)    payDayEl.value    = String(pw.day);
+  if (payCutoffEl) payCutoffEl.value = pw.cutoff;
+
+  const savePayWeek = () => {
+    saveSettings({
+      payWeekStartDay: Number(payDayEl?.value ?? 1),
+      payWeekCutoff:   payCutoffEl?.value || "00:00",
+    });
+    // Every week total in the app just moved — redraw what's on screen.
+    refreshUI?.(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+    refreshMorePagePanels?.();
+    toast?.("Pay week updated");
+  };
+  payDayEl?.addEventListener("change", savePayWeek);
+  payCutoffEl?.addEventListener("change", savePayWeek);
+
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
   hapticToggle?.addEventListener("change", autosave);
@@ -1451,7 +1471,7 @@ function renderInsights() {
   const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
   const own = filterEntriesByEmp(all, empId);
   const ws = startOfWeekLocal(new Date());
-  const weekEntries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  const weekEntries = own.filter(e => inWeek(payDayKeyFor(e), ws));
   const totals = computeTotals(weekEntries);
 
   const effRate = totals.hours > 0 ? round2(totals.dollars / totals.hours) : 0;
@@ -1661,7 +1681,7 @@ async function buildWeekSummary() {
   const own = filterEntriesByEmp(all, empId);
   const ws = startOfWeekLocal(new Date());
   const we = new Date(ws); we.setDate(we.getDate() + 6);
-  const weekEntries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  const weekEntries = own.filter(e => inWeek(payDayKeyFor(e), ws));
   const totals = computeTotals(weekEntries);
   const daysWorked = new Set(weekEntries.map(e => e.dayKey || dayKeyFromISO(e.createdAt)).filter(Boolean)).size;
   const comebacks = weekEntries.filter(e => e.isComeback).length;
@@ -2638,6 +2658,12 @@ const MORE_TOUR_STEPS = [
     el: "#settingsDefaultRate",
     title: "Set Your Hourly Rate 💵",
     body: "Start here — this is your rate, and nothing gets priced until you set it. I won't guess a number for you, because a wrong pay figure is worse than none in an app built to catch short pays. Set it once, and you can still override any single job under Add Details.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#payWeekStartDay",
+    title: "Match Your Shop's Pay Week 🗓",
+    body: "If your totals never quite match your check, this is usually why. Set the day your pay week starts and the payroll cutoff time — say Saturday at 2pm. Anything you turn in after that counts toward the next check, exactly like payroll does it.",
     action: "switch-tab:settings",
   },
   {

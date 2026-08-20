@@ -803,7 +803,30 @@
             <div class="moreRowLabel">Default Rate ($/hr)</div>
             <div class="moreRowSub">Applied to all new entries</div>
           </div>
-          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="15.00" class="moreInput moreInputNarrow" />
+          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Your $/hr" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Pay Week Starts</div>
+            <div class="moreRowSub">Match your shop's payroll week so app totals line up with your check</div>
+          </div>
+          <select id="payWeekStartDay" class="moreInput moreInputNarrow">
+            <option value="0">Sun</option>
+            <option value="1" selected>Mon</option>
+            <option value="2">Tue</option>
+            <option value="3">Wed</option>
+            <option value="4">Thu</option>
+            <option value="5">Fri</option>
+            <option value="6">Sat</option>
+          </select>
+        </div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Payroll Cutoff Time</div>
+            <div class="moreRowSub">Work turned in after this on the start day counts toward the next check</div>
+          </div>
+          <input id="payWeekCutoff" type="time" class="moreInput moreInputNarrow" value="00:00" />
         </div>
         <div class="moreDivider"></div>
         <div class="moreRow">
@@ -1312,7 +1335,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.0d29af5ec6.js" defer></script>
+<script src="./app.89f510106c.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

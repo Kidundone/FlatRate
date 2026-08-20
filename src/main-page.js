@@ -2914,7 +2914,7 @@ function computeToday(entries, dayKey){
 }
 
 function computeWeek(entries, weekStart){
-  const weekEntries = entries.filter(e => inWeek(e.dayKey, weekStart));
+  const weekEntries = entries.filter(e => inWeek(payDayKeyFor(e), weekStart));
   const hours = weekEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
   const dollars = weekEntries.reduce((s, e) => s + Number(e.earnings || 0), 0);
   return { hours: round1(hours), dollars: round2(dollars), count: weekEntries.length, entries: weekEntries };
@@ -2952,7 +2952,7 @@ function filterByMode(entries, mode){
   }
   if (mode === "week") {
     const ws = startOfWeekLocal(now);
-    return entries.filter(e => inWeek(e.dayKey, ws));
+    return entries.filter(e => inWeek(payDayKeyFor(e), ws));
   }
   if (mode === "month") {
     const ms = startOfMonthLocal(now);
@@ -3613,7 +3613,7 @@ async function refreshUI(entriesOverride){
     if (pick) shownEntries = shownEntries.filter(e => e.dayKey === pick);
 
     // render week breakdown (always uses full week, not the picked day)
-    const days = computeWeekBreakdown(entries.filter(e => inWeek(e.dayKey, ws)), ws);
+    const days = computeWeekBreakdown(entries.filter(e => inWeek(payDayKeyFor(e), ws)), ws);
     renderWeekBreakdown(days);
 
     // render week-over-week earnings chart
@@ -3757,14 +3757,14 @@ async function refreshUI(entriesOverride){
 
   // Hero section update (needs flaggedHours + week data)
   {
-    const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
+    const daysWorked = new Set(entries.filter(e => inWeek(payDayKeyFor(e), ws)).map(e => e.dayKey).filter(Boolean)).size;
     updateHeroSection(today.dollars, week.hours, flagged, today.count, daysWorked, week.dollars, entries);
   }
 
   // Pace projection + daily avg/job
   const paceEl = document.getElementById("paceLine");
   if (paceEl) {
-    const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
+    const daysWorked = new Set(entries.filter(e => inWeek(payDayKeyFor(e), ws)).map(e => e.dayKey).filter(Boolean)).size;
     const avgJobToday = today.count > 0 ? `Avg/job: ${formatMoney(round2(today.dollars / today.count))}` : "";
     if (daysWorked > 0 && week.dollars > 0) {
       const proj = round2((week.dollars / daysWorked) * 5);

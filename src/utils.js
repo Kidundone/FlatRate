@@ -708,13 +708,70 @@ function dateKey(d){
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+/* ── Pay week configuration ───────────────────────────────────────────────────
+ * Shops don't all run Monday–Sunday. A common setup is payroll cutting off
+ * Saturday at 2pm: anything turned in after that lands on the NEXT check. The
+ * app used to bucket strictly by calendar week, so its totals could never match
+ * the pay stub — which is fatal for an app whose job is comparing the two.
+ *
+ * Two knobs, both defaulting to the old behaviour so nothing shifts underneath
+ * anyone who hasn't set them:
+ *   payWeekStartDay  0=Sun … 6=Sat   (default 1 = Monday)
+ *   payWeekCutoff    "HH:MM"          (default "00:00" = no time cutoff)
+ */
+function getPayWeekConfig() {
+  const s = getSettings();
+  const rawDay = Number(s.payWeekStartDay);
+  const day = Number.isInteger(rawDay) && rawDay >= 0 && rawDay <= 6 ? rawDay : 1;
+  const t = typeof s.payWeekCutoff === "string" && /^\d{1,2}:\d{2}$/.test(s.payWeekCutoff)
+    ? s.payWeekCutoff : "00:00";
+  const [hh, mm] = t.split(":").map(Number);
+  return {
+    day,
+    cutoff: t,
+    minutes: (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0),
+  };
+}
+
 function startOfWeekLocal(d=new Date()){
-  // Monday as start
+  const { day: startDay } = getPayWeekConfig();
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = x.getDay(); // 0 Sun ... 6 Sat
-  const diff = (day === 0 ? -6 : 1 - day); // move back to Monday
-  x.setDate(x.getDate() + diff);
+  // Walk back to the most recent configured start day (0 when already on it).
+  const diff = (x.getDay() - startDay + 7) % 7;
+  x.setDate(x.getDate() - diff);
   return x;
+}
+
+/**
+ * Which day an entry counts toward for pay-week bucketing.
+ *
+ * Identical to its work date except on the cutoff day: work turned in BEFORE
+ * the cutoff belongs to the period that's closing, so it's pushed back a day to
+ * land in the previous week under date-only bucketing. The true work date is
+ * never modified — this is only the bucketing key.
+ *
+ * Time comes from when the entry was logged, which is only trustworthy when it
+ * was logged the same day it was worked. Logged later, we can't know the hour,
+ * so it counts toward the period the work was done in — the conservative read.
+ */
+function payDayKeyFor(entry) {
+  const dayKey = entry?.dayKey || dayKeyFromISO(entry?.createdAt || entry?.created_at || "") || entry?.work_date || "";
+  const { day: startDay, minutes } = getPayWeekConfig();
+  if (!dayKey || !minutes) return dayKey;           // no time cutoff configured
+
+  const [yy, mm, dd] = String(dayKey).split("-").map(Number);
+  if (!yy || !mm || !dd) return dayKey;
+  const workDate = new Date(yy, mm - 1, dd);
+  if (workDate.getDay() !== startDay) return dayKey; // only the cutoff day is ambiguous
+
+  const stampRaw = entry?.createdAt || entry?.created_at || "";
+  const stamp = stampRaw ? new Date(stampRaw) : null;
+  const loggedSameDay = stamp && !Number.isNaN(stamp.getTime()) && dayKeyFromISO(stampRaw) === dayKey;
+  const loggedMinutes = loggedSameDay ? stamp.getHours() * 60 + stamp.getMinutes() : 0;
+
+  if (loggedMinutes >= minutes) return dayKey;       // after cutoff → new period
+  const prev = new Date(yy, mm - 1, dd - 1);         // before cutoff → period closing
+  return dateKey(prev);
 }
 function endOfWeekLocal(d=new Date()){
   const s = startOfWeekLocal(d);

@@ -2072,13 +2072,70 @@ function dateKey(d){
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+/* ── Pay week configuration ───────────────────────────────────────────────────
+ * Shops don't all run Monday–Sunday. A common setup is payroll cutting off
+ * Saturday at 2pm: anything turned in after that lands on the NEXT check. The
+ * app used to bucket strictly by calendar week, so its totals could never match
+ * the pay stub — which is fatal for an app whose job is comparing the two.
+ *
+ * Two knobs, both defaulting to the old behaviour so nothing shifts underneath
+ * anyone who hasn't set them:
+ *   payWeekStartDay  0=Sun … 6=Sat   (default 1 = Monday)
+ *   payWeekCutoff    "HH:MM"          (default "00:00" = no time cutoff)
+ */
+function getPayWeekConfig() {
+  const s = getSettings();
+  const rawDay = Number(s.payWeekStartDay);
+  const day = Number.isInteger(rawDay) && rawDay >= 0 && rawDay <= 6 ? rawDay : 1;
+  const t = typeof s.payWeekCutoff === "string" && /^\d{1,2}:\d{2}$/.test(s.payWeekCutoff)
+    ? s.payWeekCutoff : "00:00";
+  const [hh, mm] = t.split(":").map(Number);
+  return {
+    day,
+    cutoff: t,
+    minutes: (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0),
+  };
+}
+
 function startOfWeekLocal(d=new Date()){
-  // Monday as start
+  const { day: startDay } = getPayWeekConfig();
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = x.getDay(); // 0 Sun ... 6 Sat
-  const diff = (day === 0 ? -6 : 1 - day); // move back to Monday
-  x.setDate(x.getDate() + diff);
+  // Walk back to the most recent configured start day (0 when already on it).
+  const diff = (x.getDay() - startDay + 7) % 7;
+  x.setDate(x.getDate() - diff);
   return x;
+}
+
+/**
+ * Which day an entry counts toward for pay-week bucketing.
+ *
+ * Identical to its work date except on the cutoff day: work turned in BEFORE
+ * the cutoff belongs to the period that's closing, so it's pushed back a day to
+ * land in the previous week under date-only bucketing. The true work date is
+ * never modified — this is only the bucketing key.
+ *
+ * Time comes from when the entry was logged, which is only trustworthy when it
+ * was logged the same day it was worked. Logged later, we can't know the hour,
+ * so it counts toward the period the work was done in — the conservative read.
+ */
+function payDayKeyFor(entry) {
+  const dayKey = entry?.dayKey || dayKeyFromISO(entry?.createdAt || entry?.created_at || "") || entry?.work_date || "";
+  const { day: startDay, minutes } = getPayWeekConfig();
+  if (!dayKey || !minutes) return dayKey;           // no time cutoff configured
+
+  const [yy, mm, dd] = String(dayKey).split("-").map(Number);
+  if (!yy || !mm || !dd) return dayKey;
+  const workDate = new Date(yy, mm - 1, dd);
+  if (workDate.getDay() !== startDay) return dayKey; // only the cutoff day is ambiguous
+
+  const stampRaw = entry?.createdAt || entry?.created_at || "";
+  const stamp = stampRaw ? new Date(stampRaw) : null;
+  const loggedSameDay = stamp && !Number.isNaN(stamp.getTime()) && dayKeyFromISO(stampRaw) === dayKey;
+  const loggedMinutes = loggedSameDay ? stamp.getHours() * 60 + stamp.getMinutes() : 0;
+
+  if (loggedMinutes >= minutes) return dayKey;       // after cutoff → new period
+  const prev = new Date(yy, mm - 1, dd - 1);         // before cutoff → period closing
+  return dateKey(prev);
 }
 function endOfWeekLocal(d=new Date()){
   const s = startOfWeekLocal(d);
@@ -6344,7 +6401,7 @@ function computeToday(entries, dayKey){
 }
 
 function computeWeek(entries, weekStart){
-  const weekEntries = entries.filter(e => inWeek(e.dayKey, weekStart));
+  const weekEntries = entries.filter(e => inWeek(payDayKeyFor(e), weekStart));
   const hours = weekEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
   const dollars = weekEntries.reduce((s, e) => s + Number(e.earnings || 0), 0);
   return { hours: round1(hours), dollars: round2(dollars), count: weekEntries.length, entries: weekEntries };
@@ -6382,7 +6439,7 @@ function filterByMode(entries, mode){
   }
   if (mode === "week") {
     const ws = startOfWeekLocal(now);
-    return entries.filter(e => inWeek(e.dayKey, ws));
+    return entries.filter(e => inWeek(payDayKeyFor(e), ws));
   }
   if (mode === "month") {
     const ms = startOfMonthLocal(now);
@@ -7043,7 +7100,7 @@ async function refreshUI(entriesOverride){
     if (pick) shownEntries = shownEntries.filter(e => e.dayKey === pick);
 
     // render week breakdown (always uses full week, not the picked day)
-    const days = computeWeekBreakdown(entries.filter(e => inWeek(e.dayKey, ws)), ws);
+    const days = computeWeekBreakdown(entries.filter(e => inWeek(payDayKeyFor(e), ws)), ws);
     renderWeekBreakdown(days);
 
     // render week-over-week earnings chart
@@ -7187,14 +7244,14 @@ async function refreshUI(entriesOverride){
 
   // Hero section update (needs flaggedHours + week data)
   {
-    const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
+    const daysWorked = new Set(entries.filter(e => inWeek(payDayKeyFor(e), ws)).map(e => e.dayKey).filter(Boolean)).size;
     updateHeroSection(today.dollars, week.hours, flagged, today.count, daysWorked, week.dollars, entries);
   }
 
   // Pace projection + daily avg/job
   const paceEl = document.getElementById("paceLine");
   if (paceEl) {
-    const daysWorked = new Set(entries.filter(e => inWeek(e.dayKey, ws)).map(e => e.dayKey).filter(Boolean)).size;
+    const daysWorked = new Set(entries.filter(e => inWeek(payDayKeyFor(e), ws)).map(e => e.dayKey).filter(Boolean)).size;
     const avgJobToday = today.count > 0 ? `Avg/job: ${formatMoney(round2(today.dollars / today.count))}` : "";
     if (daysWorked > 0 && week.dollars > 0) {
       const proj = round2((week.dollars / daysWorked) * 5);
@@ -10070,10 +10127,10 @@ async function renderReview(){
   let slice = all;
   if (range === "week") {
     const ws = startOfWeekLocal(new Date());
-    slice = all.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+    slice = all.filter(e => inWeek(payDayKeyFor(e), ws));
   } else if (range === "lastweek") {
     const { ws } = getLastWeekRange();
-    slice = all.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+    slice = all.filter(e => inWeek(payDayKeyFor(e), ws));
   } else if (range === "month") {
     const ms = startOfMonthLocal(new Date());
     slice = all.filter(e => inMonth(e.dayKey || dayKeyFromISO(e.createdAt), ms));
@@ -10179,6 +10236,8 @@ window.__FR.initFeedbackUI = initFeedbackUI;
 
 function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
+  const payDayEl      = document.getElementById("payWeekStartDay");
+  const payCutoffEl   = document.getElementById("payWeekCutoff");
   const compactToggle = document.getElementById("settingsCompactList");
   const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
@@ -10233,6 +10292,24 @@ function initSettingsUI() {
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
     window.__FR?.refreshRateBanner?.();
   };
+  // ── Pay week boundary ──
+  const pw = getPayWeekConfig();
+  if (payDayEl)    payDayEl.value    = String(pw.day);
+  if (payCutoffEl) payCutoffEl.value = pw.cutoff;
+
+  const savePayWeek = () => {
+    saveSettings({
+      payWeekStartDay: Number(payDayEl?.value ?? 1),
+      payWeekCutoff:   payCutoffEl?.value || "00:00",
+    });
+    // Every week total in the app just moved — redraw what's on screen.
+    refreshUI?.(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+    refreshMorePagePanels?.();
+    toast?.("Pay week updated");
+  };
+  payDayEl?.addEventListener("change", savePayWeek);
+  payCutoffEl?.addEventListener("change", savePayWeek);
+
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
   hapticToggle?.addEventListener("change", autosave);
@@ -10471,7 +10548,7 @@ function renderInsights() {
   const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
   const own = filterEntriesByEmp(all, empId);
   const ws = startOfWeekLocal(new Date());
-  const weekEntries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  const weekEntries = own.filter(e => inWeek(payDayKeyFor(e), ws));
   const totals = computeTotals(weekEntries);
 
   const effRate = totals.hours > 0 ? round2(totals.dollars / totals.hours) : 0;
@@ -10681,7 +10758,7 @@ async function buildWeekSummary() {
   const own = filterEntriesByEmp(all, empId);
   const ws = startOfWeekLocal(new Date());
   const we = new Date(ws); we.setDate(we.getDate() + 6);
-  const weekEntries = own.filter(e => inWeek(e.dayKey || dayKeyFromISO(e.createdAt), ws));
+  const weekEntries = own.filter(e => inWeek(payDayKeyFor(e), ws));
   const totals = computeTotals(weekEntries);
   const daysWorked = new Set(weekEntries.map(e => e.dayKey || dayKeyFromISO(e.createdAt)).filter(Boolean)).size;
   const comebacks = weekEntries.filter(e => e.isComeback).length;
@@ -11658,6 +11735,12 @@ const MORE_TOUR_STEPS = [
     el: "#settingsDefaultRate",
     title: "Set Your Hourly Rate 💵",
     body: "Start here — this is your rate, and nothing gets priced until you set it. I won't guess a number for you, because a wrong pay figure is worse than none in an app built to catch short pays. Set it once, and you can still override any single job under Add Details.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#payWeekStartDay",
+    title: "Match Your Shop's Pay Week 🗓",
+    body: "If your totals never quite match your check, this is usually why. Set the day your pay week starts and the payroll cutoff time — say Saturday at 2pm. Anything you turn in after that counts toward the next check, exactly like payroll does it.",
     action: "switch-tab:settings",
   },
   {
@@ -13363,6 +13446,7 @@ const LS_SEEN_VER = "fr_seen_version";
 const CHANGELOG = {
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
+    "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
     "New techs get a clear prompt to set their real rate before logging work",
     "Blank rate stays blank instead of quietly saving someone else's number",
     "Terms and Privacy links now actually open in the iOS app",
