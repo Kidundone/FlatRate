@@ -968,38 +968,120 @@ function buildReviewEntryRow(entry) {
   return row;
 }
 
-function scoreMissingWorkCandidate(entry) {
+/**
+ * How much proof this entry carries, if it turns out to be the missing work.
+ * Photos are what actually win a dispute, so they dominate. Recency is a
+ * tiebreak worth a fraction of a point — the old version added days-since-epoch
+ * (~20,700) to this score, which buried every evidence signal and silently
+ * turned the whole thing into "sort by most recently touched".
+ */
+function scoreEvidence(entry) {
   const review = getEntryReviewState(entry);
-  let score = 0;
-  if (review.hasPhoto) score += 30;
-  if (entry.notes) score += 8;
-  score += Math.floor((Date.parse(entry.updatedAt || entry.createdAt || "") || 0) / 86400000);
-  return score;
+  let s = 0;
+  if (review.hasPhoto)            s += 50;
+  if (entry?.notes)               s += 15;
+  if (entry?.ref || entry?.ro)    s += 10;
+  if (entry?.vin8)                s += 5;
+  const ts = Date.parse(entry?.updatedAt || entry?.createdAt || "") || 0;
+  return s + (ts / 1e13); // < 1 point: orders equals, never outranks evidence
+}
+
+/**
+ * Which logged jobs best explain the money that's missing.
+ *
+ * A pay stub only gives totals, so the honest question is: "which combination
+ * of the jobs I logged adds up to the gap?" That's subset-sum, and it's a far
+ * better guess than grabbing recent jobs until the running total passes the
+ * shortfall (which is what this used to do, and why the picks looked random).
+ *
+ * Entries are fed in strongest-evidence-first and each reachable total is
+ * claimed by the first combination that gets there, so when several subsets hit
+ * the same dollar figure the one backed by photos wins.
+ *
+ * Returns { picks, sum, exact, off } — `off` is how far from the gap we landed.
+ */
+function findMissingWorkSubset(entries, targetValue, mode = "pay") {
+  // Hours are the better matching key when we have them: the shop flags hours,
+  // and dollars are derived from a rate that can change mid-period, so a
+  // dollar-only match can finger the wrong jobs. Both are scaled to integers
+  // (cents / hundredths of an hour) so the DP stays exact.
+  const valueOf = (e) => mode === "hours"
+    ? Math.round((Number(e?.hours) || 0) * 100)
+    : Math.round((Number(e?.earnings) || 0) * 100);
+
+  const items = (entries || [])
+    .map(e => ({ e, cents: valueOf(e) }))
+    .filter(x => x.cents > 0)
+    .sort((a, b) => scoreEvidence(b.e) - scoreEvidence(a.e));
+
+  const target = Math.round(targetValue * 100);
+  if (!items.length || target <= 0) return { picks: [], sum: 0, exact: false, off: targetValue, mode };
+
+  const maxItem = items.reduce((m, x) => Math.max(m, x.cents), 0);
+  // Allow overshoot by one job so a near-miss above the gap is still findable.
+  const cap = Math.min(target + maxItem, 2_000_00);
+  if (cap <= 0) return { picks: [], sum: 0, exact: false, off: targetValue, mode };
+
+  // reach[s] = index of the item used to land on s; prev[s] = the sum before it.
+  const reach = new Int32Array(cap + 1).fill(-1);
+  const prev  = new Int32Array(cap + 1).fill(-1);
+  reach[0] = -2; // reachable with the empty set
+
+  for (let i = 0; i < items.length; i++) {
+    const c = items[i].cents;
+    if (c > cap) continue;
+    for (let s = cap; s >= c; s--) {
+      if (reach[s] === -1 && reach[s - c] !== -1) { reach[s] = i; prev[s] = s - c; }
+    }
+  }
+
+  // Closest reachable total to the gap; ties resolve toward the smaller sum so
+  // we under-claim rather than over-claim.
+  let best = -1, bestDist = Infinity;
+  for (let s = 1; s <= cap; s++) {
+    if (reach[s] === -1) continue;
+    const d = Math.abs(s - target);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  if (best < 0) return { picks: [], sum: 0, exact: false, off: targetValue, mode };
+
+  const picks = [];
+  for (let s = best; s > 0; s = prev[s]) picks.push(items[reach[s]].e);
+  picks.reverse();
+
+  return {
+    picks,
+    sum: best / 100,
+    exact: bestDist === 0,
+    off: round2(bestDist / 100),
+    mode,
+  };
+}
+
+/**
+ * Match on hours when the stub gave us hours, otherwise fall back to dollars.
+ * Also reports what the picked jobs come to in the OTHER unit, so a mismatch
+ * between the two is visible rather than hidden.
+ */
+function matchMissingWork(ctx) {
+  const missingHours = Number(ctx?.comparison?.missingHours || 0);
+  const missingPay   = Number(ctx?.comparison?.missingPay || 0);
+  const entries      = ctx?.entries || [];
+
+  const useHours = missingHours > 0.005;
+  const res = useHours
+    ? findMissingWorkSubset(entries, missingHours, "hours")
+    : findMissingWorkSubset(entries, missingPay, "pay");
+
+  res.pickedHours = round1(res.picks.reduce((s, e) => s + (Number(e.hours) || 0), 0));
+  res.pickedPay   = round2(res.picks.reduce((s, e) => s + (Number(e.earnings) || 0), 0));
+  res.targetHours = round1(missingHours);
+  res.targetPay   = round2(missingPay);
+  return res;
 }
 
 function getMissingWorkCandidates(ctx) {
-  const missingHours = Number(ctx?.comparison?.missingHours || 0);
-  const missingPay = Number(ctx?.comparison?.missingPay || 0);
-  if (missingHours <= 0 && missingPay <= 0) return [];
-
-  const remaining = {
-    hours: missingHours,
-    pay: missingPay,
-  };
-
-  const sorted = (ctx?.entries || []).slice().sort((a, b) => scoreMissingWorkCandidate(b) - scoreMissingWorkCandidate(a));
-  const picks = [];
-
-  for (const entry of sorted) {
-    if (remaining.hours <= 0 && remaining.pay <= 0) break;
-    const hours = Number(entry?.hours || 0);
-    const pay = Number(entry?.earnings || 0);
-    picks.push(entry);
-    remaining.hours = round1(remaining.hours - hours);
-    remaining.pay = round2(remaining.pay - pay);
-  }
-
-  return picks;
+  return matchMissingWork(ctx).picks;
 }
 
 function renderMissingWorkReview() {
@@ -1017,24 +1099,147 @@ function renderMissingWorkReview() {
 
   const missingHours = Number(ctx.comparison?.missingHours || 0);
   const missingPay = Number(ctx.comparison?.missingPay || 0);
+
   if (missingHours <= 0 && missingPay <= 0) {
-    summaryEl.textContent = `Logged ${ctx.entries.length} entries for the selected pay week. Paid totals currently cover the logged totals.`;
+    summaryEl.innerHTML = `<span style="color:var(--ok,var(--primary))">✓ Paid totals cover your logged work for this period.</span> ${ctx.entries.length} entries logged.`;
     return;
   }
 
-  summaryEl.textContent =
-    `Potential missing work based on logged entries for ${ctx.weekStartKey}${ctx.weekEnd ? ` -> ${ctx.weekEnd}` : ""}. This is a heuristic because the pay stub only contains totals.`;
+  // Build day-by-day breakdown across the pay period
+  const empId = getEmpId();
+  const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+  const own = filterEntriesByEmp(all, empId);
 
-  const picks = getMissingWorkCandidates(ctx);
-  if (!picks.length) {
-    listEl.innerHTML = `<div class="muted">No logged entries are available to explain the shortfall yet.</div>`;
-    return;
+  // Generate all days in the pay week range
+  const ws = parseDateInputValue(ctx.weekStartKey);
+  const days = [];
+  if (ws) {
+    for (let i = 0; i < (ctx.biweekly ? 14 : 7); i++) {
+      const d = new Date(ws);
+      d.setDate(d.getDate() + i);
+      const dk = dateKey(d);
+      // Skip weekends
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6) continue;
+      const dayEntries = ctx.entries.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === dk);
+      const hrs = round1(dayEntries.reduce((s, e) => s + Number(e.hours || 0), 0));
+      const pay = round2(dayEntries.reduce((s, e) => s + Number(e.earnings || 0), 0));
+      days.push({ dk, d, dayEntries, hrs, pay });
+    }
   }
 
-  for (const entry of picks) {
-    listEl.appendChild(buildReviewEntryRow(entry));
+  // Historical avg hours per day (past 8 weeks, excluding current week)
+  const now = new Date();
+  const pastEntries = own.filter(e => {
+    const ek = e.dayKey || dayKeyFromISO(e.createdAt);
+    return ek && ek < ctx.weekStartKey;
+  });
+  const pastDayMap = new Map();
+  for (const e of pastEntries) {
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt);
+    if (!dk) continue;
+    const d = parseDateInputValue(dk);
+    if (!d) continue;
+    const dow = d.getDay();
+    if (dow === 0 || dow === 6) continue;
+    const hrs = pastDayMap.get(dk) || 0;
+    pastDayMap.set(dk, hrs + Number(e.hours || 0));
   }
+  const pastDays = Array.from(pastDayMap.values());
+  const avgDayHrs = pastDays.length > 0 ? round1(pastDays.reduce((s, h) => s + h, 0) / pastDays.length) : 0;
+
+  // Find common job types from history for suggestions
+  const typeFreq = new Map();
+  for (const e of own) {
+    const t = e.type || e.typeText || "";
+    if (!t) continue;
+    const cur = typeFreq.get(t) || { count: 0, avgHours: 0, totalHours: 0 };
+    cur.count++;
+    cur.totalHours = round1(cur.totalHours + Number(e.hours || 0));
+    cur.avgHours = round1(cur.totalHours / cur.count);
+    typeFreq.set(t, cur);
+  }
+  const topTypes = Array.from(typeFreq.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 5);
+
+  // Which of the logged jobs best explain the gap (subset-sum, see above).
+  const match = matchMissingWork(ctx);
+
+  summaryEl.innerHTML = `
+    <span style="color:var(--danger);font-weight:700;">⚠️ ${missingHours > 0 ? `${formatHours(missingHours)} hrs` : formatMoney(missingPay)} unpaid.</span>
+    You logged ${formatHours(ctx.expected?.hours || 0)} hrs / ${formatMoney(ctx.expected?.pay || 0)} and were paid ${formatHours(ctx.actual?.hours || 0)} hrs / ${formatMoney(ctx.actual?.pay || 0)}. That gap is the fact to take to your manager — everything below is the app narrowing down which jobs it came from.
+  `;
+
+  let html = "";
+
+  // ── Candidate jobs matching the gap ────────────────────────────────────
+  if (match.picks.length) {
+    const unit = match.mode === "hours" ? "hrs" : "";
+    const fmt = (v) => match.mode === "hours" ? `${formatHours(v)} hrs` : formatMoney(v);
+    const conf = match.exact
+      ? { label: "Exact match", color: "var(--primary)" }
+      : (match.mode === "hours" ? match.off <= 0.5 : match.off <= 5)
+        ? { label: `Close match — off by ${fmt(match.off)}`, color: "var(--warn,#f59e0b)" }
+        : { label: `Closest possible — off by ${fmt(match.off)}`, color: "var(--muted)" };
+    const withPhoto = match.picks.filter(e => getEntryReviewState(e).hasPhoto).length;
+
+    html += `<div style="margin-bottom:16px;">`;
+    html += `<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;">Jobs adding up to the gap</div>`;
+    html += `<div style="font-size:12px;color:${conf.color};font-weight:700;margin-bottom:2px;">${conf.label} · ${match.picks.length} job${match.picks.length === 1 ? "" : "s"}</div>`;
+    html += `<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">These come to ${formatHours(match.pickedHours)} hrs / ${formatMoney(match.pickedPay)} against a gap of ${formatHours(match.targetHours)} hrs / ${formatMoney(match.targetPay)}${withPhoto ? ` · ${withPhoto} with photo proof` : ""}</div>`;
+    for (const e of match.picks) {
+      const hasPhoto = getEntryReviewState(e).hasPhoto;
+      const ref = e.ref || e.ro || "—";
+      const lbl = e.refType === "STOCK" ? "STK" : "RO";
+      html += `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--stroke);">
+        <div style="min-width:0;">
+          <div style="font-size:13.5px;font-weight:600;">${escapeHtml(e.type || e.typeText || "Job")}</div>
+          <div style="font-size:11.5px;color:var(--muted);">${escapeHtml(lbl)} ${escapeHtml(String(ref))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷 photo" : ""}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:13.5px;font-weight:700;color:var(--accent);">${formatMoney(e.earnings)}</div>
+          <div style="font-size:11px;color:var(--muted);">${formatHours(e.hours)} hrs</div>
+        </div>
+      </div>`;
+    }
+    html += `<div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:9px;">
+      These are logged jobs whose totals happen to add up to what's missing. Other combinations can reach the same figure, so treat this as a place to start — the jobs with photo proof are the ones worth raising first.
+    </div>`;
+    html += `</div>`;
+  }
+
+  // Day breakdown
+  if (days.length) {
+    html += `<div style="margin-bottom:14px;">`;
+    html += `<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;">Day Breakdown</div>`;
+    for (const { dk, d, dayEntries, hrs, pay } of days) {
+      const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const isEmpty = dayEntries.length === 0;
+      const isLight = !isEmpty && avgDayHrs > 0 && hrs < avgDayHrs * 0.5;
+      const flag = isEmpty ? "🔴 No entries" : isLight ? `🟡 Only ${formatHours(hrs)} hrs (avg ${formatHours(avgDayHrs)})` : `✓ ${formatHours(hrs)} hrs`;
+      const flagColor = isEmpty ? "var(--danger)" : isLight ? "var(--warn,#f59e0b)" : "var(--muted)";
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--stroke);">
+        <span style="font-size:14px;">${label}</span>
+        <span style="font-size:13px;color:${flagColor};font-weight:${isEmpty || isLight ? "700" : "400"};">${flag}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // A "you're short 17 hrs, that's about 6× Re-Clean" line used to live here.
+  // It was invented arithmetic about jobs that may never have existed — the
+  // opposite of what you want in front of a manager. Real logged jobs with RO
+  // numbers and photos (above) and genuinely empty days (below) are evidence;
+  // that was noise.
+
+  if (!html) {
+    html = `<div class="muted small" style="padding:8px 0;">No entry history available to analyze. Start logging daily to get smarter suggestions.</div>`;
+  }
+
+  listEl.innerHTML = html;
 }
+window.renderMissingWorkReview = renderMissingWorkReview;
 
 async function renderReview(){
   const empId = getEmpId();
@@ -1394,67 +1599,140 @@ async function exportDisputeReport(weekKey) {
     nl(opts.step || 6);
   };
 
-  const title = singleWeek
-    ? `Flat Rate Dispute Report — Week of ${weekKey}`
-    : "Flat Rate Dispute Report — All Weeks";
-  write(title, 15, { bold: true, step: 8 });
-  write(`Employee: ${empId}`, 11, { step: 5 });
-  write(`Generated: ${todayKeyLocal()}`, 10, { step: 10 });
+  // ── Header ────────────────────────────────────────────────────────────
+  // Plain ASCII throughout: jsPDF's built-in fonts use WinAnsi encoding, so
+  // characters like the warning sign and em-dash the old version printed came
+  // out as garbage glyphs on the page someone actually hands to a manager.
+  const techName = typeof getUserName === "function" ? getUserName() : "";
+  const rightEdge = doc.internal.pageSize.getWidth() - left;
 
-  let grandMissingHours = 0;
-  let grandMissingPay = 0;
+  write("PAY DISCREPANCY REPORT", 16, { bold: true, step: 7 });
+  write(singleWeek
+    ? `Pay period: ${weekKey} to ${rangeEnd}`
+    : "All logged weeks", 11, { step: 5 });
+  write(`Technician: ${techName ? `${techName} (Emp #${empId})` : `Emp #${empId}`}`, 11, { step: 5 });
+  write(`Prepared: ${todayKeyLocal()}`, 10, { step: 9 });
+
+  // ── Totals across every week in scope ─────────────────────────────────
+  let grandLoggedHours = 0, grandLoggedPay = 0, grandPaidHours = 0, grandPaidPay = 0;
+  let anyStub = false;
+  for (const wk of weekKeys) {
+    const t = computeTotals(weekMap.get(wk));
+    const stub = getPayStubForWeekKey(wk);
+    grandLoggedHours = round1(grandLoggedHours + t.hours);
+    grandLoggedPay   = round2(grandLoggedPay + t.dollars);
+    if (stub) {
+      anyStub = true;
+      grandPaidHours = round1(grandPaidHours + Number(stub.hoursPaid || 0));
+      grandPaidPay   = round2(grandPaidPay + Number(stub.amountPaid || 0));
+    }
+  }
+  const grandMissingHours = round1(grandLoggedHours - grandPaidHours);
+  const grandMissingPay   = round2(grandLoggedPay - grandPaidPay);
+
+  // ── Bottom line, stated first ─────────────────────────────────────────
+  // A manager should be able to read the claim without turning the page.
+  const boxTop = y - 4;
+  const boxH = anyStub ? 34 : 22;
+  doc.setDrawColor(150); doc.setLineWidth(0.4);
+  doc.rect(left - 4, boxTop, rightEdge - left + 8, boxH);
+  nl(3);
+  write(`Hours logged:  ${formatHours(grandLoggedHours)}      Earned: ${formatMoney(grandLoggedPay)}`, 11, { step: 6 });
+  if (anyStub) {
+    write(`Hours paid:    ${formatHours(grandPaidHours)}      Paid:   ${formatMoney(grandPaidPay)}`, 11, { step: 6 });
+    doc.setFont(undefined, "bold"); doc.setFontSize(12);
+    doc.text(grandMissingPay > 0
+      ? `DIFFERENCE:    ${formatMoney(grandMissingPay)} not accounted for`
+      : `DIFFERENCE:    none - paid totals cover logged work`, left, y);
+    nl(10);
+  } else {
+    write("No pay stub entered for this period - amounts below are logged work only.", 10, { step: 8 });
+  }
+  nl(4);
+
+  // ── How these numbers were produced ───────────────────────────────────
+  // Credibility: says plainly what is recorded fact vs. what is inference.
+  write("HOW THIS WAS PRODUCED", 11, { bold: true, step: 6 });
+  const method = [
+    "Each job below was recorded at the time it was completed, with the RO number,",
+    "date, flat-rate hours and pay rate. Photo proof is noted where it was captured.",
+    "Totals are the sum of those records. The paid figures come from the pay stub",
+    "for this period. Nothing here is back-dated or estimated.",
+  ];
+  doc.setFontSize(9.5); doc.setFont(undefined, "normal");
+  for (const line of method) { doc.text(line, left, y); nl(4.6); }
+  nl(5);
+
+  // ── Candidate jobs matching the gap ───────────────────────────────────
+  if (grandMissingPay > 0.005 || grandMissingHours > 0.005) {
+    const scopeEntries = weekKeys.flatMap(wk => weekMap.get(wk));
+    const match = matchMissingWork({
+      entries: scopeEntries,
+      comparison: { missingHours: grandMissingHours, missingPay: grandMissingPay },
+    });
+    if (match.picks.length) {
+      write("JOBS ACCOUNTING FOR THE DIFFERENCE", 11, { bold: true, step: 6 });
+      doc.setFontSize(9.5); doc.setFont(undefined, "normal");
+      const intro = `These ${match.picks.length} logged jobs total ${formatHours(match.pickedHours)} hrs / ${formatMoney(match.pickedPay)}, against a difference of ${formatHours(match.targetHours)} hrs / ${formatMoney(match.targetPay)}.`;
+      doc.text(intro, left, y); nl(4.6);
+      doc.text("Other combinations can reach the same total, so these are a starting point,", left, y); nl(4.6);
+      doc.text("not a conclusion. Jobs marked PHOTO have image proof available on request.", left, y); nl(6.5);
+
+      for (const e of match.picks) {
+        const ro = String(e.ref || e.ro || "-").slice(0, 14);
+        const type = String(e.type || e.typeText || "-").slice(0, 22);
+        const photo = getEntryReviewState(e).hasPhoto ? "  PHOTO" : "";
+        doc.setFontSize(9.5);
+        doc.text(`  ${(e.dayKey || "").padEnd(11)} ${ro.padEnd(15)} ${type.padEnd(23)} ${String(formatHours(e.hours)).padStart(5)}h  ${formatMoney(e.earnings).padStart(9)}${photo}`, left, y);
+        nl(5);
+      }
+      nl(6);
+    }
+  }
+
+  // ── Full record ───────────────────────────────────────────────────────
+  write("COMPLETE LOGGED RECORD", 11, { bold: true, step: 7 });
 
   for (const wk of weekKeys) {
     const entries = weekMap.get(wk);
     const totals = computeTotals(entries);
     const stub = getPayStubForWeekKey(wk);
-    const hoursPaid = stub ? Number(stub.hoursPaid || 0) : 0;
-    const amountPaid = stub ? Number(stub.amountPaid || 0) : 0;
     const weekEnd = stub?.weekEnding || weekEndingForWeekStartKey(wk) || "";
-    const missingHours = round1(totals.hours - hoursPaid);
-    const missingPay = round2(totals.dollars - amountPaid);
 
-    grandMissingHours = round1(grandMissingHours + missingHours);
-    grandMissingPay = round2(grandMissingPay + missingPay);
+    write(`Week of ${wk}${weekEnd ? ` to ${weekEnd}` : ""}`, 11, { bold: true, step: 6 });
+    write(`  Logged ${formatHours(totals.hours)} hrs / ${formatMoney(totals.dollars)} across ${totals.count} job${totals.count === 1 ? "" : "s"}`, 9.5, { step: 5 });
+    if (stub) {
+      write(`  Paid   ${formatHours(Number(stub.hoursPaid || 0))} hrs / ${formatMoney(Number(stub.amountPaid || 0))}`, 9.5, { step: 6 });
+    } else {
+      write(`  No pay stub on file for this week`, 9.5, { step: 6 });
+    }
 
-    write(`Week: ${wk}${weekEnd ? ` → ${weekEnd}` : ""}`, 12, { bold: true, step: 7 });
-    write(`  Logged: ${formatHours(totals.hours)} hrs | ${formatMoney(totals.dollars)} | ${totals.count} jobs`, 10, { step: 5 });
-    write(`  Paid:   ${formatHours(hoursPaid)} hrs | ${formatMoney(amountPaid)}`, 10, { step: 5 });
-
-    const gapLabel = missingHours > 0
-      ? `⚠ ${signedHoursLabel(missingHours)} hrs | ${signedMoneyLabel(missingPay)} owed`
-      : `OK — paid totals cover logged work`;
-    write(`  Gap:    ${gapLabel}`, 10, { step: 6 });
-
-    // Per-day grouping
     const dayMap = new Map();
     for (const e of entries) {
       const d = e.dayKey || dayKeyFromISO(e.createdAt) || "?";
       if (!dayMap.has(d)) dayMap.set(d, []);
       dayMap.get(d).push(e);
     }
-    const dayKeys = Array.from(dayMap.keys()).sort((a, b) => a.localeCompare(b));
-    for (const d of dayKeys) {
+    for (const d of Array.from(dayMap.keys()).sort((a, b) => a.localeCompare(b))) {
       const dayEntries = dayMap.get(d);
       const dt = computeTotals(dayEntries);
-      write(`  ${d}  (${formatHours(dt.hours)} hrs | ${formatMoney(dt.dollars)})`, 10, { step: 5 });
+      write(`  ${formatDayLabel(d) || d}   ${formatHours(dt.hours)} hrs / ${formatMoney(dt.dollars)}`, 9.5, { bold: true, step: 5 });
       for (const e of dayEntries) {
-        const ro = e.ref || e.ro || "—";
-        const type = (e.type || e.typeText || "—").slice(0, 18);
-        const comeback = e.isComeback ? " [CB]" : "";
-        write(`      ${String(ro).padEnd(10)}  ${type}${comeback}  ${e.hours}h  ${formatMoney(e.earnings)}`, 9, { step: 5 });
+        const ro = String(e.ref || e.ro || "-").slice(0, 14);
+        const type = String(e.type || e.typeText || "-").slice(0, 22);
+        const flags = `${e.isComeback ? "  COMEBACK" : ""}${getEntryReviewState(e).hasPhoto ? "  PHOTO" : ""}`;
+        doc.setFontSize(9); doc.setFont(undefined, "normal");
+        doc.text(`      ${ro.padEnd(15)} ${type.padEnd(23)} ${String(formatHours(e.hours)).padStart(5)}h  ${formatMoney(e.earnings).padStart(9)}${flags}`, left, y);
+        nl(4.8);
       }
     }
     nl(5);
   }
 
-  nl(3);
-  doc.setFont(undefined, "bold");
-  doc.setFontSize(12);
-  const totalLabel = grandMissingHours > 0
-    ? `TOTAL MISSING: ${signedHoursLabel(grandMissingHours)} hrs | ${signedMoneyLabel(grandMissingPay)}`
-    : `All weeks accounted for — no missing pay detected`;
-  doc.text(totalLabel, left, y);
+  nl(2);
+  doc.setDrawColor(150); doc.line(left, y, rightEdge, y); nl(6);
+  doc.setFont(undefined, "normal"); doc.setFontSize(9);
+  doc.text(`Prepared by ${techName || `Emp #${empId}`} using Flatrate Buddy. Photo proof available on request.`, left, y);
 
   const filename = singleWeek
     ? `dispute-${empId}-${weekKey}.pdf`
