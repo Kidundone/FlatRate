@@ -362,8 +362,18 @@ function getPayStubAuditContext() {
     weekEnd = ws ? dateKey(endOfWeekLocal(ws)) : "";
   }
 
+  // Hours paid used to be copied straight from logged hours, which made the
+  // hours gap permanently zero and hid half the discrepancy — a stub can pay
+  // the right dollars on the wrong hours, or vice versa. Blank means "the stub
+  // doesn't show hours", and we fall back to the logged figure so the dollar
+  // comparison still works exactly as before.
+  const hoursEl = document.getElementById("payStubHoursPaid");
+  const rawHours = String(hoursEl?.value ?? "").trim();
+  const parsedHours = rawHours === "" ? null : Number(rawHours);
+  const hoursPaid = Number.isFinite(parsedHours) && parsedHours >= 0 ? parsedHours : null;
+
   const expected = { hours: totalHours, pay: totalPay };
-  const actual   = { hours: totalHours, pay: amountPaid };
+  const actual   = { hours: hoursPaid == null ? totalHours : hoursPaid, pay: amountPaid };
   const comparison = comparePayroll(expected, actual);
 
   return {
@@ -390,12 +400,16 @@ function hydratePayStubFormForWeek(weekStartKey) {
     applyPayStubPeriodMode(!!stub.biweekly);
     weekEl.value = stub.weekEnding || weekEndingForWeekStartKey(key);
     amountEl.value = stub.amountPaid > 0 ? String(Number(stub.amountPaid)) : "";
+    const hEl = document.getElementById("payStubHoursPaid");
+    if (hEl) hEl.value = Number(stub.hoursPaid) > 0 ? String(Number(stub.hoursPaid)) : "";
     return;
   }
 
   const weekEnd = weekEndingForWeekStartKey(key);
   if (weekEnd) weekEl.value = weekEnd;
   amountEl.value = "";
+  const hEl2 = document.getElementById("payStubHoursPaid");
+  if (hEl2) hEl2.value = "";
 }
 
 function applyPayStubPeriodMode(biweekly) {
@@ -600,6 +614,13 @@ async function savePayStubEntry() {
   const weekStartKey = weekStartKeyFromDateInput(weekEnding);
   if (!weekStartKey) { toast("Week ending date is invalid."); return; }
 
+  // Hours paid was always stored as 0, so every dispute report claimed "0 hrs
+  // paid" no matter what the stub said. Persist what the tech actually entered.
+  const hoursEl = document.getElementById("payStubHoursPaid");
+  const rawHrs = String(hoursEl?.value ?? "").trim();
+  const parsedHrs = rawHrs === "" ? 0 : Number(rawHrs);
+  const hoursPaid = Number.isFinite(parsedHrs) && parsedHrs >= 0 ? round1(parsedHrs) : 0;
+
   const biweekly = isBiweeklyMode();
   const week2StartKey = biweekly ? getWeek2StartKey(weekStartKey) : null;
 
@@ -610,12 +631,13 @@ async function savePayStubEntry() {
     const total = round2(Number(ctx.actual?.pay || 0));
     const w2Pay = round2(total - w1Pay > 0 ? total - w1Pay : total / 2);
     const w1Amt = round2(total - w2Pay);
-    upsertPayStubEntry({ weekStartKey, weekEnding, hoursPaid: 0, amountPaid: w1Amt, biweekly: true, linkedWeek: week2StartKey });
+    const h1 = round1(hoursPaid / 2), h2 = round1(hoursPaid - round1(hoursPaid / 2));
+    upsertPayStubEntry({ weekStartKey, weekEnding, hoursPaid: h1, amountPaid: w1Amt, biweekly: true, linkedWeek: week2StartKey });
     const ws2 = parseDateInputValue(week2StartKey);
     const we2 = ws2 ? dateKey(endOfWeekLocal(ws2)) : weekEnding;
-    upsertPayStubEntry({ weekStartKey: week2StartKey, weekEnding: we2, hoursPaid: 0, amountPaid: w2Pay, biweekly: true, linkedWeek: weekStartKey });
+    upsertPayStubEntry({ weekStartKey: week2StartKey, weekEnding: we2, hoursPaid: h2, amountPaid: w2Pay, biweekly: true, linkedWeek: weekStartKey });
   } else {
-    upsertPayStubEntry({ weekStartKey, weekEnding, hoursPaid: 0, amountPaid });
+    upsertPayStubEntry({ weekStartKey, weekEnding, hoursPaid, amountPaid });
   }
 
   renderPayStubComparison();
@@ -1188,18 +1210,34 @@ function renderMissingWorkReview() {
     html += `<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;">Jobs adding up to the gap</div>`;
     html += `<div style="font-size:12px;color:${conf.color};font-weight:700;margin-bottom:2px;">${conf.label} · ${match.picks.length} job${match.picks.length === 1 ? "" : "s"}</div>`;
     html += `<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">These come to ${formatHours(match.pickedHours)} hrs / ${formatMoney(match.pickedPay)} against a gap of ${formatHours(match.targetHours)} hrs / ${formatMoney(match.targetPay)}${withPhoto ? ` · ${withPhoto} with photo proof` : ""}</div>`;
+    // Each candidate is a full evidence card the tech can open in front of a
+    // service manager: photo proof, VIN, notes, and the exact arithmetic.
     for (const e of match.picks) {
       const hasPhoto = getEntryReviewState(e).hasPhoto;
+      const facts = getEntryRecordFacts(e);
       const ref = e.ref || e.ro || "—";
       const lbl = e.refType === "STOCK" ? "STK" : "RO";
-      html += `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--stroke);">
-        <div style="min-width:0;">
-          <div style="font-size:13.5px;font-weight:600;">${escapeHtml(e.type || e.typeText || "Job")}</div>
-          <div style="font-size:11.5px;color:var(--muted);">${escapeHtml(lbl)} ${escapeHtml(String(ref))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷 photo" : ""}</div>
+      const eid = escapeHtml(String(e.id ?? ""));
+      const meta = [formatDayLabel(e.dayKey) || e.dayKey || ""];
+      if (facts.vin8 && facts.vin8 !== "-") meta.push(`VIN ${facts.vin8}`);
+      html += `<div class="mwCard">
+        <div class="mwTop">
+          <div class="mwLeft">
+            <div class="mwType">${escapeHtml(e.type || e.typeText || "Job")}</div>
+            <div class="mwRef mono">${escapeHtml(lbl)} ${escapeHtml(String(ref))}</div>
+            <div class="mwMeta">${escapeHtml(meta.join(" · "))}</div>
+            ${e.notes ? `<div class="mwNotes">${escapeHtml(e.notes)}</div>` : ""}
+          </div>
+          <div class="mwRight">
+            <div class="mwPay">${formatMoney(e.earnings)}</div>
+            <div class="mwHrs">${formatHours(e.hours)} hrs @ ${formatMoney(e.rate)}</div>
+          </div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:13.5px;font-weight:700;color:var(--accent);">${formatMoney(e.earnings)}</div>
-          <div style="font-size:11px;color:var(--muted);">${formatHours(e.hours)} hrs</div>
+        <div class="mwActions">
+          ${hasPhoto
+            ? `<button type="button" class="iBtn mwPhotoBtn" data-mw-photo="${eid}">📷 Show Photo Proof</button>`
+            : `<span class="mwNoPhoto">No photo on this one</span>`}
+          <button type="button" class="iBtn" data-mw-flag="${eid}">🚩 Send to Manager</button>
         </div>
       </div>`;
     }
@@ -1238,6 +1276,38 @@ function renderMissingWorkReview() {
   }
 
   listEl.innerHTML = html;
+
+  // Wire the evidence buttons against the entries we actually matched, so a
+  // lookup can't miss (ids are strings in some paths, numbers in others).
+  const byId = new Map((match.picks || []).map(e => [String(e.id ?? ""), e]));
+
+  listEl.querySelectorAll("[data-mw-photo]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const e = byId.get(btn.dataset.mwPhoto);
+      if (e) { haptic?.("light"); openPhotoViewer(e); }
+    });
+  });
+
+  listEl.querySelectorAll("[data-mw-flag]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const e = byId.get(btn.dataset.mwFlag);
+      if (!e) return;
+      haptic?.("light");
+      const refLbl = e.refType === "STOCK" ? "STK" : "RO";
+      const refVal = e.ref || e.ro || "";
+      const parts = [];
+      if (refVal) parts.push(`${refLbl} ${refVal}`);
+      if (e.type || e.typeText) parts.push(e.type || e.typeText);
+      window.__FR?.openRequestModal?.({
+        kind: "missing_work",
+        subject: (parts.join(" — ") || "Job not on my check").slice(0, 140),
+        ro: refVal,
+        date: e.dayKey || e.work_date || "",
+        hours: e.hours != null ? String(e.hours) : "",
+        amount: e.earnings != null ? Number(e.earnings).toFixed(2) : "",
+      });
+    });
+  });
 }
 window.renderMissingWorkReview = renderMissingWorkReview;
 
