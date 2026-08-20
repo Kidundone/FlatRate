@@ -1061,11 +1061,13 @@ function renderPayrollReconciliation(paidLines, warn = "") {
     return;
   }
 
-  const r = reconcilePayroll(entries, paidLines);
+  const knownGap = Number(ctx?.comparison?.missingHours || 0);
+  const r = reconcilePayroll(entries, paidLines, knownGap > 0 ? knownGap : null);
   const t = r.totals;
 
   let h = "";
   if (warn) h += `<div class="reconNote" style="color:var(--warn,#f59e0b);margin-bottom:8px;">${escapeHtml(warn)}</div>`;
+  if (r.reconcileWarning) h += `<div class="reconNote" style="color:var(--warn,#f59e0b);margin-bottom:8px;">${escapeHtml(r.reconcileWarning)}</div>`;
 
   h += `<div class="reconSummary">
     <div class="reconLine">Their report: <strong>${t.paidLines} lines · ${formatHours(t.paidHours)} hrs · ${formatMoney(t.paidCost)}</strong></div>
@@ -1548,8 +1550,34 @@ function roKey(v) {
  *   short     — on both, but they paid fewer hours than you logged
  *   unlogged  — on their report, missing from your log (worth knowing about)
  */
-function reconcilePayroll(loggedEntries, paidLines) {
-  // Every payroll line starts unclaimed; matching consumes them.
+function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null) {
+  // Payroll lists ONE LINE PER OP. The app lets a tech merge several ops from
+  // the same paper into a single entry ("Reclean+Fpf+Pdi", 5.4 hrs), which on
+  // the report is 1.90 + 1.50 + ... across separate lines of the same RO.
+  // Matching line-for-line therefore failed on every combined entry and
+  // reported them as unpaid — inflating the total well past the real gap.
+  // So: bucket the report by RO and match against the bucket's hours, letting
+  // an entry draw from the pool rather than demanding one exact line.
+  const buckets = new Map();
+  for (const p of paidLines || []) {
+    const k = roKey(p.ro);
+    if (!k) continue;
+    const b = buckets.get(k) || {
+      key: k, ro: p.ro, hours: 0, cost: 0, lines: 0,
+      remaining: 0, dates: new Set(), desc: [],
+    };
+    const h = Number(p.hours) || 0;
+    b.hours = round2(b.hours + h);
+    b.remaining = round2(b.remaining + h);
+    b.cost = round2(b.cost + (Number(p.cost) || 0));
+    b.lines++;
+    if (p.closedDate) b.dates.add(p.closedDate);
+    if (p.bookedDate) b.dates.add(p.bookedDate);
+    b.desc.push(`${p.opCode || ""} ${p.description || ""}`);
+    buckets.set(k, b);
+  }
+  const bucketList = Array.from(buckets.values());
+
   const paid = (paidLines || []).map((p, i) => ({ ...p, _i: i, _taken: false }));
   const logged = (loggedEntries || []).map(e => ({
     e,
@@ -1562,64 +1590,107 @@ function reconcilePayroll(loggedEntries, paidLines) {
     how: "",
   }));
 
+  const bucketDates = (b) => Array.from(b.dates);
+  const nearestDay = (day, b) => bucketDates(b).reduce((m, d) => Math.min(m, _daysApart(day, d)), 999);
+
+  // How much of this entry the bucket can cover, and consume it.
+  const draw = (L, b, how, conf) => {
+    const take = Math.min(L.unmatchedHours, b.remaining);
+    if (take <= 0.001) return false;
+    b.remaining = round2(b.remaining - take);
+    L.unmatchedHours = round2(L.unmatchedHours - take);
+    L.coveredHours = round2((L.coveredHours || 0) + take);
+    if (!L.how) { L.how = how; L.confidence = conf; L.matchedBucket = b; }
+    return true;
+  };
+
+  for (const L of logged) L.unmatchedHours = round2(L.hours);
+
   // ── Pass 1: RO number ────────────────────────────────────────────────
   // Only works when the tech actually knows the RO. Get-ready work is booked
   // under an RO they never see, so those fall through to pass 2.
   for (const L of logged) {
     if (!L.roK) continue;
-    const hit = paid.find(p => !p._taken && roKey(p.ro) === L.roK);
-    if (hit) { hit._taken = true; L.matched = hit; L.how = "ro"; }
+    const b = buckets.get(L.roK);
+    if (b) draw(L, b, "ro", 1);
   }
 
   // ── Pass 2: evidence ─────────────────────────────────────────────────
-  // For anything still unmatched, score the remaining payroll lines on the
-  // things that DO carry over: identical sold hours, a close date, and
-  // overlapping wording. Scored globally and taken best-first, so one strong
-  // match can't be stolen by a weaker one earlier in the list.
+  // Anything still uncovered is scored against every RO bucket that still has
+  // hours left, on what actually carries over: hours that fit, a close date and
+  // overlapping wording. Scored globally, taken best-first, so a strong match
+  // can't be stolen by a weaker one that happened to come first.
   const cands = [];
   for (const L of logged) {
-    if (L.matched) continue;
-    for (const p of paid) {
-      if (p._taken) continue;
-      const hoursExact = Math.abs(p.hours - L.hours) < 0.011;
-      if (!hoursExact) continue;                     // hours must agree exactly
-      const dayGap = Math.min(_daysApart(L.day, p.closedDate), _daysApart(L.day, p.bookedDate));
-      if (dayGap > 4) continue;                      // and land in the same week
-      const sim = _descSimilarity(L.desc, `${p.opCode} ${p.description}`);
-      const score = (sim * 100) + Math.max(0, 20 - dayGap * 5);
-      cands.push({ L, p, score, sim, dayGap });
+    if (L.unmatchedHours <= 0.001) continue;
+    for (const b of bucketList) {
+      if (b.remaining <= 0.001) continue;
+      const dayGap = nearestDay(L.day, b);
+      if (dayGap > 4) continue;
+      // The bucket must be able to cover a meaningful part of the entry.
+      const cover = Math.min(L.unmatchedHours, b.remaining);
+      if (cover < Math.min(0.5, L.unmatchedHours)) continue;
+      const exact = Math.abs(b.remaining - L.unmatchedHours) < 0.011 ? 40 : 0;
+      const sim = _descSimilarity(L.desc, b.desc.join(" "));
+      cands.push({ L, b, sim, dayGap, score: sim * 100 + exact + Math.max(0, 20 - dayGap * 5) });
     }
   }
   cands.sort((a, b) => b.score - a.score);
   for (const c of cands) {
-    if (c.L.matched || c.p._taken) continue;
-    c.p._taken = true;
-    c.L.matched = c.p;
-    c.L.how = c.sim > 0 ? "evidence" : "hours+date";
-    c.L.confidence = c.sim;
+    if (c.L.unmatchedHours <= 0.001 || c.b.remaining <= 0.001) continue;
+    draw(c.L, c.b, c.sim > 0 ? "evidence" : "hours+date", c.sim);
   }
 
   // ── Results ──────────────────────────────────────────────────────────
-  const unpaid = logged.filter(L => !L.matched).map(L => ({
-    key: L.roK || "(no RO)",
-    entries: [L.e],
-    hours: round2(L.hours),
-    pay: round2(L.pay),
-  }));
+  // An entry counts as unpaid only for the hours nothing covered. A partially
+  // covered entry reports just the shortfall, not the whole job.
+  const unpaid = logged
+    .filter(L => L.unmatchedHours > 0.049)
+    .map(L => {
+      const frac = L.hours > 0 ? L.unmatchedHours / L.hours : 1;
+      return {
+        key: L.roK || "(no RO)",
+        entries: [L.e],
+        hours: round2(L.unmatchedHours),
+        pay: round2(L.pay * frac),
+        partial: L.unmatchedHours < L.hours - 0.001,
+        loggedHours: round2(L.hours),
+      };
+    });
 
   const matchedByEvidence = logged
-    .filter(L => L.matched && L.how !== "ro")
-    .map(L => ({ entry: L.e, paid: L.matched, how: L.how, confidence: L.confidence || 0 }));
+    .filter(L => L.how && L.how !== "ro")
+    .map(L => ({ entry: L.e, paid: L.matchedBucket, how: L.how, confidence: L.confidence || 0 }));
 
-  const unlogged = paid.filter(p => !p._taken);
+  const unlogged = bucketList.filter(b => b.remaining > 0.049)
+    .map(b => ({ ro: b.ro, hours: b.remaining, cost: b.cost }));
+
+  const unpaidHours = round2(unpaid.reduce((s, x) => s + x.hours, 0));
+
+  // Cross-check against arithmetic we already trust: logged hours minus paid
+  // hours IS the gap, full stop. If the per-job list doesn't add up to it, the
+  // matcher is off — say so instead of asserting a number that contradicts the
+  // totals, which is exactly the kind of thing that gets a tech laughed out of
+  // an office.
+  let reconcileWarning = "";
+  if (Number.isFinite(knownGapHours) && knownGapHours > 0) {
+    const diff = round2(unpaidHours - knownGapHours);
+    if (Math.abs(diff) > 0.15) {
+      reconcileWarning = diff > 0
+        ? `This list totals ${formatHours(unpaidHours)} hrs but your stub says only ${formatHours(knownGapHours)} hrs are missing. ${formatHours(Math.abs(diff))} hrs of it was probably paid under an RO the app couldn't match — treat the ${formatHours(knownGapHours)} hrs as the number to argue.`
+        : `This list totals ${formatHours(unpaidHours)} hrs but your stub says ${formatHours(knownGapHours)} hrs are missing — ${formatHours(Math.abs(diff))} hrs unaccounted for. Check the report photo caught every page.`;
+    }
+  }
 
   return {
     unpaid: unpaid.sort((a, b) => b.hours - a.hours),
     matchedByEvidence,
     unlogged,
+    reconcileWarning,
     totals: {
-      unpaidHours: round2(unpaid.reduce((s, x) => s + x.hours, 0)),
+      unpaidHours,
       unpaidPay:   round2(unpaid.reduce((s, x) => s + x.pay, 0)),
+      knownGapHours: Number.isFinite(knownGapHours) ? round2(knownGapHours) : null,
       matchedRo:   logged.filter(L => L.how === "ro").length,
       matchedEv:   matchedByEvidence.length,
       loggedCount: logged.length,
