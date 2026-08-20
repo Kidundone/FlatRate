@@ -47,8 +47,20 @@ function applySettings(s = getSettings()) {
   }
 }
 
+/* ── Pay rate ─────────────────────────────────────────────────────────────────
+ * This used to fall back to a hardcoded $15/hr, which meant a tech who hadn't
+ * set their rate yet had every job silently priced at somebody else's number —
+ * and the app looked confident about it. A wrong pay figure is worse than no
+ * figure in an app whose whole job is catching short pays, so there is now a
+ * real "not set yet" state: getDefaultRate() returns 0 and the UI asks.
+ */
+function hasPayRate() {
+  return Number(getSettings().defaultRate) > 0;
+}
+
 function getDefaultRate() {
-  return Number(getSettings().defaultRate) || 15;
+  const r = Number(getSettings().defaultRate);
+  return Number.isFinite(r) && r > 0 ? r : 0;
 }
 
 /* ── Haptics engine ───────────────────────────────────────────────────────────

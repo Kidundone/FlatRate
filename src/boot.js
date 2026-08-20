@@ -189,6 +189,32 @@ function showSpaPage(name) {
 }
 window.__FR.showSpaPage = showSpaPage;
 
+/* ── "Set your pay rate" banner ────────────────────────────────────────────
+ * Shown until the tech sets a real rate. Deliberately loud: every earnings
+ * figure in the app is meaningless until this number is theirs.
+ */
+function refreshRateBanner() {
+  const el = document.getElementById("rateSetupBanner");
+  if (!el) return;
+  el.style.display = (typeof hasPayRate === "function" && hasPayRate()) ? "none" : "";
+}
+window.__FR.refreshRateBanner = refreshRateBanner;
+
+document.getElementById("rateSetupBtn")?.addEventListener("click", () => {
+  haptic?.("light");
+  showSpaPage("more");
+  setTimeout(() => {
+    document.querySelector('.moreTab[data-tab="settings"]')?.click();
+    const input = document.getElementById("settingsDefaultRate");
+    if (input) {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+      input.focus();
+      input.classList.add("fieldPulse");
+      setTimeout(() => input.classList.remove("fieldPulse"), 1600);
+    }
+  }, 320);
+});
+
 // Wire tab bar buttons
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
@@ -582,6 +608,7 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
+    refreshRateBanner?.();
     // Re-arm notification schedules on every boot (reminders live in more-page.js
     // but must fire even when user opens index.html directly)
     setTimeout(() => {
@@ -937,7 +964,10 @@ async function runOnce() {
     document.getElementById("payStubPrevWeekBtn")?.addEventListener("click", () => stepPayStubWeek(-7));
     document.getElementById("payStubNextWeekBtn")?.addEventListener("click", () => stepPayStubWeek(7));
     const savedTypeRate = document.getElementById("savedTypeRate");
-    if (savedTypeRate) savedTypeRate.value = String(getDefaultRate?.() || 15);
+    if (savedTypeRate) {
+      const dr = Number(getDefaultRate?.()) || 0;
+      savedTypeRate.value = dr > 0 ? String(dr) : "";
+    }
     const savedTypeCreateForm = document.getElementById("savedTypeCreateForm");
     if (savedTypeCreateForm && !savedTypeCreateForm.dataset.wired) {
       savedTypeCreateForm.dataset.wired = "1";
@@ -1058,10 +1088,19 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 })();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.8": [
+    "💵 Your pay rate is yours — the app no longer assumes $15/hr",
+    "New techs get a clear prompt to set their real rate before logging work",
+    "Blank rate stays blank instead of quietly saving someone else's number",
+    "Terms and Privacy links now actually open in the iOS app",
+    "Stats now loads your full history — 'This Year' really means this year",
+    "Tap any job type in Stats to see the exact jobs behind the number",
+    "Stats totals count up, the chart sweeps in, and each type shows its share",
+  ],
   "1.7": [
     "📸 OCR scans are faster and more reliable — fixed a bug causing scan failures",
     "Scan a whole RO and combine multiple jobs into one entry, hours added together",

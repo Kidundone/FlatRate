@@ -1171,7 +1171,8 @@ function initSettingsUI() {
   if (activeDarkMode === true) activeDarkMode = "dark";
   if (activeDarkMode === false) activeDarkMode = "light";
 
-  if (rateInput)   rateInput.value        = String(s.defaultRate || 15);
+  // Blank when unset — the placeholder invites a value instead of asserting one.
+  if (rateInput)   rateInput.value        = Number(s.defaultRate) > 0 ? String(s.defaultRate) : "";
   if (compactToggle) compactToggle.checked = !!s.compactList;
   // Haptic defaults ON; only off if explicitly saved as false
   if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
@@ -1204,10 +1205,13 @@ function initSettingsUI() {
 
   const autosave = () => {
     const color   = colorPicker?.value   || s.accentColor;
-    const rate    = parseFloat(rateInput?.value) || 15;
+    // Blank / invalid stays unset (0) rather than silently becoming $15.
+    const parsed  = parseFloat(rateInput?.value);
+    const rate    = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
     const compact = compactToggle?.checked ?? false;
     const haptic  = hapticToggle?.checked ?? true;
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
+    window.__FR?.refreshRateBanner?.();
   };
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
@@ -2632,8 +2636,14 @@ const MORE_TOUR_STEPS = [
   /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Set Your Hourly Rate",
-    body: "This is the rate I use to calculate your earnings on every job. Set it once, forget it. You can always override per job in the Add Details section when something pays differently.",
+    title: "Set Your Hourly Rate 💵",
+    body: "Start here — this is your rate, and nothing gets priced until you set it. I won't guess a number for you, because a wrong pay figure is worse than none in an app built to catch short pays. Set it once, and you can still override any single job under Add Details.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#reminderEnabled",
+    title: "Reminders So You Don't Forget 🔔",
+    body: "Shift Reminder pings you at the end of your shift to log hours before you walk out — that's where most missing money starts. Payday Reminder nudges you to enter your check so short pays get caught the same week, not months later.",
     action: "switch-tab:settings",
   },
   {

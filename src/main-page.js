@@ -578,8 +578,11 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
       if (goalType === "pay") {
         const shortfall  = round2(Math.max(0, goalVal - weekDollars));
         const needPerDay = round2(shortfall / daysLeft);
-        const ceiling    = (Number(getDefaultRate?.()) || 15) * MAX_REALISTIC_FLAT_HRS_PER_DAY;
-        paceWarnEl.textContent = needPerDay > ceiling
+        // Without a real rate we can't judge whether a daily target is
+        // achievable, so state the plain shortfall rather than invent a ceiling.
+        const rate       = Number(getDefaultRate?.()) || 0;
+        const ceiling    = rate > 0 ? rate * MAX_REALISTIC_FLAT_HRS_PER_DAY : 0;
+        paceWarnEl.textContent = (!ceiling || needPerDay > ceiling)
           ? `${formatMoney(shortfall)} to goal · ${dayWord}`
           : `${formatMoney(needPerDay)}/day to hit goal · ${dayWord}`;
       } else {

@@ -1411,8 +1411,20 @@ function applySettings(s = getSettings()) {
   }
 }
 
+/* ── Pay rate ─────────────────────────────────────────────────────────────────
+ * This used to fall back to a hardcoded $15/hr, which meant a tech who hadn't
+ * set their rate yet had every job silently priced at somebody else's number —
+ * and the app looked confident about it. A wrong pay figure is worse than no
+ * figure in an app whose whole job is catching short pays, so there is now a
+ * real "not set yet" state: getDefaultRate() returns 0 and the UI asks.
+ */
+function hasPayRate() {
+  return Number(getSettings().defaultRate) > 0;
+}
+
 function getDefaultRate() {
-  return Number(getSettings().defaultRate) || 15;
+  const r = Number(getSettings().defaultRate);
+  return Number.isFinite(r) && r > 0 ? r : 0;
 }
 
 /* ── Haptics engine ───────────────────────────────────────────────────────────
@@ -3996,8 +4008,11 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
       if (goalType === "pay") {
         const shortfall  = round2(Math.max(0, goalVal - weekDollars));
         const needPerDay = round2(shortfall / daysLeft);
-        const ceiling    = (Number(getDefaultRate?.()) || 15) * MAX_REALISTIC_FLAT_HRS_PER_DAY;
-        paceWarnEl.textContent = needPerDay > ceiling
+        // Without a real rate we can't judge whether a daily target is
+        // achievable, so state the plain shortfall rather than invent a ceiling.
+        const rate       = Number(getDefaultRate?.()) || 0;
+        const ceiling    = rate > 0 ? rate * MAX_REALISTIC_FLAT_HRS_PER_DAY : 0;
+        paceWarnEl.textContent = (!ceiling || needPerDay > ceiling)
           ? `${formatMoney(shortfall)} to goal · ${dayWord}`
           : `${formatMoney(needPerDay)}/day to hit goal · ${dayWord}`;
       } else {
@@ -10176,7 +10191,8 @@ function initSettingsUI() {
   if (activeDarkMode === true) activeDarkMode = "dark";
   if (activeDarkMode === false) activeDarkMode = "light";
 
-  if (rateInput)   rateInput.value        = String(s.defaultRate || 15);
+  // Blank when unset — the placeholder invites a value instead of asserting one.
+  if (rateInput)   rateInput.value        = Number(s.defaultRate) > 0 ? String(s.defaultRate) : "";
   if (compactToggle) compactToggle.checked = !!s.compactList;
   // Haptic defaults ON; only off if explicitly saved as false
   if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
@@ -10209,10 +10225,13 @@ function initSettingsUI() {
 
   const autosave = () => {
     const color   = colorPicker?.value   || s.accentColor;
-    const rate    = parseFloat(rateInput?.value) || 15;
+    // Blank / invalid stays unset (0) rather than silently becoming $15.
+    const parsed  = parseFloat(rateInput?.value);
+    const rate    = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
     const compact = compactToggle?.checked ?? false;
     const haptic  = hapticToggle?.checked ?? true;
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
+    window.__FR?.refreshRateBanner?.();
   };
   rateInput?.addEventListener("blur", autosave);
   compactToggle?.addEventListener("change", autosave);
@@ -11637,8 +11656,14 @@ const MORE_TOUR_STEPS = [
   /* ── Settings tab ──────────────────────── */
   {
     el: "#settingsDefaultRate",
-    title: "Set Your Hourly Rate",
-    body: "This is the rate I use to calculate your earnings on every job. Set it once, forget it. You can always override per job in the Add Details section when something pays differently.",
+    title: "Set Your Hourly Rate 💵",
+    body: "Start here — this is your rate, and nothing gets priced until you set it. I won't guess a number for you, because a wrong pay figure is worse than none in an app built to catch short pays. Set it once, and you can still override any single job under Add Details.",
+    action: "switch-tab:settings",
+  },
+  {
+    el: "#reminderEnabled",
+    title: "Reminders So You Don't Forget 🔔",
+    body: "Shift Reminder pings you at the end of your shift to log hours before you walk out — that's where most missing money starts. Payday Reminder nudges you to enter your check so short pays get caught the same week, not months later.",
     action: "switch-tab:settings",
   },
   {
@@ -12433,6 +12458,32 @@ function showSpaPage(name) {
 }
 window.__FR.showSpaPage = showSpaPage;
 
+/* ── "Set your pay rate" banner ────────────────────────────────────────────
+ * Shown until the tech sets a real rate. Deliberately loud: every earnings
+ * figure in the app is meaningless until this number is theirs.
+ */
+function refreshRateBanner() {
+  const el = document.getElementById("rateSetupBanner");
+  if (!el) return;
+  el.style.display = (typeof hasPayRate === "function" && hasPayRate()) ? "none" : "";
+}
+window.__FR.refreshRateBanner = refreshRateBanner;
+
+document.getElementById("rateSetupBtn")?.addEventListener("click", () => {
+  haptic?.("light");
+  showSpaPage("more");
+  setTimeout(() => {
+    document.querySelector('.moreTab[data-tab="settings"]')?.click();
+    const input = document.getElementById("settingsDefaultRate");
+    if (input) {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+      input.focus();
+      input.classList.add("fieldPulse");
+      setTimeout(() => input.classList.remove("fieldPulse"), 1600);
+    }
+  }, 320);
+});
+
 // Wire tab bar buttons
 document.querySelectorAll(".tabItem[data-spa-page]").forEach(btn => {
   btn.addEventListener("click", () => { window.haptic?.("selection"); showSpaPage(btn.dataset.spaPage); });
@@ -12826,6 +12877,7 @@ async function runOnce() {
     maybeShowOnboarding?.();
     maybeStartTour?.();
     initPullToRefresh?.();
+    refreshRateBanner?.();
     // Re-arm notification schedules on every boot (reminders live in more-page.js
     // but must fire even when user opens index.html directly)
     setTimeout(() => {
@@ -13181,7 +13233,10 @@ async function runOnce() {
     document.getElementById("payStubPrevWeekBtn")?.addEventListener("click", () => stepPayStubWeek(-7));
     document.getElementById("payStubNextWeekBtn")?.addEventListener("click", () => stepPayStubWeek(7));
     const savedTypeRate = document.getElementById("savedTypeRate");
-    if (savedTypeRate) savedTypeRate.value = String(getDefaultRate?.() || 15);
+    if (savedTypeRate) {
+      const dr = Number(getDefaultRate?.()) || 0;
+      savedTypeRate.value = dr > 0 ? String(dr) : "";
+    }
     const savedTypeCreateForm = document.getElementById("savedTypeCreateForm");
     if (savedTypeCreateForm && !savedTypeCreateForm.dataset.wired) {
       savedTypeCreateForm.dataset.wired = "1";
@@ -13302,10 +13357,19 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 })();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.8": [
+    "💵 Your pay rate is yours — the app no longer assumes $15/hr",
+    "New techs get a clear prompt to set their real rate before logging work",
+    "Blank rate stays blank instead of quietly saving someone else's number",
+    "Terms and Privacy links now actually open in the iOS app",
+    "Stats now loads your full history — 'This Year' really means this year",
+    "Tap any job type in Stats to see the exact jobs behind the number",
+    "Stats totals count up, the chart sweeps in, and each type shows its share",
+  ],
   "1.7": [
     "📸 OCR scans are faster and more reliable — fixed a bug causing scan failures",
     "Scan a whole RO and combine multiple jobs into one entry, hours added together",
