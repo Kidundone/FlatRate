@@ -772,6 +772,7 @@ async function refreshMorePagePanels() {
   renderPayTrend?.();
   renderPayStubComparison?.();
   renderMissingWorkReview?.();
+  renderPayrollReportReconciliation?.();
   await renderTypesListInMore?.();
   await refreshPayrollUI?.();
   if (document.getElementById("reviewList")) await renderReview?.();
@@ -798,6 +799,183 @@ async function _callScanPayStub(base64, mediaType = "image/jpeg") {
     throw new Error(`Scan failed (${res.status}): ${txt}`);
   }
   return res.json();
+}
+
+/* ── Payroll Report (Shop Technician Payroll Report) ─────────────────────── */
+
+const PAYROLL_REPORT_KEY = "fr_payroll_report";
+
+function savePayrollReport(data) {
+  try { localStorage.setItem(PAYROLL_REPORT_KEY, JSON.stringify(data)); } catch {}
+}
+function loadPayrollReport() {
+  try { return JSON.parse(localStorage.getItem(PAYROLL_REPORT_KEY) || "null"); } catch { return null; }
+}
+function clearPayrollReport() {
+  localStorage.removeItem(PAYROLL_REPORT_KEY);
+  renderPayrollReportReconciliation();
+  toast("Payroll report cleared.");
+}
+window.clearPayrollReport = clearPayrollReport;
+
+async function scanPayrollReport(file) {
+  const btn = document.getElementById("scanPayrollReportBtn");
+  const origText = btn?.textContent || "Scan Report";
+  if (btn) { btn.textContent = "Scanning…"; btn.disabled = true; }
+
+  try {
+    const dataUrl = await compressImageFileToDataUrl(file, 1400, 0.80);
+    const base64 = dataUrl.split(",")[1];
+    const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+
+    // Call edge function with payroll_report mode
+    const sbInstance = window.__FR?.sb;
+    const { data: { session } } = await sbInstance.auth.getSession();
+    const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
+    const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
+    const res = await fetch(fnUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "apikey": window.__SUPABASE_CONFIG__.anonKey,
+      },
+      body: JSON.stringify({ imageBase64: base64, mediaType, mode: "payroll_report" }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Scan failed (${res.status}): ${txt}`);
+    }
+
+    const result = await res.json();
+
+    if (result.error) {
+      toast(`Scan error: ${result.error}`);
+      return;
+    }
+
+    if (result.type !== "payroll_report" || !Array.isArray(result.rows)) {
+      toast("Couldn't read payroll report — try again or use a clearer photo.");
+      return;
+    }
+
+    savePayrollReport(result);
+    renderPayrollReportReconciliation();
+    const hrs = Number(result.totalSoldHours || 0);
+    toast(`Payroll report scanned — ${formatHours(hrs)} sold hrs found.`);
+  } catch (e) {
+    console.warn("[scanPayrollReport]", e?.message || e);
+    toast(`Scan failed: ${e?.message || "try again"}`);
+  } finally {
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+function renderPayrollReportReconciliation() {
+  const el = document.getElementById("payrollReportReconcile");
+  if (!el) return;
+
+  const report = loadPayrollReport();
+  if (!report || !Array.isArray(report.rows) || !report.rows.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:4px 0 8px;">Photograph your shop's Technician Payroll Report to find missing hours day-by-day.</div>`;
+    return;
+  }
+
+  // Group sold hours by closedDate
+  const byDate = {};
+  const descsByDate = {};
+  for (const row of report.rows) {
+    if (!row.closedDate || !Number.isFinite(Number(row.soldHours))) continue;
+    byDate[row.closedDate] = round2((byDate[row.closedDate] || 0) + Number(row.soldHours));
+    descsByDate[row.closedDate] = descsByDate[row.closedDate] || [];
+    if (row.description) descsByDate[row.closedDate].push(`${row.description} (${formatHours(Number(row.soldHours))} hrs)`);
+  }
+
+  // App entries for the period
+  const empId = getEmpId();
+  const all = normalizeEntries(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : []);
+  const own = filterEntriesByEmp(all, empId);
+
+  const dates = Object.keys(byDate).sort();
+  let html = "";
+  let totalPayroll = 0;
+  let totalApp = 0;
+  let totalMissing = 0;
+
+  for (const dk of dates) {
+    const payrollHrs = byDate[dk];
+    const dayEntries = own.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === dk);
+    const appHrs = round2(dayEntries.reduce((s, e) => s + Number(e.hours || 0), 0));
+    const diff = round2(payrollHrs - appHrs);
+    totalPayroll = round2(totalPayroll + payrollHrs);
+    totalApp = round2(totalApp + appHrs);
+    if (diff > 0.05) totalMissing = round2(totalMissing + diff);
+
+    const label = formatDayLabel(dk) || dk;
+    const diffColor = diff > 0.09 ? "var(--danger)" : diff < -0.09 ? "var(--warn,#f59e0b)" : "var(--ok,var(--primary,#2563EB))";
+    const diffLabel = diff > 0.09 ? `⚠️ −${formatHours(diff)}` : diff < -0.09 ? `+${formatHours(Math.abs(diff))}` : "✓";
+    const descs = (descsByDate[dk] || []).slice(0, 4).join(" · ");
+
+    html += `<div style="padding:7px 0;border-bottom:1px solid var(--stroke);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div style="font-size:13px;font-weight:600;">${escapeHtml(label)}</div>
+        <div style="display:flex;gap:14px;font-size:12px;align-items:center;">
+          <span style="color:var(--muted);">shop <b style="color:var(--fg)">${formatHours(payrollHrs)}</b></span>
+          <span style="color:var(--muted);">app <b style="color:var(--fg)">${formatHours(appHrs)}</b></span>
+          <b style="color:${diffColor};">${diffLabel}</b>
+        </div>
+      </div>
+      ${descs ? `<div style="font-size:11px;color:var(--muted2,var(--muted));margin-top:2px;">${escapeHtml(descs)}</div>` : ""}
+    </div>`;
+  }
+
+  const periodLabel = report.period?.from && report.period?.to
+    ? `${report.period.from} – ${report.period.to}`
+    : "Scanned period";
+
+  const totalSummary = totalMissing > 0.05
+    ? `<div style="font-size:15px;font-weight:700;color:var(--danger);margin-bottom:4px;">⚠️ ${formatHours(totalMissing)} hrs on shop report not in your app</div>`
+    : `<div style="font-size:14px;font-weight:700;color:var(--ok,var(--primary,#2563EB));margin-bottom:4px;">✓ App matches shop payroll report</div>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Period: ${escapeHtml(periodLabel)} · ${formatHours(totalPayroll)} shop hrs · ${formatHours(totalApp)} app hrs</div>
+      ${totalSummary}
+    </div>
+    ${html}
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 0 4px;border-top:1px solid var(--stroke);margin-top:4px;">
+      <span>Total</span>
+      <span style="display:flex;gap:14px;">
+        <span>${formatHours(totalPayroll)} shop</span>
+        <span>${formatHours(totalApp)} app</span>
+        <span style="color:${totalMissing > 0.05 ? "var(--danger)" : "var(--ok,var(--primary,#2563EB))"};">${totalMissing > 0.05 ? "−" + formatHours(totalMissing) : "✓"}</span>
+      </span>
+    </div>
+    <button onclick="clearPayrollReport()" class="btn" style="margin-top:10px;width:100%;font-size:12px;color:var(--muted);padding:8px;">Clear &amp; Scan New Report</button>
+  `;
+}
+window.renderPayrollReportReconciliation = renderPayrollReportReconciliation;
+
+function initPayrollReportUI() {
+  const libBtn    = document.getElementById("scanPayrollReportBtn");
+  const camBtn    = document.getElementById("scanPayrollReportCamBtn");
+  const picker    = document.getElementById("payrollReportPicker");
+  const camPicker = document.getElementById("payrollReportCamera");
+  if (!libBtn && !camBtn) return;
+
+  const onFile = (input) => () => {
+    const file = input.files?.[0];
+    if (file) scanPayrollReport(file);
+    input.value = "";
+  };
+
+  libBtn?.addEventListener("click", () => picker?.click());
+  camBtn?.addEventListener("click", () => camPicker?.click());
+  picker?.addEventListener("change", onFile(picker));
+  camPicker?.addEventListener("change", onFile(camPicker));
+
+  renderPayrollReportReconciliation();
 }
 
 async function scanPayStub(file) {
@@ -1114,6 +1292,109 @@ function matchMissingWork(ctx) {
 
 function getMissingWorkCandidates(ctx) {
   return matchMissingWork(ctx).picks;
+}
+
+/* ── Payroll report reconciliation ────────────────────────────────────────────
+ * The dealer's "Report of Booked Repair Orders" lists every RO they actually
+ * paid, line by line, with sold hours. That turns the whole dispute from a
+ * guess into arithmetic: anything logged that ISN'T on their report is provably
+ * unpaid, by RO number, and nobody has to be taken at their word.
+ *
+ * Format per line (columns are whitespace-aligned, not fixed-width):
+ *   496740 12AUG26 12AUG26 S1 40534 C 3 ST ROP 0.00 4.00 60.00 DETAILPOC ...
+ *          booked   closed      tech      actual^  sold^ cost^
+ * Actual hours are 0.00 on flat-rate lines; the SOLD figure is what pays.
+ */
+function parsePayrollReport(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  const out = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    // Skip headers/totals — they have no leading RO number.
+    const m = line.match(/^(\d{5,9})\b(.*)$/);
+    if (!m) continue;
+    const ro = m[1];
+    // Pull the numeric run: actual, sold, cost. Sold is the one that pays.
+    const nums = m[2].match(/\d+\.\d{2}/g);
+    if (!nums || nums.length < 2) continue;
+    const sold = Number(nums[1]);
+    const cost = nums.length >= 3 ? Number(nums[2]) : null;
+    if (!Number.isFinite(sold)) continue;
+    out.push({ ro, hours: sold, cost });
+  }
+  return out;
+}
+
+/** Normalize an RO for comparison: digits only, so 497471/S14469A -> 497471. */
+function roKey(v) {
+  const s = String(v || "").trim().toUpperCase();
+  const m = s.match(/\d{4,}/);
+  return m ? m[0] : s.replace(/[^A-Z0-9]/g, "");
+}
+
+/**
+ * Diff what you logged against what they paid.
+ *   unpaid    — logged, absent from their report entirely (the strong claim)
+ *   short     — on both, but they paid fewer hours than you logged
+ *   unlogged  — on their report, missing from your log (worth knowing about)
+ */
+function reconcilePayroll(loggedEntries, paidLines) {
+  const paidByRo = new Map();
+  for (const p of paidLines || []) {
+    const k = roKey(p.ro);
+    if (!k) continue;
+    const cur = paidByRo.get(k) || { ro: p.ro, hours: 0, cost: 0, lines: 0 };
+    cur.hours = round2(cur.hours + (Number(p.hours) || 0));
+    cur.cost  = round2(cur.cost + (Number(p.cost) || 0));
+    cur.lines++;
+    paidByRo.set(k, cur);
+  }
+
+  const loggedByRo = new Map();
+  for (const e of loggedEntries || []) {
+    const k = roKey(e.ref || e.ro);
+    if (!k) continue;
+    const cur = loggedByRo.get(k) || { key: k, entries: [], hours: 0, pay: 0 };
+    cur.entries.push(e);
+    cur.hours = round2(cur.hours + (Number(e.hours) || 0));
+    cur.pay   = round2(cur.pay + (Number(e.earnings) || 0));
+    loggedByRo.set(k, cur);
+  }
+
+  const unpaid = [], short = [];
+  for (const [k, log] of loggedByRo) {
+    const paid = paidByRo.get(k);
+    if (!paid) {
+      unpaid.push({ key: k, entries: log.entries, hours: log.hours, pay: log.pay });
+    } else if (log.hours - paid.hours > 0.049) {
+      short.push({
+        key: k, entries: log.entries,
+        loggedHours: log.hours, paidHours: paid.hours,
+        gapHours: round2(log.hours - paid.hours),
+      });
+    }
+  }
+
+  const unlogged = [];
+  for (const [k, paid] of paidByRo) {
+    if (!loggedByRo.has(k)) unlogged.push(paid);
+  }
+
+  const sumH = (a) => round2(a.reduce((s, x) => s + (x.hours ?? x.gapHours ?? 0), 0));
+  return {
+    unpaid: unpaid.sort((a, b) => b.hours - a.hours),
+    short:  short.sort((a, b) => b.gapHours - a.gapHours),
+    unlogged,
+    totals: {
+      unpaidHours: sumH(unpaid),
+      unpaidPay:   round2(unpaid.reduce((s, x) => s + x.pay, 0)),
+      shortHours:  sumH(short),
+      paidHours:   round2((paidLines || []).reduce((s, p) => s + (Number(p.hours) || 0), 0)),
+      paidCost:    round2((paidLines || []).reduce((s, p) => s + (Number(p.cost) || 0), 0)),
+      paidLines:   (paidLines || []).length,
+    },
+  };
 }
 
 function renderMissingWorkReview() {

@@ -1050,6 +1050,7 @@ async function runOnce() {
       }, 800);
     }
     initPayStubUI();
+    initPayrollReportUI?.();
     if (hasGalleryUi) {
       initPhotosUI();
     }

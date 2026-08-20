@@ -1011,6 +1011,23 @@
         </details>
       </section>
 
+      <!-- Payroll Report Scanner -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="payrollReportDetails">
+          <summary class="moreCardHeader moreSectionSummary">🔍 Shop Payroll Report — Find Lost Hours</summary>
+          <div style="padding:8px 16px 4px;">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Photograph your shop's Technician Payroll Report. The app will extract every RO and compare sold hours to what you've logged — day by day.</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <button class="btn primary" id="scanPayrollReportCamBtn" type="button" style="flex:1;">📷 Take Photo</button>
+              <button class="btn" id="scanPayrollReportBtn" type="button" style="flex:1;">🖼 Choose from Library</button>
+            </div>
+            <input id="payrollReportCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+            <input id="payrollReportPicker" type="file" accept="image/*" style="display:none" />
+            <div id="payrollReportReconcile"></div>
+          </div>
+        </details>
+      </section>
+
       <!-- Export & Tools -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
@@ -1362,7 +1379,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.731188f24c.js" defer></script>
+<script src="./app.4036cee3a8.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
