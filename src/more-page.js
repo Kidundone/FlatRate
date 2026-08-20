@@ -641,6 +641,7 @@ async function savePayStubEntry() {
   }
 
   renderPayStubComparison();
+  renderMissingWorkReview?.();   // Save is the moment the gap changes — redraw it.
   renderPayTrend();
   if (typeof refreshUI === "function") await refreshUI(CURRENT_ENTRIES);
   toast("Pay stub saved.");
@@ -849,16 +850,25 @@ function initPayStubUI() {
 
   if (!weekEl.value) weekEl.value = dateKey(endOfWeekLocal(new Date()));
 
+  // The missing-work list has to redraw everywhere the comparison does.
+  // It didn't, which is why it only appeared after bouncing to Log and back —
+  // that round trip was the only thing re-running it.
+  const redrawPayStub = () => {
+    renderPayStubComparison();
+    renderMissingWorkReview?.();
+  };
+
   const startKey = weekStartKeyFromDateInput(weekEl.value);
   if (startKey) hydratePayStubFormForWeek(startKey);
-  renderPayStubComparison();
+  redrawPayStub();
 
   weekEl.addEventListener("change", () => {
     const key = weekStartKeyFromDateInput(weekEl.value);
     if (key) hydratePayStubFormForWeek(key);
-    renderPayStubComparison();
+    redrawPayStub();
   });
-  amountEl.addEventListener("input", renderPayStubComparison);
+  amountEl.addEventListener("input", redrawPayStub);
+  document.getElementById("payStubHoursPaid")?.addEventListener("input", redrawPayStub);
 
   const libBtn    = document.getElementById("scanCheckLibBtn");
   const camBtn    = document.getElementById("scanCheckCamBtn");
@@ -881,7 +891,7 @@ function initPayStubUI() {
   const biweeklyBtn  = document.getElementById("payPeriodBiweekly");
   const syncPeriodUI = () => {
     applyPayStubPeriodMode(isBiweeklyMode());
-    renderPayStubComparison();
+    redrawPayStub();
   };
   weeklyBtn?.addEventListener("click", () => {
     biweeklyBtn?.classList.remove("active");
@@ -1313,8 +1323,18 @@ function wireMissingWorkActions() {
         ev.preventDefault();
         const e = _mwEntriesById.get(photoBtn.dataset.mwPhoto);
         if (!e) return toast?.("Couldn't find that job.");
+        // Immediate acknowledgement. Fetching the photo can take a moment on
+        // shop wifi, and with no feedback the tap read as broken.
         haptic?.("light");
-        openPhotoViewer(e);
+        // The tap may land on the button itself or anywhere on the card, so
+        // resolve the button from the card either way.
+        const card = photoBtn.closest(".mwCard") || photoBtn;
+        const btn = card.querySelector(".mwPhotoBtn");
+        const prev = btn?.textContent;
+        if (btn) { btn.textContent = "Opening…"; btn.disabled = true; }
+        Promise.resolve(openPhotoViewer(e)).finally(() => {
+          if (btn) { btn.textContent = prev || "📷 Show Photo Proof"; btn.disabled = false; }
+        });
       }
       return;
     }
