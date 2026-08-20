@@ -10279,6 +10279,65 @@ function initPayStubUI() {
   amountEl.addEventListener("input", redrawPayStub);
   document.getElementById("payStubHoursPaid")?.addEventListener("input", redrawPayStub);
 
+  // ── Payroll report reconciliation ──
+  document.getElementById("reconcilePayrollBtn")?.addEventListener("click", () => {
+    const out = document.getElementById("payrollReconcileOut");
+    const txt = document.getElementById("payrollReportText")?.value || "";
+    if (!out) return;
+    haptic?.("light");
+
+    const paidLines = parsePayrollReport(txt);
+    if (!paidLines.length) {
+      out.innerHTML = `<div class="muted small">Couldn't read any RO lines. Paste the report text including the RO number, dates and hours columns.</div>`;
+      return;
+    }
+
+    const ctx = getPayStubAuditContext();
+    const entries = ctx?.entries || [];
+    if (!entries.length) {
+      out.innerHTML = `<div class="muted small">No logged jobs for this pay period to compare against.</div>`;
+      return;
+    }
+
+    const r = reconcilePayroll(entries, paidLines);
+    const t = r.totals;
+
+    let h = `<div class="reconSummary">
+      <div class="reconLine">Their report: <strong>${t.paidLines} lines · ${formatHours(t.paidHours)} hrs · ${formatMoney(t.paidCost)}</strong></div>
+      <div class="reconLine">Matched: <strong>${t.matchedRo}</strong> by RO${t.matchedEv ? `, <strong>${t.matchedEv}</strong> by date + hours + description` : ""}</div>
+    </div>`;
+
+    if (!r.unpaid.length) {
+      h += `<div class="reconOk">✓ Every job you logged appears on their report.</div>`;
+    } else {
+      h += `<div class="reconHit">
+        <div class="reconHitVal">${formatHours(t.unpaidHours)} hrs · ${formatMoney(t.unpaidPay)}</div>
+        <div class="reconHitLabel">logged by you, not on their report</div>
+      </div>`;
+      for (const u of r.unpaid) {
+        const e = u.entries[0] || {};
+        const hasPhoto = getEntryReviewState(e).hasPhoto;
+        h += `<div class="reconRow">
+          <div>
+            <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
+            <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}</div>
+          </div>
+          <div class="reconRowRight">
+            <div class="reconRowPay">${formatMoney(u.pay)}</div>
+            <div class="reconRowHrs">${formatHours(u.hours)} hrs</div>
+          </div>
+        </div>`;
+      }
+      h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager.</div>`;
+    }
+
+    if (r.unlogged.length) {
+      h += `<div class="reconNote" style="margin-top:8px;">They paid ${r.unlogged.length} line${r.unlogged.length === 1 ? "" : "s"} (${formatHours(t.unloggedHours)} hrs) you didn't log — worth checking you're not missing entries.</div>`;
+    }
+
+    out.innerHTML = h;
+  });
+
   const libBtn    = document.getElementById("scanCheckLibBtn");
   const camBtn    = document.getElementById("scanCheckCamBtn");
   const picker    = document.getElementById("checkStubPicker");
@@ -10536,6 +10595,18 @@ function getMissingWorkCandidates(ctx) {
  *          booked   closed      tech      actual^  sold^ cost^
  * Actual hours are 0.00 on flat-rate lines; the SOLD figure is what pays.
  */
+const _MONTHS = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+
+/** "12AUG26" -> "2026-08-12". Returns "" if it isn't a report date. */
+function parseReportDate(s) {
+  const m = String(s || "").trim().toUpperCase().match(/^(\d{1,2})([A-Z]{3})(\d{2})$/);
+  if (!m) return "";
+  const mo = _MONTHS[m[2]];
+  if (!mo) return "";
+  const yr = 2000 + Number(m[3]);
+  return `${yr}-${String(mo).padStart(2, "0")}-${String(Number(m[1])).padStart(2, "0")}`;
+}
+
 function parsePayrollReport(text) {
   const lines = String(text || "").split(/\r?\n/);
   const out = [];
@@ -10546,15 +10617,61 @@ function parsePayrollReport(text) {
     const m = line.match(/^(\d{5,9})\b(.*)$/);
     if (!m) continue;
     const ro = m[1];
+    const rest = m[2];
+
     // Pull the numeric run: actual, sold, cost. Sold is the one that pays.
-    const nums = m[2].match(/\d+\.\d{2}/g);
+    const nums = rest.match(/\d+\.\d{2}/g);
     if (!nums || nums.length < 2) continue;
     const sold = Number(nums[1]);
     const cost = nums.length >= 3 ? Number(nums[2]) : null;
     if (!Number.isFinite(sold)) continue;
-    out.push({ ro, hours: sold, cost });
+
+    // Dates: booked then closed, both in DDMMMYY.
+    const dates = (rest.match(/\b\d{1,2}[A-Z]{3}\d{2}\b/gi) || []).map(parseReportDate).filter(Boolean);
+
+    // Everything after the last decimal number is the op-code + description.
+    const tailIdx = rest.lastIndexOf(nums[nums.length - 1]);
+    const tail = tailIdx >= 0 ? rest.slice(tailIdx + nums[nums.length - 1].length).trim() : "";
+    const tailParts = tail.split(/\s+/);
+    const opCode = tailParts[0] || "";
+    const description = tailParts.slice(1).join(" ").trim();
+
+    out.push({
+      ro,
+      hours: sold,
+      cost,
+      bookedDate: dates[0] || "",
+      closedDate: dates[1] || dates[0] || "",
+      opCode,
+      description,
+    });
   }
   return out;
+}
+
+/** Words that carry meaning when comparing a logged job to a payroll line. */
+function _descTokens(s) {
+  return String(s || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !["THE","AND","ALL","FOR","ON","OF"].includes(w));
+}
+
+/** 0..1 overlap between two descriptions. */
+function _descSimilarity(a, b) {
+  const A = new Set(_descTokens(a)), B = new Set(_descTokens(b));
+  if (!A.size || !B.size) return 0;
+  let hit = 0;
+  for (const w of A) if (B.has(w)) hit++;
+  return hit / Math.min(A.size, B.size);
+}
+
+function _daysApart(a, b) {
+  if (!a || !b) return 999;
+  const pa = parseDateInputValue(a), pb = parseDateInputValue(b);
+  if (!pa || !pb) return 999;
+  return Math.abs(Math.round((pa - pb) / 86400000));
 }
 
 /** Normalize an RO for comparison: digits only, so 497471/S14469A -> 497471. */
@@ -10571,59 +10688,84 @@ function roKey(v) {
  *   unlogged  — on their report, missing from your log (worth knowing about)
  */
 function reconcilePayroll(loggedEntries, paidLines) {
-  const paidByRo = new Map();
-  for (const p of paidLines || []) {
-    const k = roKey(p.ro);
-    if (!k) continue;
-    const cur = paidByRo.get(k) || { ro: p.ro, hours: 0, cost: 0, lines: 0 };
-    cur.hours = round2(cur.hours + (Number(p.hours) || 0));
-    cur.cost  = round2(cur.cost + (Number(p.cost) || 0));
-    cur.lines++;
-    paidByRo.set(k, cur);
+  // Every payroll line starts unclaimed; matching consumes them.
+  const paid = (paidLines || []).map((p, i) => ({ ...p, _i: i, _taken: false }));
+  const logged = (loggedEntries || []).map(e => ({
+    e,
+    roK: roKey(e.ref || e.ro),
+    hours: Number(e.hours) || 0,
+    pay: Number(e.earnings) || 0,
+    day: e.dayKey || dayKeyFromISO(e.createdAt || "") || "",
+    desc: `${e.type || e.typeText || ""} ${e.notes || ""}`,
+    matched: null,
+    how: "",
+  }));
+
+  // ── Pass 1: RO number ────────────────────────────────────────────────
+  // Only works when the tech actually knows the RO. Get-ready work is booked
+  // under an RO they never see, so those fall through to pass 2.
+  for (const L of logged) {
+    if (!L.roK) continue;
+    const hit = paid.find(p => !p._taken && roKey(p.ro) === L.roK);
+    if (hit) { hit._taken = true; L.matched = hit; L.how = "ro"; }
   }
 
-  const loggedByRo = new Map();
-  for (const e of loggedEntries || []) {
-    const k = roKey(e.ref || e.ro);
-    if (!k) continue;
-    const cur = loggedByRo.get(k) || { key: k, entries: [], hours: 0, pay: 0 };
-    cur.entries.push(e);
-    cur.hours = round2(cur.hours + (Number(e.hours) || 0));
-    cur.pay   = round2(cur.pay + (Number(e.earnings) || 0));
-    loggedByRo.set(k, cur);
-  }
-
-  const unpaid = [], short = [];
-  for (const [k, log] of loggedByRo) {
-    const paid = paidByRo.get(k);
-    if (!paid) {
-      unpaid.push({ key: k, entries: log.entries, hours: log.hours, pay: log.pay });
-    } else if (log.hours - paid.hours > 0.049) {
-      short.push({
-        key: k, entries: log.entries,
-        loggedHours: log.hours, paidHours: paid.hours,
-        gapHours: round2(log.hours - paid.hours),
-      });
+  // ── Pass 2: evidence ─────────────────────────────────────────────────
+  // For anything still unmatched, score the remaining payroll lines on the
+  // things that DO carry over: identical sold hours, a close date, and
+  // overlapping wording. Scored globally and taken best-first, so one strong
+  // match can't be stolen by a weaker one earlier in the list.
+  const cands = [];
+  for (const L of logged) {
+    if (L.matched) continue;
+    for (const p of paid) {
+      if (p._taken) continue;
+      const hoursExact = Math.abs(p.hours - L.hours) < 0.011;
+      if (!hoursExact) continue;                     // hours must agree exactly
+      const dayGap = Math.min(_daysApart(L.day, p.closedDate), _daysApart(L.day, p.bookedDate));
+      if (dayGap > 4) continue;                      // and land in the same week
+      const sim = _descSimilarity(L.desc, `${p.opCode} ${p.description}`);
+      const score = (sim * 100) + Math.max(0, 20 - dayGap * 5);
+      cands.push({ L, p, score, sim, dayGap });
     }
   }
-
-  const unlogged = [];
-  for (const [k, paid] of paidByRo) {
-    if (!loggedByRo.has(k)) unlogged.push(paid);
+  cands.sort((a, b) => b.score - a.score);
+  for (const c of cands) {
+    if (c.L.matched || c.p._taken) continue;
+    c.p._taken = true;
+    c.L.matched = c.p;
+    c.L.how = c.sim > 0 ? "evidence" : "hours+date";
+    c.L.confidence = c.sim;
   }
 
-  const sumH = (a) => round2(a.reduce((s, x) => s + (x.hours ?? x.gapHours ?? 0), 0));
+  // ── Results ──────────────────────────────────────────────────────────
+  const unpaid = logged.filter(L => !L.matched).map(L => ({
+    key: L.roK || "(no RO)",
+    entries: [L.e],
+    hours: round2(L.hours),
+    pay: round2(L.pay),
+  }));
+
+  const matchedByEvidence = logged
+    .filter(L => L.matched && L.how !== "ro")
+    .map(L => ({ entry: L.e, paid: L.matched, how: L.how, confidence: L.confidence || 0 }));
+
+  const unlogged = paid.filter(p => !p._taken);
+
   return {
     unpaid: unpaid.sort((a, b) => b.hours - a.hours),
-    short:  short.sort((a, b) => b.gapHours - a.gapHours),
+    matchedByEvidence,
     unlogged,
     totals: {
-      unpaidHours: sumH(unpaid),
+      unpaidHours: round2(unpaid.reduce((s, x) => s + x.hours, 0)),
       unpaidPay:   round2(unpaid.reduce((s, x) => s + x.pay, 0)),
-      shortHours:  sumH(short),
-      paidHours:   round2((paidLines || []).reduce((s, p) => s + (Number(p.hours) || 0), 0)),
-      paidCost:    round2((paidLines || []).reduce((s, p) => s + (Number(p.cost) || 0), 0)),
-      paidLines:   (paidLines || []).length,
+      matchedRo:   logged.filter(L => L.how === "ro").length,
+      matchedEv:   matchedByEvidence.length,
+      loggedCount: logged.length,
+      paidHours:   round2(paid.reduce((s, p) => s + (Number(p.hours) || 0), 0)),
+      paidCost:    round2(paid.reduce((s, p) => s + (Number(p.cost) || 0), 0)),
+      paidLines:   paid.length,
+      unloggedHours: round2(unlogged.reduce((s, p) => s + (Number(p.hours) || 0), 0)),
     },
   };
 }

@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.ca1bbc75fd.css">
+  <link rel="stylesheet" href="./app.bfb5b1d1c9.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -1000,6 +1000,13 @@
             <button class="btn moreSaveBtn" id="scanCheckLibBtn" type="button">Scan Library</button>
             <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
           </div>
+          <div class="moreRow" style="display:block;">
+            <div class="moreRowLabel">Payroll Report (booked ROs)</div>
+            <div class="moreRowSub" style="margin-bottom:8px;">Paste the shop's "Report of Booked Repair Orders". The app matches it against your log line by line and names exactly what they didn't pay.</div>
+            <textarea id="payrollReportText" class="fr26Input" rows="4" placeholder="496740 12AUG26 12AUG26 S1  40534 C 3 ST  ROP  0.00  4.00  60.00 DETAILPOC FULL DETAIL O&#10;..." style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:11px;"></textarea>
+            <button class="btn primary" id="reconcilePayrollBtn" type="button" style="width:100%;margin-top:8px;">⚖️ Find What They Didn't Pay</button>
+            <div id="payrollReconcileOut" style="margin-top:10px;"></div>
+          </div>
           <div class="moreSaveRow" style="padding-top:0;">
             <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
             <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
@@ -1379,7 +1386,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.4036cee3a8.js" defer></script>
+<script src="./app.d86cf68104.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
