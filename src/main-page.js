@@ -5151,7 +5151,14 @@ function renderDonutSVG(types, total) {
   let cum = 0;
   types.forEach((t, i) => {
     const color  = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
-    const segLen = Math.max(0, (t.count / total) * C - GAP);
+    // `share` is the segment's true slice of the circle; `segLen` is what we
+    // actually draw, trimmed by GAP to leave a hairline between segments.
+    // The cursor must advance by the FULL share — advancing by the trimmed
+    // length instead made every segment start where the last one ended (so no
+    // visible gaps at all) and left the accumulated slack as one ugly notch at
+    // the top of the ring.
+    const share  = (t.count / total) * C;
+    const segLen = Math.max(0, share - GAP);
     // Rendered collapsed (0-length) and expanded to its real length on the next
     // frame — that's what produces the sweep-in. data-dash carries the target.
     arcs += `<circle class="brkArc" cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="14"
@@ -5161,7 +5168,7 @@ function renderDonutSVG(types, total) {
       stroke-dashoffset="${(-(cum + GAP / 2)).toFixed(2)}"
       style="transition-delay:${i * 70}ms"
       transform="rotate(-90 50 50)"/>`;
-    cum += segLen;
+    cum += share;
   });
   return `<svg viewBox="0 0 100 100" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>

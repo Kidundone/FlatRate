@@ -180,7 +180,16 @@ body[data-page="stats"] #spa-stats {
   scrollbar-width: none;
   -ms-overflow-style: none;
   margin-bottom: 8px;
+  /* Momentum scrolling inside a position:fixed panel — without this iOS
+     refuses to scroll the row at all (the reason the period chips were stuck
+     while the identical .recentTypeChips row worked fine). pan-x also tells
+     the browser we own horizontal here, so the anti-bounce handler stays out. */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
+/* Chip buttons inherit manipulation from the global button rule, which stops
+   a drag that starts ON a chip from panning the row. They're the whole row. */
+.statsChipsWrap .statsChip { touch-action: pan-x; }
 .statsChipsWrap::-webkit-scrollbar { display: none; }
 .statsChip {
   flex-shrink: 0;
@@ -4563,6 +4572,31 @@ body.compact .list    { gap: 1px; }
 
 /* Fix #11: Stats header — make "Breakdown" smaller, just a label not a hero h1 */
 #spa-stats header h1 { font-size: 18px; font-weight: 700; }
+
+/* The Breakdown header was ~120px tall: a big safe-area inset (Dynamic Island)
+   plus 12px of its own padding top AND bottom, wrapped around two stacked
+   lines. The inset is non-negotiable, so claw the space back everywhere else —
+   title and period sit on one baseline instead of two. */
+#spa-stats header.top {
+  padding-top: calc(2px + env(safe-area-inset-top, 0px));
+  padding-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+@media (display-mode: standalone) {
+  #spa-stats header.top {
+    padding-top: max(46px, calc(2px + env(safe-area-inset-top, 44px)));
+  }
+}
+#spa-stats header.top > div { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+#spa-stats header.top h1 { margin: 0; line-height: 1.15; }
+#spa-stats .statsHeaderSub {
+  margin-top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Fix #15: Accordion rows in History — add descriptive sub-text color */
 .moreSectionSummary { cursor: pointer; }
