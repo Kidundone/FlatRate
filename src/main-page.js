@@ -5295,6 +5295,90 @@ function _renderMonthlyTrendHtml(entries) {
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
+/* ── Efficiency ───────────────────────────────────────────────────────────────
+ * Flat-rate techs get judged on hours turned versus hours available. The usual
+ * version of this compares flagged hours to a flat 8-hour day, which punishes
+ * anyone whose shop runs 9s or 4x10s — so the baseline is the user's own
+ * Standard Day setting.
+ *
+ * Days worked counts days that actually have logged work, not calendar days:
+ * a week off shouldn't read as 0% efficiency, it should read as "no data".
+ */
+function computeEfficiency(entries, standardDay) {
+  const days = new Set();
+  let flatHours = 0;
+  for (const e of entries) {
+    const k = e.dayKey || dayKeyFromISO(e.createdAt || "");
+    if (k) days.add(k);
+    flatHours += Number(e.hours) || 0;
+  }
+  const daysWorked = days.size;
+  const available  = daysWorked * standardDay;
+  return {
+    daysWorked,
+    flatHours: round1(flatHours),
+    available: round1(available),
+    pct: available > 0 ? Math.round((flatHours / available) * 100) : null,
+  };
+}
+
+/** The equivalent stretch immediately before [from, to], for trend comparison. */
+function _previousRange(from, to) {
+  const d = (s) => { const [y, m, dd] = s.split("-").map(Number); return new Date(y, m - 1, dd); };
+  const a = d(from), b = d(to);
+  const span = Math.max(1, Math.round((b - a) / 86400000) + 1);
+  const prevEnd   = new Date(a); prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (span - 1));
+  return [dateKey(prevStart), dateKey(prevEnd)];
+}
+
+function renderEfficiencyCard(entries, period, from, to, allOwnEntries) {
+  const el = document.getElementById("breakdownEfficiency");
+  if (!el) return;
+
+  const standardDay = getStandardDayHours();
+  const cur = computeEfficiency(entries, standardDay);
+
+  if (!cur.daysWorked || cur.pct === null) { el.style.display = "none"; return; }
+
+  // Trend against the previous equal-length stretch — only when both have data,
+  // otherwise a first week would show a meaningless +100%.
+  let trendHtml = "";
+  if (from && to) {
+    const [pf, pt] = _previousRange(from, to);
+    const prev = computeEfficiency(_statsFilterByRange(allOwnEntries || [], pf, pt), standardDay);
+    if (prev.pct !== null && prev.daysWorked > 0) {
+      const delta = cur.pct - prev.pct;
+      const cls = delta > 0 ? "effTrend--up" : delta < 0 ? "effTrend--down" : "";
+      const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "→";
+      trendHtml = `<div class="effTrend ${cls}">${arrow} ${Math.abs(delta)} pts vs previous</div>`;
+    }
+  }
+
+  const pct = cur.pct;
+  const tone = pct >= 100 ? "eff--strong" : pct >= 75 ? "eff--ok" : "eff--low";
+  const verdict = pct >= 100
+    ? "Turning more than you're clocking"
+    : pct >= 75
+      ? "Solid — most of your day is billable"
+      : "A lot of your day isn't turning hours";
+
+  el.className = `effCard ${tone}`;
+  el.innerHTML = `
+    <div class="effTop">
+      <div class="effPctWrap">
+        <span class="effPct">${pct}%</span>
+        <span class="effPctLabel">efficiency</span>
+      </div>
+      ${trendHtml}
+    </div>
+    <div class="effBar"><span style="width:${Math.min(100, pct)}%"></span></div>
+    <div class="effMath">${cur.flatHours} flat hrs / ${cur.daysWorked} day${cur.daysWorked === 1 ? "" : "s"} × ${standardDay}h = ${cur.available} available</div>
+    <div class="effVerdict">${verdict}</div>
+  `;
+  el.style.display = "";
+}
+
 function renderBreakdownPage(period, customFrom, customTo) {
   period = period || window.__STATS_PERIOD__ || "week";
   window.__STATS_PERIOD__      = period;
@@ -5363,6 +5447,8 @@ function renderBreakdownPage(period, customFrom, customTo) {
     animateCount(document.getElementById("brkSumHours"), totalHours,    v => `${(Math.round(v * 10) / 10).toFixed(1)}h`);
     animateCount(document.getElementById("brkSumPay"),   totalEarnings, v => formatMoney(v));
   }
+
+  renderEfficiencyCard(entries, period, from, to, own);
 
   renderJobScorecard(entries);
 

@@ -58,6 +58,21 @@ function hasPayRate() {
   return Number(getSettings().defaultRate) > 0;
 }
 
+/** The tech's first name, if they've given one. */
+function getUserName() {
+  return String(getSettings().userName || "").trim();
+}
+
+/**
+ * Hours in a full shift. Efficiency is measured against this, so it has to be
+ * the user's number — a dealer running 9s or a 4-day/10-hour shop would get a
+ * misleading percentage off a hardcoded 8.
+ */
+function getStandardDayHours() {
+  const h = Number(getSettings().standardDay);
+  return Number.isFinite(h) && h > 0 && h <= 24 ? h : 8;
+}
+
 function getDefaultRate() {
   const r = Number(getSettings().defaultRate);
   return Number.isFinite(r) && r > 0 ? r : 0;

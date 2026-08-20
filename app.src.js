@@ -1422,6 +1422,21 @@ function hasPayRate() {
   return Number(getSettings().defaultRate) > 0;
 }
 
+/** The tech's first name, if they've given one. */
+function getUserName() {
+  return String(getSettings().userName || "").trim();
+}
+
+/**
+ * Hours in a full shift. Efficiency is measured against this, so it has to be
+ * the user's number — a dealer running 9s or a 4-day/10-hour shop would get a
+ * misleading percentage off a hardcoded 8.
+ */
+function getStandardDayHours() {
+  const h = Number(getSettings().standardDay);
+  return Number.isFinite(h) && h > 0 && h <= 24 ? h : 8;
+}
+
 function getDefaultRate() {
   const r = Number(getSettings().defaultRate);
   return Number.isFinite(r) && r > 0 ? r : 0;
@@ -8782,6 +8797,90 @@ function _renderMonthlyTrendHtml(entries) {
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
+/* ── Efficiency ───────────────────────────────────────────────────────────────
+ * Flat-rate techs get judged on hours turned versus hours available. The usual
+ * version of this compares flagged hours to a flat 8-hour day, which punishes
+ * anyone whose shop runs 9s or 4x10s — so the baseline is the user's own
+ * Standard Day setting.
+ *
+ * Days worked counts days that actually have logged work, not calendar days:
+ * a week off shouldn't read as 0% efficiency, it should read as "no data".
+ */
+function computeEfficiency(entries, standardDay) {
+  const days = new Set();
+  let flatHours = 0;
+  for (const e of entries) {
+    const k = e.dayKey || dayKeyFromISO(e.createdAt || "");
+    if (k) days.add(k);
+    flatHours += Number(e.hours) || 0;
+  }
+  const daysWorked = days.size;
+  const available  = daysWorked * standardDay;
+  return {
+    daysWorked,
+    flatHours: round1(flatHours),
+    available: round1(available),
+    pct: available > 0 ? Math.round((flatHours / available) * 100) : null,
+  };
+}
+
+/** The equivalent stretch immediately before [from, to], for trend comparison. */
+function _previousRange(from, to) {
+  const d = (s) => { const [y, m, dd] = s.split("-").map(Number); return new Date(y, m - 1, dd); };
+  const a = d(from), b = d(to);
+  const span = Math.max(1, Math.round((b - a) / 86400000) + 1);
+  const prevEnd   = new Date(a); prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (span - 1));
+  return [dateKey(prevStart), dateKey(prevEnd)];
+}
+
+function renderEfficiencyCard(entries, period, from, to, allOwnEntries) {
+  const el = document.getElementById("breakdownEfficiency");
+  if (!el) return;
+
+  const standardDay = getStandardDayHours();
+  const cur = computeEfficiency(entries, standardDay);
+
+  if (!cur.daysWorked || cur.pct === null) { el.style.display = "none"; return; }
+
+  // Trend against the previous equal-length stretch — only when both have data,
+  // otherwise a first week would show a meaningless +100%.
+  let trendHtml = "";
+  if (from && to) {
+    const [pf, pt] = _previousRange(from, to);
+    const prev = computeEfficiency(_statsFilterByRange(allOwnEntries || [], pf, pt), standardDay);
+    if (prev.pct !== null && prev.daysWorked > 0) {
+      const delta = cur.pct - prev.pct;
+      const cls = delta > 0 ? "effTrend--up" : delta < 0 ? "effTrend--down" : "";
+      const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "→";
+      trendHtml = `<div class="effTrend ${cls}">${arrow} ${Math.abs(delta)} pts vs previous</div>`;
+    }
+  }
+
+  const pct = cur.pct;
+  const tone = pct >= 100 ? "eff--strong" : pct >= 75 ? "eff--ok" : "eff--low";
+  const verdict = pct >= 100
+    ? "Turning more than you're clocking"
+    : pct >= 75
+      ? "Solid — most of your day is billable"
+      : "A lot of your day isn't turning hours";
+
+  el.className = `effCard ${tone}`;
+  el.innerHTML = `
+    <div class="effTop">
+      <div class="effPctWrap">
+        <span class="effPct">${pct}%</span>
+        <span class="effPctLabel">efficiency</span>
+      </div>
+      ${trendHtml}
+    </div>
+    <div class="effBar"><span style="width:${Math.min(100, pct)}%"></span></div>
+    <div class="effMath">${cur.flatHours} flat hrs / ${cur.daysWorked} day${cur.daysWorked === 1 ? "" : "s"} × ${standardDay}h = ${cur.available} available</div>
+    <div class="effVerdict">${verdict}</div>
+  `;
+  el.style.display = "";
+}
+
 function renderBreakdownPage(period, customFrom, customTo) {
   period = period || window.__STATS_PERIOD__ || "week";
   window.__STATS_PERIOD__      = period;
@@ -8850,6 +8949,8 @@ function renderBreakdownPage(period, customFrom, customTo) {
     animateCount(document.getElementById("brkSumHours"), totalHours,    v => `${(Math.round(v * 10) / 10).toFixed(1)}h`);
     animateCount(document.getElementById("brkSumPay"),   totalEarnings, v => formatMoney(v));
   }
+
+  renderEfficiencyCard(entries, period, from, to, own);
 
   renderJobScorecard(entries);
 
@@ -10254,6 +10355,8 @@ function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
   const payDayEl      = document.getElementById("payWeekStartDay");
   const payCutoffEl   = document.getElementById("payWeekCutoff");
+  const nameEl        = document.getElementById("settingsUserName");
+  const stdDayEl      = document.getElementById("settingsStandardDay");
   const compactToggle = document.getElementById("settingsCompactList");
   const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
@@ -10308,6 +10411,20 @@ function initSettingsUI() {
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
     window.__FR?.refreshRateBanner?.();
   };
+  // ── Name + standard day ──
+  if (nameEl)   nameEl.value   = getUserName();
+  if (stdDayEl) stdDayEl.value = Number(s.standardDay) > 0 ? String(s.standardDay) : "";
+
+  nameEl?.addEventListener("blur", () => {
+    saveSettings({ userName: String(nameEl.value || "").trim().slice(0, 40) });
+    window.__FR?.refreshGreeting?.();
+  });
+  stdDayEl?.addEventListener("blur", () => {
+    const v = parseFloat(stdDayEl.value);
+    saveSettings({ standardDay: Number.isFinite(v) && v > 0 && v <= 24 ? v : 0 });
+    window.__FR?.renderBreakdownPage?.(window.__STATS_PERIOD__ || "week");
+  });
+
   // ── Pay week boundary ──
   const pw = getPayWeekConfig();
   if (payDayEl)    payDayEl.value    = String(pw.day);
@@ -12659,6 +12776,22 @@ function refreshRateBanner() {
 }
 window.__FR.refreshRateBanner = refreshRateBanner;
 
+/* ── Greeting ──────────────────────────────────────────────────────────────
+ * Swaps the app name for the tech's own once they've given one. Small thing,
+ * but this is a tool someone opens twenty times a shift — it should feel like
+ * theirs, not like a product.
+ */
+function refreshGreeting() {
+  const el = document.getElementById("headerGreeting");
+  if (!el) return;
+  const name = typeof getUserName === "function" ? getUserName() : "";
+  if (!name) { el.textContent = "Flatrate Buddy"; return; }
+  const h = new Date().getHours();
+  const part = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
+  el.textContent = `${part}, ${name}`;
+}
+window.__FR.refreshGreeting = refreshGreeting;
+
 document.getElementById("rateSetupBtn")?.addEventListener("click", () => {
   haptic?.("light");
   showSpaPage("more");
@@ -13068,6 +13201,7 @@ async function runOnce() {
     maybeStartTour?.();
     initPullToRefresh?.();
     refreshRateBanner?.();
+    refreshGreeting?.();
     // Re-arm notification schedules on every boot (reminders live in more-page.js
     // but must fire even when user opens index.html directly)
     setTimeout(() => {
@@ -13555,6 +13689,8 @@ const CHANGELOG = {
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
     "🏆 New win tracker — see how much you've clawed back from resolved requests",
+    "📊 New efficiency % on Stats — hours turned vs. hours available, with trend",
+    "👋 Add your name in Settings and the app greets you instead of itself",
     "New techs get a clear prompt to set their real rate before logging work",
     "Blank rate stays blank instead of quietly saving someone else's number",
     "Terms and Privacy links now actually open in the iOS app",

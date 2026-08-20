@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.684b8bb8a5.css">
+  <link rel="stylesheet" href="./app.19c1f0bd34.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -82,7 +82,7 @@
 <div id="spa-main">
 
 <header>
-  <h1><img src="./icon-192.png" class="headerIcon" width="22" height="22" alt="" aria-hidden="true" style="border-radius:6px;vertical-align:middle;margin-right:6px;" />Flatrate Buddy</h1>
+  <h1><img src="./icon-192.png" class="headerIcon" width="22" height="22" alt="" aria-hidden="true" style="border-radius:6px;vertical-align:middle;margin-right:6px;" /><span id="headerGreeting">Flatrate Buddy</span></h1>
   <div class="u-row" style="gap:10px;align-items:center;">
     <span id="headerTodayTotal" class="headerTotal"></span>
     <span id="offlineDot" class="offlineDot" style="display:none;" title="Offline"></span>
@@ -809,6 +809,22 @@
         <div class="moreDivider"></div>
         <div class="moreRow">
           <div>
+            <div class="moreRowLabel">Your Name</div>
+            <div class="moreRowSub">Used to greet you and to sign your dispute reports</div>
+          </div>
+          <input id="settingsUserName" type="text" maxlength="40" autocomplete="given-name" placeholder="First name" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Standard Day</div>
+            <div class="moreRowSub">Hours in a full shift — the baseline your efficiency is measured against</div>
+          </div>
+          <input id="settingsStandardDay" type="number" inputmode="decimal" min="1" max="24" step="0.5" placeholder="8" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
             <div class="moreRowLabel">Pay Week Starts</div>
             <div class="moreRowSub">Match your shop's payroll week so app totals line up with your check</div>
           </div>
@@ -1229,6 +1245,9 @@
     <!-- Summary cells -->
     <div id="breakdownSummary" class="breakdownSummary"></div>
 
+    <!-- Efficiency: flat hours turned vs. days actually worked -->
+    <div id="breakdownEfficiency" class="effCard" style="display:none;"></div>
+
     <!-- Job Scorecard — which job types actually pay best -->
     <div id="jobScorecard" class="jobScorecard"></div>
 
@@ -1336,7 +1355,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.ea914168a9.js" defer></script>
+<script src="./app.90fe92fce3.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

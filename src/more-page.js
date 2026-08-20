@@ -1161,6 +1161,8 @@ function initSettingsUI() {
   const rateInput     = document.getElementById("settingsDefaultRate");
   const payDayEl      = document.getElementById("payWeekStartDay");
   const payCutoffEl   = document.getElementById("payWeekCutoff");
+  const nameEl        = document.getElementById("settingsUserName");
+  const stdDayEl      = document.getElementById("settingsStandardDay");
   const compactToggle = document.getElementById("settingsCompactList");
   const hapticToggle  = document.getElementById("hapticEnabled");
   const colorPicker   = document.getElementById("accentColorInput");
@@ -1215,6 +1217,20 @@ function initSettingsUI() {
     saveSettings({ defaultRate: rate, accentColor: color, compactList: compact, darkMode: activeDarkMode, haptic });
     window.__FR?.refreshRateBanner?.();
   };
+  // ── Name + standard day ──
+  if (nameEl)   nameEl.value   = getUserName();
+  if (stdDayEl) stdDayEl.value = Number(s.standardDay) > 0 ? String(s.standardDay) : "";
+
+  nameEl?.addEventListener("blur", () => {
+    saveSettings({ userName: String(nameEl.value || "").trim().slice(0, 40) });
+    window.__FR?.refreshGreeting?.();
+  });
+  stdDayEl?.addEventListener("blur", () => {
+    const v = parseFloat(stdDayEl.value);
+    saveSettings({ standardDay: Number.isFinite(v) && v > 0 && v <= 24 ? v : 0 });
+    window.__FR?.renderBreakdownPage?.(window.__STATS_PERIOD__ || "week");
+  });
+
   // ── Pay week boundary ──
   const pw = getPayWeekConfig();
   if (payDayEl)    payDayEl.value    = String(pw.day);

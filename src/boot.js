@@ -210,6 +210,22 @@ function refreshRateBanner() {
 }
 window.__FR.refreshRateBanner = refreshRateBanner;
 
+/* ── Greeting ──────────────────────────────────────────────────────────────
+ * Swaps the app name for the tech's own once they've given one. Small thing,
+ * but this is a tool someone opens twenty times a shift — it should feel like
+ * theirs, not like a product.
+ */
+function refreshGreeting() {
+  const el = document.getElementById("headerGreeting");
+  if (!el) return;
+  const name = typeof getUserName === "function" ? getUserName() : "";
+  if (!name) { el.textContent = "Flatrate Buddy"; return; }
+  const h = new Date().getHours();
+  const part = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
+  el.textContent = `${part}, ${name}`;
+}
+window.__FR.refreshGreeting = refreshGreeting;
+
 document.getElementById("rateSetupBtn")?.addEventListener("click", () => {
   haptic?.("light");
   showSpaPage("more");
@@ -619,6 +635,7 @@ async function runOnce() {
     maybeStartTour?.();
     initPullToRefresh?.();
     refreshRateBanner?.();
+    refreshGreeting?.();
     // Re-arm notification schedules on every boot (reminders live in more-page.js
     // but must fire even when user opens index.html directly)
     setTimeout(() => {
@@ -1106,6 +1123,8 @@ const CHANGELOG = {
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
     "🏆 New win tracker — see how much you've clawed back from resolved requests",
+    "📊 New efficiency % on Stats — hours turned vs. hours available, with trend",
+    "👋 Add your name in Settings and the app greets you instead of itself",
     "New techs get a clear prompt to set their real rate before logging work",
     "Blank rate stays blank instead of quietly saving someone else's number",
     "Terms and Privacy links now actually open in the iOS app",
