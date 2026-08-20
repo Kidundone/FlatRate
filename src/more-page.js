@@ -2661,6 +2661,11 @@ const MORE_TOUR_STEPS = [
     action: "switch-tab:settings",
   },
   {
+    el: "#requestsDetails",
+    title: "Requests & Your Wins 🏆",
+    body: "Send missing work, short pay, or 'I need hours' straight to your manager — with the RO, date, and hours attached. Once they resolve one, it lands in your win tracker so you can see exactly how much you've clawed back.",
+  },
+  {
     el: "#payWeekStartDay",
     title: "Match Your Shop's Pay Week 🗓",
     body: "If your totals never quite match your check, this is usually why. Set the day your pay week starts and the payroll cutoff time — say Saturday at 2pm. Anything you turn in after that counts toward the next check, exactly like payroll does it.",

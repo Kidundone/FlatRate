@@ -11738,6 +11738,11 @@ const MORE_TOUR_STEPS = [
     action: "switch-tab:settings",
   },
   {
+    el: "#requestsDetails",
+    title: "Requests & Your Wins 🏆",
+    body: "Send missing work, short pay, or 'I need hours' straight to your manager — with the RO, date, and hours attached. Once they resolve one, it lands in your win tracker so you can see exactly how much you've clawed back.",
+  },
+  {
     el: "#payWeekStartDay",
     title: "Match Your Shop's Pay Week 🗓",
     body: "If your totals never quite match your check, this is usually why. Set the day your pay week starts and the payroll cutoff time — say Saturday at 2pm. Anything you turn in after that counts toward the next check, exactly like payroll does it.",
@@ -11973,6 +11978,80 @@ async function loadMyClaims() {
   return MY_CLAIMS;
 }
 
+/* ── Dispute win tracker ──────────────────────────────────────────────────────
+ * What the tech actually clawed back. A resolved request is treated as money
+ * recovered — that's the manager marking it settled — so the figure is labelled
+ * as coming from resolved requests rather than presented as audited payroll.
+ *
+ * Amount preferred over hours; hours only convert to dollars when a real pay
+ * rate is set, otherwise the hours stand on their own instead of being priced
+ * at a number the tech never gave us.
+ */
+function computeClaimWins(claims) {
+  const rate = Number(typeof getDefaultRate === "function" ? getDefaultRate() : 0) || 0;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let money = 0, hours = 0, monthMoney = 0, monthHours = 0, wins = 0;
+  for (const c of claims) {
+    if (c.status !== "resolved") continue;
+    wins++;
+    const amt = Number(c.claimed_amount);
+    const hrs = Number(c.claimed_hours);
+    const h = Number.isFinite(hrs) && hrs > 0 ? hrs : 0;
+    let m = Number.isFinite(amt) && amt > 0 ? amt : 0;
+    if (!m && h && rate > 0) m = h * rate;
+
+    money += m; hours += h;
+    const at = c.resolved_at ? new Date(c.resolved_at) : null;
+    if (at && !Number.isNaN(at.getTime()) && at >= monthStart) { monthMoney += m; monthHours += h; }
+  }
+  const pending = claims.filter(c => c.status === "open" || c.status === "acknowledged").length;
+  return { wins, money, hours, monthMoney, monthHours, pending };
+}
+
+function renderClaimWins() {
+  const el = document.getElementById("reqWins");
+  if (!el) return;
+  const w = computeClaimWins(MY_CLAIMS);
+
+  // Nothing won yet — don't show a $0 trophy case. A quiet pending line is
+  // honest; a zeroed-out scoreboard just reads as failure.
+  if (!w.wins) {
+    if (w.pending) {
+      el.className = "reqWins reqWins--quiet";
+      el.innerHTML = `<div class="reqWinsQuiet">${w.pending} request${w.pending === 1 ? "" : "s"} waiting on your manager</div>`;
+      el.style.display = "";
+    } else {
+      el.style.display = "none";
+    }
+    return;
+  }
+
+  const headline = w.money > 0 ? formatMoney(w.money) : `${formatHours(w.hours)} hrs`;
+  const monthBit = w.monthMoney > 0
+    ? formatMoney(w.monthMoney)
+    : (w.monthHours > 0 ? `${formatHours(w.monthHours)} hrs` : "—");
+
+  el.className = "reqWins";
+  el.innerHTML = `
+    <div class="reqWinsTop">
+      <span class="reqWinsTrophy">🏆</span>
+      <div>
+        <div class="reqWinsLabel">Recovered</div>
+        <div class="reqWinsValue">${headline}</div>
+      </div>
+    </div>
+    <div class="reqWinsRow">
+      <div class="reqWinsCell"><div class="reqWinsCellVal">${monthBit}</div><div class="reqWinsCellLabel">This month</div></div>
+      <div class="reqWinsCell"><div class="reqWinsCellVal">${w.wins}</div><div class="reqWinsCellLabel">${w.wins === 1 ? "Win" : "Wins"}</div></div>
+      <div class="reqWinsCell"><div class="reqWinsCellVal">${w.pending}</div><div class="reqWinsCellLabel">Pending</div></div>
+    </div>
+    <div class="reqWinsFoot">From requests your manager marked resolved</div>
+  `;
+  el.style.display = "";
+}
+
 async function renderRequests() {
   const gate = document.getElementById("reqGate");
   const body = document.getElementById("reqBody");
@@ -12007,6 +12086,8 @@ async function renderRequests() {
     badge.textContent = String(openCount);
     badge.style.display = openCount ? "" : "none";
   }
+
+  renderClaimWins();
 
   if (!MY_CLAIMS.length) {
     list.innerHTML = `<div class="reqEmpty">Nothing sent yet. Use “New request” when work goes missing or you need hours.</div>`;
@@ -13447,6 +13528,7 @@ const CHANGELOG = {
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
+    "🏆 New win tracker — see how much you've clawed back from resolved requests",
     "New techs get a clear prompt to set their real rate before logging work",
     "Blank rate stays blank instead of quietly saving someone else's number",
     "Terms and Privacy links now actually open in the iOS app",

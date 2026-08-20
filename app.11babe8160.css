@@ -4944,6 +4944,45 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reviewItemHrs { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
 .reviewItemActions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 
+/* ── Dispute win tracker — money clawed back ────────────────────────────────── */
+.reqWins {
+  border-radius: var(--r-lg, 12px);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(74,222,128,.16), rgba(74,222,128,.05));
+  border: 1px solid rgba(74,222,128,.4);
+  animation: reqWinsIn 420ms cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes reqWinsIn { from { opacity: 0; transform: translateY(-5px); } }
+.reqWins--quiet {
+  background: var(--surface2);
+  border-color: var(--stroke);
+  padding: 11px 14px;
+}
+.reqWinsQuiet { font-size: 12px; color: var(--muted); }
+
+.reqWinsTop { display: flex; align-items: center; gap: 11px; }
+.reqWinsTrophy { font-size: 26px; line-height: 1; }
+.reqWinsLabel {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+}
+.reqWinsValue {
+  font-size: 25px; font-weight: 800; letter-spacing: -.7px;
+  line-height: 1.1; color: #4ade80;
+}
+.reqWinsRow {
+  display: flex; gap: 8px; margin-top: 12px;
+  padding-top: 11px; border-top: 1px solid rgba(74,222,128,.22);
+}
+.reqWinsCell { flex: 1; text-align: center; min-width: 0; }
+.reqWinsCellVal { font-size: 15px; font-weight: 700; color: var(--text); }
+.reqWinsCellLabel {
+  font-size: 10px; color: var(--muted); margin-top: 2px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.reqWinsFoot { font-size: 10.5px; color: var(--muted); margin-top: 9px; }
+
 /* ── Pro lock (teaser shown to free users when billing is live) ────────────── */
 .proLock {
   text-align: center; padding: 20px 14px;

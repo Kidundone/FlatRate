@@ -1095,6 +1095,7 @@ const CHANGELOG = {
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
+    "🏆 New win tracker — see how much you've clawed back from resolved requests",
     "New techs get a clear prompt to set their real rate before logging work",
     "Blank rate stays blank instead of quietly saving someone else's number",
     "Terms and Privacy links now actually open in the iOS app",
