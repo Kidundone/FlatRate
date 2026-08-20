@@ -1062,7 +1062,7 @@ function renderPayrollReconciliation(paidLines, warn = "") {
   }
 
   const knownGap = Number(ctx?.comparison?.missingHours || 0);
-  const r = reconcilePayroll(entries, paidLines, knownGap > 0 ? knownGap : null);
+  const r = reconcilePayroll(entries, paidLines, knownGap > 0 ? knownGap : null, getEmpId());
   const t = r.totals;
 
   let h = "";
@@ -1087,7 +1087,8 @@ function renderPayrollReconciliation(paidLines, warn = "") {
       h += `<div class="reconRow">
         <div>
           <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
-          <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}</div>
+          <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}${u.partial ? ` · part-paid, ${formatHours(u.loggedHours)} logged` : ""}</div>
+          ${u.badRef ? `<div class="reconRowSub" style="color:var(--warn,#f59e0b);">That's your employee number, not an RO — fix the RO on this entry so it can be matched.</div>` : ""}
         </div>
         <div class="reconRowRight">
           <div class="reconRowPay">${formatMoney(u.pay)}</div>
@@ -1545,12 +1546,46 @@ function roKey(v) {
 }
 
 /**
+ * Every identifier a logged ref might match on, best first.
+ *
+ * Techs write refs in a few shapes: "497471/S14469A" (RO + stock), a bare
+ * stock number, and occasionally "40534/SLS13860" where 40534 is their own
+ * EMPLOYEE number — that one can never match an RO, and taking the first
+ * number blindly meant such jobs were always reported unpaid. The employee
+ * number is filtered out and both halves are offered as candidates.
+ */
+function roCandidates(ref, empId = "") {
+  const s = String(ref || "").trim().toUpperCase();
+  if (!s) return [];
+  const emp = String(empId || "").trim().toUpperCase();
+  const parts = s.split(/[^A-Z0-9]+/).filter(Boolean);
+
+  const out = [];
+  const push = (v) => {
+    if (!v || v === emp) return;            // never match on the tech's own number
+    if (!out.includes(v)) out.push(v);
+  };
+
+  // RO-looking numbers first (5-8 digits), then anything else alphanumeric.
+  for (const p of parts) if (/^\d{5,8}$/.test(p)) push(p);
+  for (const p of parts) if (!/^\d{5,8}$/.test(p)) push(p);
+  return out;
+}
+
+/** True when the ref is nothing but the tech's own employee number. */
+function refIsOnlyEmpId(ref, empId) {
+  const cands = roCandidates(ref, empId);
+  const raw = String(ref || "").trim().toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  return raw.length > 0 && cands.length === 0;
+}
+
+/**
  * Diff what you logged against what they paid.
  *   unpaid    — logged, absent from their report entirely (the strong claim)
  *   short     — on both, but they paid fewer hours than you logged
  *   unlogged  — on their report, missing from your log (worth knowing about)
  */
-function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null) {
+function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId = "") {
   // Payroll lists ONE LINE PER OP. The app lets a tech merge several ops from
   // the same paper into a single entry ("Reclean+Fpf+Pdi", 5.4 hrs), which on
   // the report is 1.90 + 1.50 + ... across separate lines of the same RO.
@@ -1582,6 +1617,8 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null) {
   const logged = (loggedEntries || []).map(e => ({
     e,
     roK: roKey(e.ref || e.ro),
+    roCands: roCandidates(e.ref || e.ro, empId),
+    badRef: refIsOnlyEmpId(e.ref || e.ro, empId),
     hours: Number(e.hours) || 0,
     pay: Number(e.earnings) || 0,
     day: e.dayKey || dayKeyFromISO(e.createdAt || "") || "",
@@ -1610,9 +1647,12 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null) {
   // Only works when the tech actually knows the RO. Get-ready work is booked
   // under an RO they never see, so those fall through to pass 2.
   for (const L of logged) {
-    if (!L.roK) continue;
-    const b = buckets.get(L.roK);
-    if (b) draw(L, b, "ro", 1);
+    // Try every identifier in the ref — the RO, the stock number, either half
+    // of an "RO/STOCK" pair — rather than only the first number found.
+    for (const cand of L.roCands) {
+      const b = buckets.get(cand);
+      if (b && draw(L, b, "ro", 1)) break;
+    }
   }
 
   // ── Pass 2: evidence ─────────────────────────────────────────────────
@@ -1655,6 +1695,7 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null) {
         pay: round2(L.pay * frac),
         partial: L.unmatchedHours < L.hours - 0.001,
         loggedHours: round2(L.hours),
+        badRef: L.badRef,
       };
     });
 
