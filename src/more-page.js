@@ -1191,6 +1191,7 @@ function renderMissingWorkReview() {
   summaryEl.innerHTML = `
     <span style="color:var(--danger);font-weight:700;">⚠️ ${missingHours > 0 ? `${formatHours(missingHours)} hrs` : formatMoney(missingPay)} unpaid.</span>
     You logged ${formatHours(ctx.expected?.hours || 0)} hrs / ${formatMoney(ctx.expected?.pay || 0)} and were paid ${formatHours(ctx.actual?.hours || 0)} hrs / ${formatMoney(ctx.actual?.pay || 0)}. That gap is the fact to take to your manager — everything below is the app narrowing down which jobs it came from.
+    <span style="display:block;margin-top:6px;font-size:10.5px;color:var(--muted2,var(--muted));">build ${escapeHtml(String(window.BUILD || "?"))} · proof v3</span>
   `;
 
   let html = "";
@@ -1220,7 +1221,10 @@ function renderMissingWorkReview() {
       const eid = escapeHtml(String(e.id ?? ""));
       const meta = [formatDayLabel(e.dayKey) || e.dayKey || ""];
       if (facts.vin8 && facts.vin8 !== "-") meta.push(`VIN ${facts.vin8}`);
-      html += `<div class="mwCard">
+      // The whole card carries the photo id, so a tap anywhere on it opens the
+      // proof — a small button is a small target when you're holding the phone
+      // out for a service manager to look at.
+      html += `<div class="mwCard${hasPhoto ? " mwCard--tappable" : ""}"${hasPhoto ? ` data-mw-photo="${eid}"` : ""}>
         <div class="mwTop">
           <div class="mwLeft">
             <div class="mwType">${escapeHtml(e.type || e.typeText || "Job")}</div>
@@ -1280,6 +1284,9 @@ function renderMissingWorkReview() {
   // Keep the matched entries reachable by id for the delegated handler below.
   _mwEntriesById = new Map((match.picks || []).map(e => [String(e.id ?? ""), e]));
   wireMissingWorkActions();
+  // Start fetching these photos now, so the proof is already cached by the time
+  // it's tapped in front of a manager.
+  prewarmPhotoUrls?.(match.picks || []);
 }
 
 /* Entries behind the evidence cards, by id. */
@@ -1297,18 +1304,22 @@ function wireMissingWorkActions() {
   window.__mwActionsWired = true;
 
   document.addEventListener("click", (ev) => {
-    const photoBtn = ev.target?.closest?.("[data-mw-photo]");
-    if (photoBtn) {
-      ev.preventDefault();
-      const e = _mwEntriesById.get(photoBtn.dataset.mwPhoto);
-      if (!e) return toast?.("Couldn't find that job.");
-      haptic?.("light");
-      openPhotoViewer(e);
+    // Flag first: it sits INSIDE the card, and the card itself carries the
+    // photo id, so checking photo first would swallow every flag tap.
+    const flagBtn = ev.target?.closest?.("[data-mw-flag]");
+    if (!flagBtn) {
+      const photoBtn = ev.target?.closest?.("[data-mw-photo]");
+      if (photoBtn) {
+        ev.preventDefault();
+        const e = _mwEntriesById.get(photoBtn.dataset.mwPhoto);
+        if (!e) return toast?.("Couldn't find that job.");
+        haptic?.("light");
+        openPhotoViewer(e);
+      }
       return;
     }
 
-    const flagBtn = ev.target?.closest?.("[data-mw-flag]");
-    if (flagBtn) {
+    {
       ev.preventDefault();
       const e = _mwEntriesById.get(flagBtn.dataset.mwFlag);
       if (!e) return toast?.("Couldn't find that job.");

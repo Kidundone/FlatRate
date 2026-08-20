@@ -551,25 +551,45 @@ async function openPhotoViewer(e){
 
   if (!storedPath && !inlineData) return toast("No photo saved on this job.");
 
+  const label = `${e.ro || e.ref || ""}`.trim();
+
+  // Open the viewer FIRST, before the network call. Fetching a signed URL is a
+  // round trip, and awaiting it before showing anything made the tap look dead —
+  // you'd back out to another page and come back to find it had loaded.
+  meta.textContent = `${label} • ${e.work_date || e.dayKey || ""}`;
+  shell.style.display = "block";
+  shell.classList.add("open");
+
   let url = inlineData;
   if (!url) {
+    img.removeAttribute("src");
+    meta.textContent = `${label} • loading photo…`;
     try {
       url = await getCachedPhotoUrl(storedPath);
     } catch (err) {
       console.error("[openPhotoViewer]", err);
     }
-    if (!url) return toast("Couldn't load that photo — check your connection.");
+    if (!url) {
+      meta.textContent = `${label} • couldn't load — check your connection`;
+      return;
+    }
     applyPhotoLoadGuard(img, storedPath);
+    meta.textContent = `${label} • ${e.work_date || e.dayKey || ""}`;
   }
 
   img.src = url;
   dl.href = url;
+}
 
-  const label = `${e.ro || e.ref || ""}`.trim();
-  meta.textContent = `${label} • ${e.work_date || e.dayKey || ""}`;
-
-  shell.style.display = "block";
-  shell.classList.add("open");
+/**
+ * Warm the signed-URL cache for jobs the tech is likely to open next.
+ * Fire-and-forget: failures are irrelevant, the tap path handles them.
+ */
+function prewarmPhotoUrls(entries) {
+  for (const e of entries || []) {
+    const p = e?.photo_path || e?.photoPath;
+    if (p) { try { getCachedPhotoUrl(p); } catch {} }
+  }
 }
 
 function closePhotoViewer(){

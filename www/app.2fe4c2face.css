@@ -4999,6 +4999,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
   margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--stroke);
 }
+.mwCard--tappable { cursor: pointer; transition: transform 120ms var(--ease, ease), border-color 120ms; }
+.mwCard--tappable:active { transform: scale(.985); border-color: rgba(37,99,235,.5); }
 .mwPhotoBtn { color: var(--primary); border-color: rgba(37,99,235,.4); background: rgba(37,99,235,.09); }
 .mwNoPhoto  { font-size: 11.5px; color: var(--muted); font-style: italic; }
 
