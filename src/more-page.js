@@ -780,7 +780,7 @@ async function refreshMorePagePanels() {
 
 window.refreshMorePagePanels = refreshMorePagePanels;
 
-async function _callScanPayStub(base64, mediaType = "image/jpeg") {
+async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto") {
   const sbInstance = window.__FR?.sb;
   const { data: { session } } = await sbInstance.auth.getSession();
   const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
@@ -792,7 +792,7 @@ async function _callScanPayStub(base64, mediaType = "image/jpeg") {
       "Authorization": `Bearer ${token}`,
       "apikey": window.__SUPABASE_CONFIG__.anonKey,
     },
-    body: JSON.stringify({ imageBase64: base64, mediaType }),
+    body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -978,6 +978,131 @@ function initPayrollReportUI() {
   renderPayrollReportReconciliation();
 }
 
+/**
+ * Photograph the shop's payroll report and reconcile it against the log.
+ * The edge function already understands mode:"payroll_report" and hands back
+ * structured rows; this just maps them onto the shape reconcilePayroll wants.
+ */
+async function scanPayrollForReconcile(file) {
+  const status = document.getElementById("payrollScanStatus");
+  const camBtn = document.getElementById("scanPayrollCamBtn");
+  const libBtn = document.getElementById("scanPayrollLibBtn");
+  const setBusy = (b) => {
+    if (camBtn) camBtn.disabled = b;
+    if (libBtn) libBtn.disabled = b;
+  };
+  const say = (msg) => {
+    if (!status) return;
+    status.textContent = msg;
+    status.style.display = msg ? "" : "none";
+  };
+
+  setBusy(true);
+  say("Reading the report…");
+  haptic?.("light");
+
+  try {
+    // Larger + higher quality than the check-stub scan: this page is dense
+    // small type and every RO number has to survive compression.
+    const dataUrl = await compressImageFileToDataUrl(file, 2000, 0.9);
+    const base64 = dataUrl.split(",")[1];
+    const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+
+    const result = await _callScanPayStub(base64, mediaType, "payroll_report");
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    if (!rows.length) {
+      say(result?.error ? `Couldn't read it: ${result.error}` : "Couldn't find any RO lines — try a straighter, closer photo.");
+      return;
+    }
+
+    const paidLines = rows.map(r => ({
+      ro: String(r.ro ?? ""),
+      hours: Number(r.soldHours) || 0,
+      cost: Number(r.laborCost) || 0,
+      bookedDate: r.bookedDate || r.closedDate || "",
+      closedDate: r.closedDate || r.bookedDate || "",
+      opCode: r.opCode || "",
+      description: r.description || "",
+    })).filter(r => r.ro);
+
+    // Self-check: if the report printed its own totals, confirm we read it right.
+    const readHours = round2(paidLines.reduce((s, p) => s + p.hours, 0));
+    const stated = Number(result?.totalSoldHours);
+    let warn = "";
+    if (Number.isFinite(stated) && stated > 0 && Math.abs(stated - readHours) > 0.05) {
+      warn = `Read ${formatHours(readHours)} hrs but the report totals ${formatHours(stated)} — some lines may have been missed. Check the photo or paste the text.`;
+    }
+
+    say(`Read ${paidLines.length} lines · ${formatHours(readHours)} hrs.`);
+    _lastPayrollLines = paidLines;
+    renderPayrollReconciliation(paidLines, warn);
+    // One scan feeds both views: the per-RO list here and the existing
+    // day-by-day totals card further down the page.
+    try { savePayrollReport?.(result); renderPayrollReportReconciliation?.(); } catch {}
+    haptic?.("success");
+  } catch (e) {
+    console.warn("[scanPayrollReport]", e?.message || e);
+    say(`Scan failed: ${e?.message || "try again"}`);
+  } finally {
+    setBusy(false);
+  }
+}
+let _lastPayrollLines = null;
+
+/** Render the per-RO reconciliation. Shared by the photo scan and the paste box. */
+function renderPayrollReconciliation(paidLines, warn = "") {
+  const out = document.getElementById("payrollReconcileOut");
+  if (!out) return;
+
+  const ctx = getPayStubAuditContext();
+  const entries = ctx?.entries || [];
+  if (!entries.length) {
+    out.innerHTML = `<div class="muted small">No logged jobs for this pay period to compare against. Set the Week of date above to the period this report covers.</div>`;
+    return;
+  }
+
+  const r = reconcilePayroll(entries, paidLines);
+  const t = r.totals;
+
+  let h = "";
+  if (warn) h += `<div class="reconNote" style="color:var(--warn,#f59e0b);margin-bottom:8px;">${escapeHtml(warn)}</div>`;
+
+  h += `<div class="reconSummary">
+    <div class="reconLine">Their report: <strong>${t.paidLines} lines · ${formatHours(t.paidHours)} hrs · ${formatMoney(t.paidCost)}</strong></div>
+    <div class="reconLine">Matched: <strong>${t.matchedRo}</strong> by RO${t.matchedEv ? `, <strong>${t.matchedEv}</strong> by date + hours + description` : ""}</div>
+  </div>`;
+
+  if (!r.unpaid.length) {
+    h += `<div class="reconOk">✓ Every job you logged appears on their report.</div>`;
+  } else {
+    h += `<div class="reconHit">
+      <div class="reconHitVal">${formatHours(t.unpaidHours)} hrs · ${formatMoney(t.unpaidPay)}</div>
+      <div class="reconHitLabel">logged by you, not on their report</div>
+    </div>`;
+    for (const u of r.unpaid) {
+      const e = u.entries[0] || {};
+      const hasPhoto = getEntryReviewState(e).hasPhoto;
+      h += `<div class="reconRow">
+        <div>
+          <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
+          <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}</div>
+        </div>
+        <div class="reconRowRight">
+          <div class="reconRowPay">${formatMoney(u.pay)}</div>
+          <div class="reconRowHrs">${formatHours(u.hours)} hrs</div>
+        </div>
+      </div>`;
+    }
+    h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager.</div>`;
+  }
+
+  if (r.unlogged.length) {
+    h += `<div class="reconNote" style="margin-top:8px;">They paid ${r.unlogged.length} line${r.unlogged.length === 1 ? "" : "s"} (${formatHours(t.unloggedHours)} hrs) you didn't log — worth checking you're not missing entries.</div>`;
+  }
+
+  out.innerHTML = h;
+}
+
 async function scanPayStub(file) {
   const amountEl = document.getElementById("payStubAmountPaid");
   const scanBtn = document.getElementById("scanCheckLibBtn");
@@ -1049,62 +1174,29 @@ function initPayStubUI() {
   document.getElementById("payStubHoursPaid")?.addEventListener("input", redrawPayStub);
 
   // ── Payroll report reconciliation ──
-  document.getElementById("reconcilePayrollBtn")?.addEventListener("click", () => {
-    const out = document.getElementById("payrollReconcileOut");
-    const txt = document.getElementById("payrollReportText")?.value || "";
-    if (!out) return;
-    haptic?.("light");
+  document.getElementById("scanPayrollCamBtn")?.addEventListener("click", () => document.getElementById("payrollCamera")?.click());
+  document.getElementById("scanPayrollLibBtn")?.addEventListener("click", () => document.getElementById("payrollPicker")?.click());
+  const onPayrollFile = (input) => () => {
+    const f = input.files?.[0];
+    if (f) scanPayrollForReconcile(f);
+    input.value = "";
+  };
+  const pPick = document.getElementById("payrollPicker");
+  const pCam  = document.getElementById("payrollCamera");
+  pPick?.addEventListener("change", onPayrollFile(pPick));
+  pCam?.addEventListener("change", onPayrollFile(pCam));
 
+  document.getElementById("reconcilePayrollBtn")?.addEventListener("click", () => {
+    const txt = document.getElementById("payrollReportText")?.value || "";
+    haptic?.("light");
     const paidLines = parsePayrollReport(txt);
     if (!paidLines.length) {
-      out.innerHTML = `<div class="muted small">Couldn't read any RO lines. Paste the report text including the RO number, dates and hours columns.</div>`;
+      const out = document.getElementById("payrollReconcileOut");
+      if (out) out.innerHTML = `<div class="muted small">Couldn't read any RO lines from that text.</div>`;
       return;
     }
-
-    const ctx = getPayStubAuditContext();
-    const entries = ctx?.entries || [];
-    if (!entries.length) {
-      out.innerHTML = `<div class="muted small">No logged jobs for this pay period to compare against.</div>`;
-      return;
-    }
-
-    const r = reconcilePayroll(entries, paidLines);
-    const t = r.totals;
-
-    let h = `<div class="reconSummary">
-      <div class="reconLine">Their report: <strong>${t.paidLines} lines · ${formatHours(t.paidHours)} hrs · ${formatMoney(t.paidCost)}</strong></div>
-      <div class="reconLine">Matched: <strong>${t.matchedRo}</strong> by RO${t.matchedEv ? `, <strong>${t.matchedEv}</strong> by date + hours + description` : ""}</div>
-    </div>`;
-
-    if (!r.unpaid.length) {
-      h += `<div class="reconOk">✓ Every job you logged appears on their report.</div>`;
-    } else {
-      h += `<div class="reconHit">
-        <div class="reconHitVal">${formatHours(t.unpaidHours)} hrs · ${formatMoney(t.unpaidPay)}</div>
-        <div class="reconHitLabel">logged by you, not on their report</div>
-      </div>`;
-      for (const u of r.unpaid) {
-        const e = u.entries[0] || {};
-        const hasPhoto = getEntryReviewState(e).hasPhoto;
-        h += `<div class="reconRow">
-          <div>
-            <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
-            <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}</div>
-          </div>
-          <div class="reconRowRight">
-            <div class="reconRowPay">${formatMoney(u.pay)}</div>
-            <div class="reconRowHrs">${formatHours(u.hours)} hrs</div>
-          </div>
-        </div>`;
-      }
-      h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager.</div>`;
-    }
-
-    if (r.unlogged.length) {
-      h += `<div class="reconNote" style="margin-top:8px;">They paid ${r.unlogged.length} line${r.unlogged.length === 1 ? "" : "s"} (${formatHours(t.unloggedHours)} hrs) you didn't log — worth checking you're not missing entries.</div>`;
-    }
-
-    out.innerHTML = h;
+    _lastPayrollLines = paidLines;
+    renderPayrollReconciliation(paidLines);
   });
 
   const libBtn    = document.getElementById("scanCheckLibBtn");

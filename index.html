@@ -1001,10 +1001,20 @@
             <button class="btn moreSaveBtn" id="scanCheckCamBtn" type="button">Scan Camera</button>
           </div>
           <div class="moreRow" style="display:block;">
-            <div class="moreRowLabel">Payroll Report (booked ROs)</div>
-            <div class="moreRowSub" style="margin-bottom:8px;">Paste the shop's "Report of Booked Repair Orders". The app matches it against your log line by line and names exactly what they didn't pay.</div>
-            <textarea id="payrollReportText" class="fr26Input" rows="4" placeholder="496740 12AUG26 12AUG26 S1  40534 C 3 ST  ROP  0.00  4.00  60.00 DETAILPOC FULL DETAIL O&#10;..." style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:11px;"></textarea>
-            <button class="btn primary" id="reconcilePayrollBtn" type="button" style="width:100%;margin-top:8px;">⚖️ Find What They Didn't Pay</button>
+            <div class="moreRowLabel">Payroll Report — find unpaid work</div>
+            <div class="moreRowSub" style="margin-bottom:10px;">Photograph the shop's "Report of Booked Repair Orders". The app reads every RO and tells you which of your jobs isn't on it.</div>
+            <div class="moreSaveRow" style="padding:0;">
+              <button class="btn primary moreSaveBtn" id="scanPayrollCamBtn" type="button">📷 Photograph Report</button>
+              <button class="btn moreSaveBtn" id="scanPayrollLibBtn" type="button">Choose Photo</button>
+            </div>
+            <input id="payrollPicker" type="file" accept="image/*" style="display:none" />
+            <input id="payrollCamera" type="file" accept="image/*" capture="environment" style="display:none" />
+            <div id="payrollScanStatus" class="muted small" style="margin-top:8px;display:none;"></div>
+            <details style="margin-top:8px;">
+              <summary class="muted small" style="cursor:pointer;">Or paste the text instead</summary>
+              <textarea id="payrollReportText" class="fr26Input" rows="4" placeholder="496740 12AUG26 12AUG26 S1  40534 C 3 ST  ROP  0.00  4.00  60.00 DETAILPOC FULL DETAIL O&#10;..." style="width:100%;margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:11px;"></textarea>
+              <button class="btn" id="reconcilePayrollBtn" type="button" style="width:100%;margin-top:8px;">Check pasted text</button>
+            </details>
             <div id="payrollReconcileOut" style="margin-top:10px;"></div>
           </div>
           <div class="moreSaveRow" style="padding-top:0;">
@@ -1386,7 +1396,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.d86cf68104.js" defer></script>
+<script src="./app.9602cd2c84.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
