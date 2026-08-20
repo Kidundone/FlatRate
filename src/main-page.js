@@ -5570,11 +5570,19 @@ function initBreakdownPage() {
   const toEl       = document.getElementById("statsToDate");
   const applyBtn   = document.getElementById("statsDateApply");
 
+  // Keep the selected period visible even if the row hasn't been scrolled —
+  // there are 13 chips and only ~4 fit, so the active one is often off-screen.
+  const revealActiveChip = () => {
+    const active = seg?.querySelector(".statsChip.active");
+    active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  };
+
   if (seg) {
     seg.querySelectorAll(".statsChip[data-period]").forEach(btn => {
       btn.addEventListener("click", () => {
         seg.querySelectorAll(".statsChip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
+        revealActiveChip();
         period = btn.dataset.period;
         // Show/hide custom range picker
         if (customWrap) customWrap.style.display = period === "custom" ? "flex" : "none";
@@ -5590,6 +5598,7 @@ function initBreakdownPage() {
   }
 
   renderBreakdownPage(period);
+  setTimeout(revealActiveChip, 260);
 }
 
 window.__FR.initBreakdownPage   = initBreakdownPage;

@@ -9057,11 +9057,19 @@ function initBreakdownPage() {
   const toEl       = document.getElementById("statsToDate");
   const applyBtn   = document.getElementById("statsDateApply");
 
+  // Keep the selected period visible even if the row hasn't been scrolled —
+  // there are 13 chips and only ~4 fit, so the active one is often off-screen.
+  const revealActiveChip = () => {
+    const active = seg?.querySelector(".statsChip.active");
+    active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  };
+
   if (seg) {
     seg.querySelectorAll(".statsChip[data-period]").forEach(btn => {
       btn.addEventListener("click", () => {
         seg.querySelectorAll(".statsChip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
+        revealActiveChip();
         period = btn.dataset.period;
         // Show/hide custom range picker
         if (customWrap) customWrap.style.display = period === "custom" ? "flex" : "none";
@@ -9077,6 +9085,7 @@ function initBreakdownPage() {
   }
 
   renderBreakdownPage(period);
+  setTimeout(revealActiveChip, 260);
 }
 
 window.__FR.initBreakdownPage   = initBreakdownPage;
@@ -12459,15 +12468,24 @@ function logErr(label) {
 (function killHorizontalBounce() {
   let startX = 0, startY = 0, decided = false, blockHorizontal = false, allowNative = false;
 
-  // Every element that intentionally scrolls sideways (chip rows, period
-  // tabs, action strips), collected once instead of walking the DOM with
-  // getComputedStyle() on every single touch. That per-touch style-recalc
-  // was cheap-looking but ran on EVERY tap anywhere in the app, and was the
-  // real cause of the whole app feeling laggy/delayed (haptics included) —
-  // closest() against a plain selector list is a native, non-layout-forcing
-  // call and doesn't have that cost.
+  // Fast path: elements known to scroll sideways. Kept because closest() costs
+  // nothing, but it is NO LONGER the only check — a hand-maintained list is
+  // exactly the kind of thing that silently rots (the Stats period chips got
+  // stuck precisely because matching here was the sole gate).
   const H_SCROLL_SELECTOR = ".statsChipsWrap, .mnthBarsScroll, .fr26QuickHours, " +
     ".fr26QuickTools, .pillRow, .entryActions, .hcActionRow, .recentTypeChips";
+
+  // Ground truth: does anything under the finger actually have somewhere to
+  // scroll horizontally? Walks a few ancestors reading scrollWidth/clientWidth.
+  // This is a layout read, but a cheap one on a clean layout, and unlike the
+  // getComputedStyle() version that once made the whole app feel laggy it does
+  // not force a full style recalculation.
+  function canScrollX(el) {
+    for (let i = 0; el && el !== document.body && i < 6; i++, el = el.parentElement) {
+      if (el.scrollWidth - el.clientWidth > 2) return true;
+    }
+    return false;
+  }
 
   document.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) { allowNative = true; return; }
@@ -12475,7 +12493,8 @@ function logErr(label) {
     startY = e.touches[0].clientY;
     decided = false;
     blockHorizontal = false;
-    allowNative = !!(e.target && e.target.closest && e.target.closest(H_SCROLL_SELECTOR));
+    const t = e.target;
+    allowNative = !!(t && t.closest && t.closest(H_SCROLL_SELECTOR)) || canScrollX(t);
   }, { passive: true });
 
   document.addEventListener("touchmove", (e) => {
