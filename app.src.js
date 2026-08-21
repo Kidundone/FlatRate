@@ -10896,14 +10896,21 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
     if (L.unmatchedHours <= 0.001) continue;
     for (const b of bucketList) {
       if (b.remaining <= 0.001) continue;
+      // Closing date is NOT a filter. A shop can close an RO days or weeks
+      // after the work was done, so requiring the dates to be close flagged
+      // perfectly good jobs as unpaid. What actually identifies a job is the
+      // work and the hours; the date only breaks ties between equal matches.
       const dayGap = nearestDay(L.day, b);
-      if (dayGap > 4) continue;
       // The bucket must be able to cover a meaningful part of the entry.
       const cover = Math.min(L.unmatchedHours, b.remaining);
       if (cover < Math.min(0.5, L.unmatchedHours)) continue;
-      const exact = Math.abs(b.remaining - L.unmatchedHours) < 0.011 ? 40 : 0;
       const sim = _descSimilarity(L.desc, b.desc.join(" "));
-      cands.push({ L, b, sim, dayGap, score: sim * 100 + exact + Math.max(0, 20 - dayGap * 5) });
+      // Description is the real signal, then hours fitting exactly. Require
+      // one of them — otherwise any leftover bucket could absorb any job.
+      const exact = Math.abs(b.remaining - L.unmatchedHours) < 0.011 ? 40 : 0;
+      if (sim <= 0 && !exact) continue;
+      const closeness = dayGap > 60 ? 0 : Math.max(0, 10 - dayGap * 0.5);
+      cands.push({ L, b, sim, dayGap, score: sim * 100 + exact + closeness });
     }
   }
   cands.sort((a, b) => b.score - a.score);
