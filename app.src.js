@@ -3106,6 +3106,71 @@ async function openPhotoViewer(e){
 }
 
 /**
+ * Load an entry's photo as something jsPDF can embed.
+ *
+ * Returns { dataUrl, format, width, height } or null if the photo can't be
+ * loaded — callers must handle null rather than producing a broken page, since
+ * this ends up in a document a tech hands to a manager.
+ *
+ * Re-encodes to JPEG at a sane size: a raw 12MP phone photo per page would
+ * make a PDF too big to email, which defeats the point.
+ */
+async function entryPhotoForPdf(entry, maxDim = 1400, quality = 0.8) {
+  const storedPath = entry?.photo_path || entry?.photoPath || "";
+  const inlineData = entry?.photoDataUrl || "";
+  if (!storedPath && !inlineData) return null;
+
+  let src = inlineData;
+  if (!src) {
+    try {
+      src = await getCachedPhotoUrl(storedPath);
+    } catch (e) {
+      console.warn("[entryPhotoForPdf] url", e?.message || e);
+      return null;
+    }
+  }
+  if (!src) return null;
+
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("image load failed"));
+      i.src = src;
+    });
+
+    const w0 = img.naturalWidth || img.width;
+    const h0 = img.naturalHeight || img.height;
+    if (!w0 || !h0) return null;
+
+    const scale = Math.min(maxDim / Math.max(w0, h0), 1);
+    const w = Math.round(w0 * scale);
+    const h = Math.round(h0 * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    // White backdrop: JPEG has no alpha, and transparent pixels would
+    // otherwise come out black on the page.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    return {
+      dataUrl: canvas.toDataURL("image/jpeg", quality),
+      format: "JPEG",
+      width: w,
+      height: h,
+    };
+  } catch (e) {
+    console.warn("[entryPhotoForPdf]", e?.message || e);
+    return null;
+  }
+}
+
+/**
  * Warm the signed-URL cache for jobs the tech is likely to open next.
  * Fire-and-forget: failures are irrelevant, the tap path handles them.
  */
@@ -10315,7 +10380,9 @@ function renderPayrollReconciliation(paidLines, warn = "") {
     for (const u of r.unpaid) {
       const e = u.entries[0] || {};
       const hasPhoto = getEntryReviewState(e).hasPhoto;
+      const pPath = e.photo_path || e.photoPath || "";
       h += `<div class="reconRow">
+        ${hasPhoto ? `<img class="reconThumb" data-recon-photo="${escapeHtml(String(e.id ?? ""))}" data-photo-path="${escapeHtml(pPath)}" alt="Proof" />` : ""}
         <div>
           <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
           <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}${u.partial ? ` · part-paid, ${formatHours(u.loggedHours)} logged` : ""}</div>
@@ -10335,6 +10402,29 @@ function renderPayrollReconciliation(paidLines, warn = "") {
   }
 
   out.innerHTML = h;
+
+  // Fill the thumbnails and make them open full-screen. Seeing the car next to
+  // the RO is the whole point — a manager shouldn't need it described to them.
+  const byId = new Map(r.unpaid.map(u => [String(u.entries[0]?.id ?? ""), u.entries[0]]));
+  out.querySelectorAll("[data-recon-photo]").forEach(async (img) => {
+    const path = img.dataset.photoPath;
+    const entry = byId.get(img.dataset.reconPhoto);
+    if (path) {
+      try {
+        const url = await getCachedPhotoUrl(path);
+        if (url) img.src = url;
+        else img.remove();
+      } catch { img.remove(); }
+    } else if (entry?.photoDataUrl) {
+      img.src = entry.photoDataUrl;
+    } else {
+      img.remove();
+      return;
+    }
+    img.addEventListener("click", () => {
+      if (entry) { haptic?.("light"); openPhotoViewer(entry); }
+    });
+  });
 }
 
 async function scanPayStub(file) {
@@ -11718,7 +11808,60 @@ async function exportDisputeReport(weekKey) {
   nl(2);
   doc.setDrawColor(150); doc.line(left, y, rightEdge, y); nl(6);
   doc.setFont(undefined, "normal"); doc.setFontSize(9);
-  doc.text(`Prepared by ${techName || `Emp #${empId}`} using Flatrate Buddy. Photo proof available on request.`, left, y);
+  doc.text(`Prepared by ${techName || `Emp #${empId}`} using Flatrate Buddy.`, left, y);
+
+  // ── Photo evidence ────────────────────────────────────────────────────
+  // The proof has to be IN the document. "Available on request" is worth
+  // nothing standing in an office — a manager should be able to see the car,
+  // on the page, next to the RO it belongs to.
+  const withPhotos = weekKeys
+    .flatMap(wk => weekMap.get(wk))
+    .filter(e => getEntryReviewState(e).hasPhoto);
+
+  if (withPhotos.length) {
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    let added = 0, failed = 0;
+
+    for (const e of withPhotos) {
+      const shot = await entryPhotoForPdf(e);
+      if (!shot) { failed++; continue; }
+
+      doc.addPage();
+      y = 20;
+      doc.setFont(undefined, "bold"); doc.setFontSize(12);
+      doc.text("PHOTO EVIDENCE", left, y); y += 7;
+
+      doc.setFont(undefined, "normal"); doc.setFontSize(10);
+      const ro = String(e.ref || e.ro || "-");
+      doc.text(`${e.refType === "STOCK" ? "STK" : "RO"} ${ro}   ${e.dayKey || ""}`, left, y); y += 5.5;
+      doc.text(`${String(e.type || e.typeText || "-").slice(0, 60)}   ${formatHours(e.hours)} hrs   ${formatMoney(e.earnings)}`, left, y); y += 7;
+
+      // Fit inside the margins without distorting the picture.
+      const maxW = pageW - left * 2;
+      const maxH = pageH - y - 20;
+      let w = shot.width, h = shot.height;
+      const scale = Math.min(maxW / w, maxH / h, 1);
+      w = w * scale; h = h * scale;
+
+      try {
+        doc.addImage(shot.dataUrl, shot.format, left, y, w, h);
+        added++;
+      } catch (err) {
+        console.warn("[dispute pdf] addImage failed", err);
+        doc.setFontSize(9);
+        doc.text("(photo could not be embedded)", left, y);
+        failed++;
+      }
+    }
+
+    if (failed) {
+      doc.addPage(); y = 20;
+      doc.setFontSize(9); doc.setFont(undefined, "normal");
+      doc.text(`${failed} photo${failed === 1 ? "" : "s"} could not be loaded and ${failed === 1 ? "is" : "are"} not included here. They remain in the app.`, left, y);
+    }
+    console.info(`[dispute pdf] embedded ${added} photo(s), ${failed} failed`);
+  }
 
   const filename = singleWeek
     ? `dispute-${empId}-${weekKey}.pdf`

@@ -582,6 +582,71 @@ async function openPhotoViewer(e){
 }
 
 /**
+ * Load an entry's photo as something jsPDF can embed.
+ *
+ * Returns { dataUrl, format, width, height } or null if the photo can't be
+ * loaded — callers must handle null rather than producing a broken page, since
+ * this ends up in a document a tech hands to a manager.
+ *
+ * Re-encodes to JPEG at a sane size: a raw 12MP phone photo per page would
+ * make a PDF too big to email, which defeats the point.
+ */
+async function entryPhotoForPdf(entry, maxDim = 1400, quality = 0.8) {
+  const storedPath = entry?.photo_path || entry?.photoPath || "";
+  const inlineData = entry?.photoDataUrl || "";
+  if (!storedPath && !inlineData) return null;
+
+  let src = inlineData;
+  if (!src) {
+    try {
+      src = await getCachedPhotoUrl(storedPath);
+    } catch (e) {
+      console.warn("[entryPhotoForPdf] url", e?.message || e);
+      return null;
+    }
+  }
+  if (!src) return null;
+
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("image load failed"));
+      i.src = src;
+    });
+
+    const w0 = img.naturalWidth || img.width;
+    const h0 = img.naturalHeight || img.height;
+    if (!w0 || !h0) return null;
+
+    const scale = Math.min(maxDim / Math.max(w0, h0), 1);
+    const w = Math.round(w0 * scale);
+    const h = Math.round(h0 * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    // White backdrop: JPEG has no alpha, and transparent pixels would
+    // otherwise come out black on the page.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    return {
+      dataUrl: canvas.toDataURL("image/jpeg", quality),
+      format: "JPEG",
+      width: w,
+      height: h,
+    };
+  } catch (e) {
+    console.warn("[entryPhotoForPdf]", e?.message || e);
+    return null;
+  }
+}
+
+/**
  * Warm the signed-URL cache for jobs the tech is likely to open next.
  * Fire-and-forget: failures are irrelevant, the tap path handles them.
  */

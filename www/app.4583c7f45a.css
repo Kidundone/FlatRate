@@ -4997,6 +4997,14 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
   padding: 10px 0; border-bottom: 1px solid var(--stroke);
 }
+.reconThumb {
+  width: 54px; height: 54px; flex-shrink: 0;
+  object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: var(--surface2);
+  cursor: pointer;
+}
+.reconThumb:active { opacity: .7; }
 .reconRowTop   { font-size: 13.5px; font-weight: 600; color: var(--text); }
 .reconRowSub   { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 .reconRowRight { text-align: right; flex-shrink: 0; }
