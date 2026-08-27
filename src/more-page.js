@@ -1033,9 +1033,21 @@ async function scanPayrollForReconcile(file) {
       warn = `Read ${formatHours(readHours)} hrs but the report totals ${formatHours(stated)} — some lines may have been missed. Check the photo or paste the text.`;
     }
 
-    say(`Read ${paidLines.length} lines · ${formatHours(readHours)} hrs.`);
-    _lastPayrollLines = paidLines;
-    renderPayrollReconciliation(paidLines, warn);
+    // Reports run to multiple pages. Scanning replaced the previous page, so
+    // scanning page 2 would silently make every job on page 1 look unpaid —
+    // the most damaging kind of wrong answer this app can give. Pages now
+    // accumulate, de-duplicated so re-scanning the same page is harmless.
+    const seen = new Set((_lastPayrollLines || []).map(payrollLineKey));
+    const fresh = paidLines.filter(p => !seen.has(payrollLineKey(p)));
+    const dupes = paidLines.length - fresh.length;
+    _lastPayrollLines = [...(_lastPayrollLines || []), ...fresh];
+
+    const totalHours = round2(_lastPayrollLines.reduce((s, p) => s + p.hours, 0));
+    say(fresh.length
+      ? `Added ${fresh.length} lines${dupes ? ` (${dupes} already scanned)` : ""} — ${_lastPayrollLines.length} total · ${formatHours(totalHours)} hrs. Scan another page if the report has one.`
+      : `All ${paidLines.length} lines were already scanned — ${_lastPayrollLines.length} total · ${formatHours(totalHours)} hrs.`);
+
+    renderPayrollReconciliation(_lastPayrollLines, warn);
     // One scan feeds both views: the per-RO list here and the existing
     // day-by-day totals card further down the page.
     try { savePayrollReport?.(result); renderPayrollReportReconciliation?.(); } catch {}
@@ -1048,6 +1060,11 @@ async function scanPayrollForReconcile(file) {
   }
 }
 let _lastPayrollLines = null;
+
+/** Identity of a single payroll line, for de-duplicating re-scanned pages. */
+function payrollLineKey(p) {
+  return [p.ro, p.hours, p.cost, p.opCode, p.closedDate].join("|");
+}
 
 /** Render the per-RO reconciliation. Shared by the photo scan and the paste box. */
 function renderPayrollReconciliation(paidLines, warn = "") {
@@ -1823,6 +1840,50 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
         if (suspicious) c.L.matchNote += ` — but that RO is ${formatHours(c.b.hours)} hrs vs your ${formatHours(c.L.hours)}, worth checking`;
         if (c.L.ambiguousWith) c.L.matchNote += ` (could also be RO ${c.L.ambiguousWith})`;
         c.L.suspicious = suspicious || !!c.L.ambiguousWith;
+      }
+    }
+  }
+
+  // ── Improvement pass ─────────────────────────────────────────────────
+  // Taking candidates best-first is greedy: an early mediocre pick can consume
+  // the only RO a later, much stronger job needed, leaving that job wrongly
+  // reported unpaid. (That's the "already accounted for by other jobs" case.)
+  // So: for every job still uncovered, look for a weaker match holding the RO
+  // it needs, and hand it over when the swap is a clear net improvement and
+  // leaves the displaced job somewhere else to go.
+  const scoreOf = (L, b) => {
+    const c = cands.find(x => x.L === L && x.b === b);
+    return c ? c.score : -1;
+  };
+  for (let pass = 0; pass < 2; pass++) {
+    for (const need of logged) {
+      if (need.unmatchedHours <= 0.049) continue;
+      for (const c of cands) {
+        if (c.L !== need) continue;
+        const b = c.b;
+        // Who is currently holding this RO?
+        const holder = logged.find(L => L !== need && L.matchedBucket === b);
+        if (!holder) continue;
+        const holderScore = scoreOf(holder, b);
+        // Is there anywhere else for the displaced job to go?
+        const alt = cands.find(x => x.L === holder && x.b !== b && x.b.remaining > 0.049);
+        if (!alt) continue;
+        // Judge the PAIR, not the individuals. Before the swap `need` is
+        // unmatched and contributes nothing; after it, both jobs are matched.
+        // Comparing c.score against holderScore alone (the obvious-looking
+        // test) rejects exactly the case this pass exists to fix — where the
+        // newcomer scores lower but has nowhere else to go.
+        if (c.score + alt.score <= holderScore + 15) continue;
+        // Release, reassign, re-place.
+        const freed = round2(Math.min(holder.hours, b.hours));
+        b.remaining = round2(b.remaining + freed);
+        holder.unmatchedHours = round2(holder.unmatchedHours + freed);
+        holder.matchedBucket = null; holder.how = ""; holder.matchNote = "";
+        draw(need, b, "op-codes", c.opCov ?? c.sim);
+        need.matchNote = `same operations as RO ${b.ro}`;
+        draw(holder, alt.b, alt.opCov !== null && alt.opCov >= 0.5 ? "op-codes" : "evidence", alt.opCov ?? alt.sim);
+        holder.matchNote = `same operations as RO ${alt.b.ro}`;
+        break;
       }
     }
   }
