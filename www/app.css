@@ -5011,6 +5011,15 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reconRowPay   { font-size: 14px; font-weight: 700; color: var(--accent); }
 .reconRowHrs   { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .reconNote     { font-size: 11.5px; color: var(--muted); line-height: 1.55; margin-top: 9px; }
+.reconWhy      { font-size: 11px; color: var(--muted); font-style: italic; margin-top: 4px; line-height: 1.45; }
+.reconUncertain {
+  margin-top: 12px; padding: 12px 14px;
+  border-radius: var(--r-lg, 12px);
+  background: rgba(245,158,11,.09);
+  border: 1px solid rgba(245,158,11,.4);
+}
+.reconUncertainHead { font-size: 12.5px; font-weight: 700; color: #f59e0b; margin-bottom: 6px; }
+.reconUncertainRow  { font-size: 12px; color: var(--text2); line-height: 1.5; padding: 3px 0; }
 
 /* ── Missing-work candidate cards (shown to a service manager) ─────────────── */
 .mwCard {

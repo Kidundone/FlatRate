@@ -10386,6 +10386,7 @@ function renderPayrollReconciliation(paidLines, warn = "") {
         <div>
           <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
           <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}${u.partial ? ` · part-paid, ${formatHours(u.loggedHours)} logged` : ""}</div>
+          ${u.why ? `<div class="reconWhy">Why: ${escapeHtml(u.why)}</div>` : ""}
           ${u.badRef ? `<div class="reconRowSub" style="color:var(--warn,#f59e0b);">That's your employee number, not an RO — fix the RO on this entry so it can be matched.</div>` : ""}
         </div>
         <div class="reconRowRight">
@@ -10395,6 +10396,18 @@ function renderPayrollReconciliation(paidLines, warn = "") {
       </div>`;
     }
     h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager.</div>`;
+  }
+
+  // Matches the app made but isn't confident about — shown on purpose. A shaky
+  // match hides unpaid work, so the tech gets to make the call, not the app.
+  if (r.uncertain?.length) {
+    h += `<div class="reconUncertain">
+      <div class="reconUncertainHead">⚠️ ${r.uncertain.length} match${r.uncertain.length === 1 ? "" : "es"} worth double-checking</div>
+      ${r.uncertain.map(m => `<div class="reconUncertainRow">
+        <strong>${escapeHtml(String(m.entry.ref || m.entry.ro || "Job"))}</strong> — ${escapeHtml(m.note || "uncertain match")}
+      </div>`).join("")}
+      <div class="reconNote">These were counted as paid. If any is wrong, that job belongs in your claim too.</div>
+    </div>`;
   }
 
   if (r.unlogged.length) {
@@ -11063,22 +11076,77 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
       cands.push({ L, b, sim, opCov, dayGap, score });
     }
   }
-  cands.sort((a, b) => b.score - a.score);
+  // Deterministic ordering. Sorting on score alone leaves equal-scoring
+  // candidates in whatever order they happened to be built, so the same report
+  // could produce a different answer on a second run. A tech cannot trust a
+  // number that moves — ties break on RO then entry id, both stable.
+  cands.sort((a, b) =>
+    (b.score - a.score) ||
+    String(a.b.key).localeCompare(String(b.b.key)) ||
+    String(a.L.e.id ?? "").localeCompare(String(b.L.e.id ?? ""))
+  );
+
+  // Flag genuine ambiguity: if the best and second-best candidates for a job
+  // are different ROs scoring within a hair of each other, the app does not
+  // actually know which one it is. Say so rather than silently picking.
+  const bestByEntry = new Map();
+  for (const c of cands) {
+    const id = String(c.L.e.id ?? "");
+    const seen = bestByEntry.get(id);
+    if (!seen) { bestByEntry.set(id, { best: c, runnerUp: null }); continue; }
+    if (!seen.runnerUp && seen.best.b.key !== c.b.key) seen.runnerUp = c;
+  }
+  for (const [, v] of bestByEntry) {
+    if (v.runnerUp && (v.best.score - v.runnerUp.score) < 15) {
+      v.best.L.ambiguousWith = v.runnerUp.b.ro;
+    }
+  }
+
   for (const c of cands) {
     if (c.L.unmatchedHours <= 0.001 || c.b.remaining <= 0.001) continue;
     const how = (c.opCov !== null && c.opCov >= 0.5) ? "op-codes"
               : c.sim > 0 ? "evidence" : "hours+date";
-    draw(c.L, c.b, how, c.opCov !== null ? c.opCov : c.sim);
+    // Op-codes agreeing while the hours are wildly apart is worth doubting —
+    // the same operation on a different vehicle looks identical on paper.
+    const hoursOff = Math.abs(c.b.hours - c.L.hours);
+    const suspicious = how === "op-codes" && c.L.hours > 0 && hoursOff / c.L.hours > 0.5;
+    if (draw(c.L, c.b, how, c.opCov !== null ? c.opCov : c.sim)) {
+      if (!c.L.matchNote) {
+        c.L.matchNote =
+          how === "op-codes" ? `same operations as RO ${c.b.ro}` :
+          how === "evidence" ? `wording matches RO ${c.b.ro}` :
+                               `hours match RO ${c.b.ro}`;
+        if (suspicious) c.L.matchNote += ` — but that RO is ${formatHours(c.b.hours)} hrs vs your ${formatHours(c.L.hours)}, worth checking`;
+        if (c.L.ambiguousWith) c.L.matchNote += ` (could also be RO ${c.L.ambiguousWith})`;
+        c.L.suspicious = suspicious || !!c.L.ambiguousWith;
+      }
+    }
   }
 
   // ── Results ──────────────────────────────────────────────────────────
   // An entry counts as unpaid only for the hours nothing covered. A partially
   // covered entry reports just the shortfall, not the whole job.
+  // Say WHY nothing matched. "Not on their report" is a claim; the reason
+  // behind it is what lets a tech defend it — or spot their own bad entry.
+  const whyUnmatched = (L) => {
+    if (L.badRef) return "the reference on this entry is your employee number, so it can't be looked up";
+    if (!paidLines.length) return "no report loaded";
+    const want = opFamilies(L.desc);
+    if (!want.size) return `no RO on the report mentions "${String(L.e.type || L.e.typeText || "this work").slice(0, 40)}"`;
+    const anyOp = bucketList.some(b => {
+      const cov = opCoverage(L.desc, b.desc.join(" "));
+      return cov !== null && cov > 0;
+    });
+    if (!anyOp) return "no RO on the report has these operations at all";
+    return "the ROs with these operations were already fully accounted for by other jobs";
+  };
+
   const unpaid = logged
     .filter(L => L.unmatchedHours > 0.049)
     .map(L => {
       const frac = L.hours > 0 ? L.unmatchedHours / L.hours : 1;
       return {
+        why: whyUnmatched(L),
         key: L.roK || "(no RO)",
         entries: [L.e],
         hours: round2(L.unmatchedHours),
@@ -11091,7 +11159,12 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
 
   const matchedByEvidence = logged
     .filter(L => L.how && L.how !== "ro")
-    .map(L => ({ entry: L.e, paid: L.matchedBucket, how: L.how, confidence: L.confidence || 0 }));
+    .map(L => ({ entry: L.e, paid: L.matchedBucket, how: L.how, confidence: L.confidence || 0,
+                 note: L.matchNote || "", suspicious: !!L.suspicious }));
+
+  // Matches the app made but isn't fully sure about. Surfaced deliberately —
+  // an uncertain match that quietly hides unpaid work is the worst outcome.
+  const uncertain = matchedByEvidence.filter(m => m.suspicious);
 
   const unlogged = bucketList.filter(b => b.remaining > 0.049)
     .map(b => ({ ro: b.ro, hours: b.remaining, cost: b.cost }));
@@ -11114,8 +11187,9 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
   }
 
   return {
-    unpaid: unpaid.sort((a, b) => b.hours - a.hours),
+    unpaid: unpaid.sort((a, b) => (b.hours - a.hours) || String(a.key).localeCompare(String(b.key))),
     matchedByEvidence,
+    uncertain,
     unlogged,
     reconcileWarning,
     totals: {
