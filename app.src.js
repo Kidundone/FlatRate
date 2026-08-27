@@ -10834,6 +10834,52 @@ function parsePayrollReport(text) {
   return out;
 }
 
+/* ── Op-code families ─────────────────────────────────────────────────────────
+ * The shop books one vehicle as one RO with several op-code lines, and a tech
+ * logs the same vehicle as one merged entry ("Reclean+Fpf+Pdi"). Both sides
+ * therefore describe the SAME SET OF OPERATIONS in different vocabularies.
+ * Mapping both onto shared families turns matching from "do the hours happen to
+ * line up" into "is this literally the same work" — which is what stops the
+ * wrong job being called unpaid in front of a manager.
+ */
+const OP_FAMILIES = [
+  { id: "pdi",      codes: ["DETAILFPF", "ACPDI"],  words: ["PDI", "LOT CLEAN", "LOTCLEAN"] },
+  { id: "fpf",      codes: ["DETAILFIFP"],          words: ["FPF", "F&I", "FI ", "FINANCE"] },
+  { id: "delivery", codes: ["DETAILDR"],            words: ["DELIVER", "DELIVE", "RECLEAN", "RE-CLEAN", "RE CLEAN"] },
+  { id: "poc",      codes: ["DETAILPOC"],           words: ["FULL DETAIL", "PRE-OWNED", "PREOWNED", "PRE OWNED", "POC"] },
+  { id: "floor",    codes: ["DETAILFLOO"],          words: ["PLASTIC", "FLOOR COVER", "INSTALL PLAST"] },
+  { id: "strip",    codes: ["ACND"],                words: ["REMOVE ALL", "DECAL", "WASH & WAX", "WASH AND WAX"] },
+  { id: "custom",   codes: ["DETAILFULL"],          words: ["CUSTOM"] },
+  { id: "misc",     codes: ["DETAILMISC"],          words: ["MISC"] },
+  { id: "nci",      codes: ["ACNCIS"],              words: ["NCI"] },
+];
+
+/** Which op-code families a piece of text (either vocabulary) implies. */
+function opFamilies(text) {
+  const s = String(text || "").toUpperCase();
+  const found = new Set();
+  for (const f of OP_FAMILIES) {
+    if (f.codes.some(c => s.includes(c))) { found.add(f.id); continue; }
+    if (f.words.some(w => s.includes(w))) found.add(f.id);
+  }
+  return found;
+}
+
+/**
+ * How completely an RO group covers the operations in a logged entry.
+ * 1 means every operation the tech recorded appears on that RO. Returns null
+ * when neither side names a recognisable operation, so the caller can fall
+ * back to hours rather than treating "no signal" as "no match".
+ */
+function opCoverage(entryText, groupText) {
+  const want = opFamilies(entryText);
+  const have = opFamilies(groupText);
+  if (!want.size || !have.size) return null;
+  let hit = 0;
+  for (const f of want) if (have.has(f)) hit++;
+  return hit / want.size;
+}
+
 /** Words that carry meaning when comparing a logged job to a payroll line. */
 function _descTokens(s) {
   return String(s || "")
@@ -10994,19 +11040,35 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
       // The bucket must be able to cover a meaningful part of the entry.
       const cover = Math.min(L.unmatchedHours, b.remaining);
       if (cover < Math.min(0.5, L.unmatchedHours)) continue;
-      const sim = _descSimilarity(L.desc, b.desc.join(" "));
-      // Description is the real signal, then hours fitting exactly. Require
-      // one of them — otherwise any leftover bucket could absorb any job.
-      const exact = Math.abs(b.remaining - L.unmatchedHours) < 0.011 ? 40 : 0;
-      if (sim <= 0 && !exact) continue;
+
+      const groupText = b.desc.join(" ");
+      const opCov = opCoverage(L.desc, groupText);   // null when no op names either side
+      const sim = _descSimilarity(L.desc, groupText);
+      const exact = Math.abs(b.remaining - L.unmatchedHours) < 0.011;
+
+      // Refuse to guess. A match needs real evidence: the same operations, or
+      // recognisable wording, or hours that land exactly. Without one of those
+      // a leftover RO could swallow an unrelated job and quietly hide unpaid
+      // work — the failure mode that matters most here.
+      const opStrong = opCov !== null && opCov >= 0.5;
+      if (!opStrong && sim <= 0 && !exact) continue;
+      // Operations that actively disagree are a veto, even if hours fit.
+      if (opCov !== null && opCov === 0 && !exact) continue;
+
       const closeness = dayGap > 60 ? 0 : Math.max(0, 10 - dayGap * 0.5);
-      cands.push({ L, b, sim, dayGap, score: sim * 100 + exact + closeness });
+      const score = (opCov !== null ? opCov * 200 : 0)   // same operations: strongest
+                  + sim * 60                              // wording overlap
+                  + (exact ? 40 : 0)                      // hours land exactly
+                  + closeness;                            // date only breaks ties
+      cands.push({ L, b, sim, opCov, dayGap, score });
     }
   }
   cands.sort((a, b) => b.score - a.score);
   for (const c of cands) {
     if (c.L.unmatchedHours <= 0.001 || c.b.remaining <= 0.001) continue;
-    draw(c.L, c.b, c.sim > 0 ? "evidence" : "hours+date", c.sim);
+    const how = (c.opCov !== null && c.opCov >= 0.5) ? "op-codes"
+              : c.sim > 0 ? "evidence" : "hours+date";
+    draw(c.L, c.b, how, c.opCov !== null ? c.opCov : c.sim);
   }
 
   // ── Results ──────────────────────────────────────────────────────────
