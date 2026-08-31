@@ -1,5 +1,9 @@
 # Deploy Checklist
 
+> **Historical / not current.** This documents the original Netlify setup. Production
+> is now Cloudflare Pages (`app.nellylabs.dev`), auto-deploying from `master` — see
+> the Deploy section in `README.md`. Kept here for reference only.
+
 ## ✅ Done Automatically
 
 - Script paths fixed to relative `./app.*.js` in all HTML files

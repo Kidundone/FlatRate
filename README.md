@@ -75,7 +75,14 @@ Then open `index.html` locally or deploy the `www/` folder to Cloudflare Pages.
 
 ## Deploy
 
-Hosted on Cloudflare Pages at `app.nellylabs.dev`. Push to `main` triggers automatic deploy.
+Hosted on **Cloudflare Pages** (project `flatrate`) at `app.nellylabs.dev`. The Pages
+project is connected to this GitHub repo with production branch **`master`** —
+pushing to `master` triggers an automatic build + deploy. (This repo has never had a
+`main` branch; `master` has always been the default.)
+
+Netlify (`netlify.toml`, `astounding-twilight-d7f187.netlify.app`) and GitHub Pages
+(`.github/workflows/deploy.yml`, `kidundone.github.io/FlatRate`) are leftover from
+earlier hosting experiments and are **not** what serves production traffic.
 
 ---
 
