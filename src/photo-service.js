@@ -171,14 +171,18 @@ function wirePhotoPickers() {
   inFile.setAttribute("accept", "image/*");
 
   // Buttons must trigger input click from a user gesture
-  btnTake?.addEventListener("click", (e) => { e.preventDefault(); inCamera.click(); });
-  btnPick?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
-  btnFile?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
+  btnTake?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inCamera.click(); });
+  btnPick?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inPicker.click(); });
+  btnFile?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inFile.click(); });
 
-  // Scan hero buttons (prominent top-of-form UI)
-  document.getElementById("scanRoHeroBtn")?.addEventListener("click", (e) => { e.preventDefault(); inCamera.click(); });
-  document.getElementById("scanPickLibraryBtn")?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
-  document.getElementById("scanPickFileBtn")?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
+  // Scan hero buttons (prominent top-of-form UI). prewarmScanToken() fires
+  // here, not in scanPhotoAndPrefillForm — by the time the tech has framed
+  // and taken the photo (camera.click() -> onchange is seconds later, not
+  // milliseconds), the token round trip has already happened in the
+  // background and _callScanRo can skip straight to the OCR request.
+  document.getElementById("scanRoHeroBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inCamera.click(); });
+  document.getElementById("scanPickLibraryBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inPicker.click(); });
+  document.getElementById("scanPickFileBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inFile.click(); });
 
   // Change handlers (this is what you’re missing/broken)
   const handlePhotoChange = (input, label) => async () => {
@@ -709,16 +713,20 @@ function initPhotosUI(){
   });
 }
 
+// Fire-and-forget: called the moment the camera/library picker opens, so the
+// (possibly network-bound) token check — see getFreshAuthToken in utils.js —
+// happens while the tech is framing the photo, not after they've already
+// taken it. By the time onchange fires the token is warm and _callScanRo can
+// skip straight to the OCR request instead of a forced refresh first.
+function prewarmScanToken() {
+  prewarmAuthToken("scan-ro", window.__FR?.sb);
+}
+
 async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
 
-  const getToken = async () => {
-    // Always refresh to ensure a non-expired token
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
+  const getToken = () => consumePrewarmedAuthToken("scan-ro", sbInstance);
 
   const token = await getToken();
   if (!token) throw new Error("auth_expired");
@@ -753,9 +761,12 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) 
   try {
     return await doFetch(token);
   } catch (e) {
-    // On 401, refresh once more and retry
+    // On 401 the cached token looked fresh but the server disagrees (signed
+    // out elsewhere, clock skew) — force a real refresh here, not the cheap
+    // cached-token path, since that's exactly what just proved stale.
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;

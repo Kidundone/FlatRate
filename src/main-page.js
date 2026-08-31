@@ -370,7 +370,11 @@ function checkDuplicates() {
   const warn = document.getElementById("dupWarnGlobal");
   if (!warn) return;
 
-  const ref = String(document.getElementById("ref")?.value || "").trim().toUpperCase();
+  const refRaw = String(document.getElementById("ref")?.value || "").trim().toUpperCase();
+  // Compare on the punctuation-stripped form too — "RO-12345" and "RO 12345"
+  // are the same job, and a tech re-typing it slightly differently than the
+  // first time shouldn't defeat the duplicate check.
+  const refKey = normalizeIdChars(refRaw);
   const type = String(document.getElementById("typeText")?.value || "").trim().toLowerCase();
   const hours = round1(num(document.getElementById("hours")?.value));
   const dayKey = todayKeyLocal();
@@ -379,12 +383,15 @@ function checkDuplicates() {
     .filter(e => e.dayKey === dayKey && String(e.id ?? "") !== String(EDITING_ID ?? ""));
 
   // Strong: same RO on same day
-  if (ref.length >= 2) {
-    const hit = pool.find(e => String(e.ref || e.ro || "").trim().toUpperCase() === ref);
+  if (refRaw.length >= 2) {
+    const hit = pool.find(e => {
+      const eRef = String(e.ref || e.ro || "").trim().toUpperCase();
+      return eRef === refRaw || (refKey && normalizeIdChars(eRef) === refKey);
+    });
     if (hit) {
       warn.dataset.level = "strong";
       warn.style.display = "";
-      warn.textContent = `⛔ RO ${ref} already logged today — ${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}`;
+      warn.textContent = `⛔ RO ${refRaw} already logged today — ${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}`;
       return;
     }
   }

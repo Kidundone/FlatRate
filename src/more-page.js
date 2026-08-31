@@ -780,20 +780,35 @@ async function refreshMorePagePanels() {
 
 window.refreshMorePagePanels = refreshMorePagePanels;
 
-async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto") {
+async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto", timeoutMs = 25000) {
   const sbInstance = window.__FR?.sb;
   const { data: { session } } = await sbInstance.auth.getSession();
   const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
-  const res = await fetch(fnUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      "apikey": window.__SUPABASE_CONFIG__.anonKey,
-    },
-    body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
-  });
+  // A silently-hanging fetch (dead wifi, edge function cold-starting behind a
+  // slow upstream) is exactly what "OCR sometimes takes forever" looks like
+  // from the tech's side — no error, no result, just a spinner that never
+  // resolves. Bound it so a stall turns into a clear, retryable failure.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(fnUrl, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "apikey": window.__SUPABASE_CONFIG__.anonKey,
+      },
+      body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
+    });
+  } catch (e) {
+    if (e?.name === "AbortError") throw new Error("Scan timed out — check your connection and try again");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Scan failed (${res.status}): ${txt}`);
@@ -828,27 +843,9 @@ async function scanPayrollReport(file) {
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
-    // Call edge function with payroll_report mode
-    const sbInstance = window.__FR?.sb;
-    const { data: { session } } = await sbInstance.auth.getSession();
-    const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
-    const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
-    const res = await fetch(fnUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "apikey": window.__SUPABASE_CONFIG__.anonKey,
-      },
-      body: JSON.stringify({ imageBase64: base64, mediaType, mode: "payroll_report" }),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Scan failed (${res.status}): ${txt}`);
-    }
-
-    const result = await res.json();
+    // Shared caller: same timeout guard + token handling as every other
+    // OCR call site, instead of a third copy of the raw fetch.
+    const result = await _callScanPayStub(base64, mediaType, "payroll_report");
 
     if (result.error) {
       toast(`Scan error: ${result.error}`);
@@ -1000,11 +997,19 @@ async function scanPayrollForReconcile(file) {
   setBusy(true);
   say("Reading the report…");
   haptic?.("light");
+  // The status line going stale for 10+ seconds with no change is what reads
+  // as "broken" even when the scan is still genuinely working — this is the
+  // biggest, slowest photo the app uploads. Say so instead of going quiet.
+  const patienceTimer = setTimeout(() => say("Still reading — dense reports take a bit longer…"), 5000);
 
   try {
-    // Larger + higher quality than the check-stub scan: this page is dense
-    // small type and every RO number has to survive compression.
-    const dataUrl = await compressImageFileToDataUrl(file, 2000, 0.9);
+    // Larger than the check-stub scan: this page is dense small type and
+    // every RO number has to survive compression. Quality past ~0.85 buys
+    // almost nothing for legibility on a JPEG re-encode of a photo (the
+    // artifacts that matter are already baked in by then) but adds real
+    // upload time on shop wifi — 0.9 was making the biggest, slowest-to-fire
+    // scan in the app slower than it needed to be for no visible benefit.
+    const dataUrl = await compressImageFileToDataUrl(file, 2000, 0.85);
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
@@ -1056,6 +1061,7 @@ async function scanPayrollForReconcile(file) {
     console.warn("[scanPayrollReport]", e?.message || e);
     say(`Scan failed: ${e?.message || "try again"}`);
   } finally {
+    clearTimeout(patienceTimer);
     setBusy(false);
   }
 }
@@ -1588,6 +1594,61 @@ const OP_FAMILIES = [
   { id: "nci",      codes: ["ACNCIS"],              words: ["NCI"] },
 ];
 
+/* ── Learned op-codes ─────────────────────────────────────────────────────────
+ * The built-in table above is my reading of ONE shop's report. Any shop using
+ * different codes would quietly fail to match. So the app learns: every time a
+ * job matches by RO NUMBER — which is certain, not inferred — it records that
+ * this tech's wording goes with that shop's op-code.
+ *
+ * Three rules keep it honest:
+ *   1. Only RO-number matches teach it. Inferred matches would let it compound
+ *      its own mistakes into confident-looking nonsense.
+ *   2. Only ROs with a single op-code teach it. If an RO has three lines, which
+ *      word maps to which code is a guess, and guesses don't belong in here.
+ *   3. A pairing must be seen twice before it's used, so one typo can't
+ *      poison the vocabulary.
+ */
+const LS_LEARNED_OPS = "fr26_learned_opcodes";
+const LEARN_MIN_COUNT = 2;
+
+function getLearnedOps() {
+  try { return JSON.parse(localStorage.getItem(LS_LEARNED_OPS) || "{}") || {}; }
+  catch { return {}; }
+}
+function saveLearnedOps(map) {
+  try { localStorage.setItem(LS_LEARNED_OPS, JSON.stringify(map)); } catch {}
+}
+
+/** Op-codes a group's lines actually carry (first token of each line). */
+function groupOpCodes(descLines) {
+  const codes = new Set();
+  for (const d of descLines || []) {
+    const first = String(d || "").trim().split(/\s+/)[0];
+    if (first && /^[A-Z]{2,}/.test(first)) codes.add(first);
+  }
+  return codes;
+}
+
+/** Record confirmed wording→op-code pairings. Returns how many were added. */
+function learnOpCodesFromMatches(logged) {
+  const map = getLearnedOps();
+  let added = 0;
+  for (const L of logged || []) {
+    if (L.how !== "ro" || !L.matchedBucket) continue;       // rule 1
+    const codes = Array.from(groupOpCodes(L.matchedBucket.desc));
+    if (codes.length !== 1) continue;                        // rule 2
+    const code = codes[0];
+    for (const w of _descTokens(L.desc)) {
+      if (OP_FAMILIES.some(f => f.codes.includes(w))) continue; // already a code
+      map[w] = map[w] || {};
+      map[w][code] = (map[w][code] || 0) + 1;
+      added++;
+    }
+  }
+  if (added) saveLearnedOps(map);
+  return added;
+}
+
 /** Which op-code families a piece of text (either vocabulary) implies. */
 function opFamilies(text) {
   const s = String(text || "").toUpperCase();
@@ -1596,6 +1657,19 @@ function opFamilies(text) {
     if (f.codes.some(c => s.includes(c))) { found.add(f.id); continue; }
     if (f.words.some(w => s.includes(w))) found.add(f.id);
   }
+
+  // Learned vocabulary, applied symmetrically: a shop op-code appearing in the
+  // text counts, and so does a tech word that has been confirmed to mean it.
+  const learned = getLearnedOps();
+  for (const [word, codes] of Object.entries(learned)) {
+    for (const [code, n] of Object.entries(codes)) {
+      if (n < LEARN_MIN_COUNT) continue;                     // rule 3
+      if (s.includes(code) || s.includes(word)) found.add(`learned:${code}`);
+    }
+  }
+  // A raw op-code in the text should count even before anything is learned.
+  for (const c of groupOpCodes([s])) found.add(`learned:${c}`);
+
   return found;
 }
 
@@ -1843,6 +1917,10 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
       }
     }
   }
+
+  // Learn BEFORE the improvement pass, so only RO-number matches — which are
+  // certain — ever teach the vocabulary. Inferred and swapped matches must not.
+  const learnedCount = learnOpCodesFromMatches(logged);
 
   // ── Improvement pass ─────────────────────────────────────────────────
   // Taking candidates best-first is greedy: an early mediocre pick can consume
@@ -3683,18 +3761,12 @@ function gatherUnclusteredTypeCandidates() {
     .sort((a, b) => b.count - a.count);
 }
 
-/** Same auth-token dance the other edge-function callers use. */
+/** Shared cached-token helper (see getFreshAuthToken in utils.js). */
 async function _callClusterJobTypes(payload, timeoutMs = 20000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/cluster-job-types`;
 
-  const getToken = async () => {
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
-
-  const token = await getToken();
+  const token = await getFreshAuthToken(sbInstance);
   if (!token) throw new Error("auth_expired");
 
   const doFetch = async (tok) => {
@@ -3726,7 +3798,8 @@ async function _callClusterJobTypes(payload, timeoutMs = 20000) {
     return await doFetch(token);
   } catch (e) {
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;

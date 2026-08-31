@@ -260,18 +260,13 @@ function closeRequestModal() {
   unlockBodyScroll();
 }
 
-/** Same auth-token dance photo-service.js uses for scan-ro — fresh token, retry once on 401. */
+/** Shared cached-token helper (see getFreshAuthToken in utils.js) — cheap getSession()
+ *  instead of a forced refreshSession() network round trip on every draft. */
 async function _callDraftDispute(payload, timeoutMs = 15000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/draft-dispute`;
 
-  const getToken = async () => {
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
-
-  const token = await getToken();
+  const token = await getFreshAuthToken(sbInstance);
   if (!token) throw new Error("auth_expired");
 
   const doFetch = async (tok) => {
@@ -303,7 +298,8 @@ async function _callDraftDispute(payload, timeoutMs = 15000) {
     return await doFetch(token);
   } catch (e) {
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;

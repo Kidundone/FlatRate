@@ -78,6 +78,55 @@ function getDefaultRate() {
   return Number.isFinite(r) && r > 0 ? r : 0;
 }
 
+/* ── Shared edge-function auth token ─────────────────────────────────────────
+ * Every OCR/AI edge-function caller (scan-ro, scan-paystub, cluster-job-types,
+ * draft-dispute) used to force a full auth.refreshSession() network round
+ * trip before EVERY call, "just to be safe." refreshSession() always talks to
+ * Supabase's auth server; getSession() reads a cached token for free. On the
+ * kind of spotty shop wifi/cell signal this app runs on, that forced refresh
+ * — not the OCR call itself — was very often what made a scan feel like it
+ * "took forever to fire." Only pay for a real refresh when the cached token
+ * is actually missing or genuinely close to expiring.
+ */
+const AUTH_TOKEN_REFRESH_MARGIN_S = 90;
+
+async function getFreshAuthToken(sbInstance, marginS = AUTH_TOKEN_REFRESH_MARGIN_S) {
+  if (!sbInstance) return null;
+  const { data } = await sbInstance.auth.getSession().catch(() => ({ data: null }));
+  const session = data?.session;
+  const expiresAt = session?.expires_at || 0; // unix seconds
+  const stillFresh = session?.access_token && (expiresAt - Date.now() / 1000) > marginS;
+  if (stillFresh) return session.access_token;
+
+  const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+  return refreshed?.data?.session?.access_token || session?.access_token || null;
+}
+window.getFreshAuthToken = getFreshAuthToken;
+
+/**
+ * Fire-and-forget prewarm: call the moment a scan/draft picker or action
+ * opens, so the (possibly network-bound) token check runs in the background
+ * while the user is still framing a photo or typing a request, rather than
+ * after they've already committed to the action. Callers `await` the same
+ * promise inside their own getToken() so the network work never happens
+ * twice — this only ever saves time, it can't cost any.
+ */
+const _authTokenPrewarm = new Map(); // key -> Promise<token|null>
+function prewarmAuthToken(key, sbInstance) {
+  if (!sbInstance) return;
+  _authTokenPrewarm.set(key, getFreshAuthToken(sbInstance).catch(() => null));
+}
+async function consumePrewarmedAuthToken(key, sbInstance) {
+  const pending = _authTokenPrewarm.get(key);
+  if (pending) {
+    _authTokenPrewarm.delete(key);
+    const warm = await pending;
+    if (warm) return warm;
+  }
+  return getFreshAuthToken(sbInstance);
+}
+window.prewarmAuthToken = prewarmAuthToken;
+
 /* ── Haptics engine ───────────────────────────────────────────────────────────
  * haptic(kind) — one entry point for all tactile feedback.
  *   kinds: "light" | "medium" | "heavy" | "success" | "warning" | "error" | "selection"
@@ -842,12 +891,80 @@ function getLastWeekRange(){
   return { ws: lastWs, we: lastWe };
 }
 
+/**
+ * Strip everything but letters/digits and uppercase. RO/STK numbers get
+ * written down in a dozen inconsistent shapes — "RO# 12345", "12345-A",
+ * "12345 / A", "SLS 13860" — and a plain substring search breaks the moment
+ * the punctuation on the search box doesn't exactly match the punctuation on
+ * the stored entry (or vice versa). Comparing the stripped form catches all
+ * of these as the same identifier.
+ */
+function normalizeIdChars(s) {
+  return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/**
+ * Same idea, but for VINs specifically: the ISO 3779 VIN alphabet never
+ * contains I, O, or Q (they're excluded on purpose because they're easy to
+ * mistake for 1, 0, and 0/9). That makes I->1 and O->0 a safe, one-directional
+ * normalization for MATCHING PURPOSES ONLY — it can never cause two genuinely
+ * different real VINs to collide, since no real VIN contains those letters
+ * to begin with. It just forgives a tech (or the OCR) reading/typing "O" for
+ * a "0" or "I" for a "1", which is the single most common VIN transcription
+ * mistake in the shop.
+ */
+function normalizeVinChars(s) {
+  return normalizeIdChars(s).replace(/I/g, "1").replace(/O/g, "0");
+}
+
 function matchSearch(e, q){
   if (!q) return true;
-  const s = q.toLowerCase();
-  return [
-    e.ref, e.ro, e.ro_number, e.stock, e.vin, e.vin8, e.type, e.typeText, e.notes,
-  ].some(v => String(v||"").toLowerCase().includes(s));
+  const s = String(q).trim().toLowerCase();
+  const idQuery = normalizeIdChars(q);
+  const vinQuery = normalizeVinChars(q);
+
+  // Identifier fields (RO/STK numbers, VIN): match on the raw lowercase
+  // substring (cheap, catches the common case) OR the normalized form, so
+  // formatting differences between what's stored and what's typed don't
+  // hide a real match. VIN fields additionally forgive I/O <-> 1/0.
+  const idFields = [e.ref, e.ro, e.ro_number, e.stock];
+  const vinFields = [e.vin, e.vin8];
+  const proseFields = [e.type, e.typeText, e.notes];
+
+  // Bidirectional: covers both "stored has extra formatting the query
+  // doesn't" (stored "RO-12345", query "12345") AND "query has a prefix the
+  // stored value doesn't" (stored "12345", query "RO-12345" or "RO#12345")
+  // — a tech searching often adds the "RO"/"STK"/"#" label back in even
+  // though it was never saved as part of the number.
+  // The reverse direction (stored value is a substring of the query) is only
+  // trustworthy once the stored value is long enough to be a real identifier
+  // rather than a coincidental short fragment — a stored ref of "5" matching
+  // every query that happens to contain a "5" would be a false positive, not
+  // a feature.
+  const MIN_REVERSE_LEN = 3;
+  const idHit = idFields.some(v => {
+    const raw = String(v || "");
+    if (!raw) return false;
+    if (raw.toLowerCase().includes(s)) return true;
+    if (!idQuery) return false;
+    const rawKey = normalizeIdChars(raw);
+    if (rawKey.includes(idQuery)) return true;
+    return rawKey.length >= MIN_REVERSE_LEN && idQuery.includes(rawKey);
+  });
+  if (idHit) return true;
+
+  const vinHit = vinFields.some(v => {
+    const raw = String(v || "");
+    if (!raw) return false;
+    if (raw.toLowerCase().includes(s)) return true;
+    if (!vinQuery) return false;
+    const rawKey = normalizeVinChars(raw);
+    if (rawKey.includes(vinQuery)) return true;
+    return rawKey.length >= MIN_REVERSE_LEN && vinQuery.includes(rawKey);
+  });
+  if (vinHit) return true;
+
+  return proseFields.some(v => String(v || "").toLowerCase().includes(s));
 }
 
 function entryRoValue(e) {
