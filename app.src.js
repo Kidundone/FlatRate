@@ -1442,6 +1442,55 @@ function getDefaultRate() {
   return Number.isFinite(r) && r > 0 ? r : 0;
 }
 
+/* ── Shared edge-function auth token ─────────────────────────────────────────
+ * Every OCR/AI edge-function caller (scan-ro, scan-paystub, cluster-job-types,
+ * draft-dispute) used to force a full auth.refreshSession() network round
+ * trip before EVERY call, "just to be safe." refreshSession() always talks to
+ * Supabase's auth server; getSession() reads a cached token for free. On the
+ * kind of spotty shop wifi/cell signal this app runs on, that forced refresh
+ * — not the OCR call itself — was very often what made a scan feel like it
+ * "took forever to fire." Only pay for a real refresh when the cached token
+ * is actually missing or genuinely close to expiring.
+ */
+const AUTH_TOKEN_REFRESH_MARGIN_S = 90;
+
+async function getFreshAuthToken(sbInstance, marginS = AUTH_TOKEN_REFRESH_MARGIN_S) {
+  if (!sbInstance) return null;
+  const { data } = await sbInstance.auth.getSession().catch(() => ({ data: null }));
+  const session = data?.session;
+  const expiresAt = session?.expires_at || 0; // unix seconds
+  const stillFresh = session?.access_token && (expiresAt - Date.now() / 1000) > marginS;
+  if (stillFresh) return session.access_token;
+
+  const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
+  return refreshed?.data?.session?.access_token || session?.access_token || null;
+}
+window.getFreshAuthToken = getFreshAuthToken;
+
+/**
+ * Fire-and-forget prewarm: call the moment a scan/draft picker or action
+ * opens, so the (possibly network-bound) token check runs in the background
+ * while the user is still framing a photo or typing a request, rather than
+ * after they've already committed to the action. Callers `await` the same
+ * promise inside their own getToken() so the network work never happens
+ * twice — this only ever saves time, it can't cost any.
+ */
+const _authTokenPrewarm = new Map(); // key -> Promise<token|null>
+function prewarmAuthToken(key, sbInstance) {
+  if (!sbInstance) return;
+  _authTokenPrewarm.set(key, getFreshAuthToken(sbInstance).catch(() => null));
+}
+async function consumePrewarmedAuthToken(key, sbInstance) {
+  const pending = _authTokenPrewarm.get(key);
+  if (pending) {
+    _authTokenPrewarm.delete(key);
+    const warm = await pending;
+    if (warm) return warm;
+  }
+  return getFreshAuthToken(sbInstance);
+}
+window.prewarmAuthToken = prewarmAuthToken;
+
 /* ── Haptics engine ───────────────────────────────────────────────────────────
  * haptic(kind) — one entry point for all tactile feedback.
  *   kinds: "light" | "medium" | "heavy" | "success" | "warning" | "error" | "selection"
@@ -2206,12 +2255,80 @@ function getLastWeekRange(){
   return { ws: lastWs, we: lastWe };
 }
 
+/**
+ * Strip everything but letters/digits and uppercase. RO/STK numbers get
+ * written down in a dozen inconsistent shapes — "RO# 12345", "12345-A",
+ * "12345 / A", "SLS 13860" — and a plain substring search breaks the moment
+ * the punctuation on the search box doesn't exactly match the punctuation on
+ * the stored entry (or vice versa). Comparing the stripped form catches all
+ * of these as the same identifier.
+ */
+function normalizeIdChars(s) {
+  return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/**
+ * Same idea, but for VINs specifically: the ISO 3779 VIN alphabet never
+ * contains I, O, or Q (they're excluded on purpose because they're easy to
+ * mistake for 1, 0, and 0/9). That makes I->1 and O->0 a safe, one-directional
+ * normalization for MATCHING PURPOSES ONLY — it can never cause two genuinely
+ * different real VINs to collide, since no real VIN contains those letters
+ * to begin with. It just forgives a tech (or the OCR) reading/typing "O" for
+ * a "0" or "I" for a "1", which is the single most common VIN transcription
+ * mistake in the shop.
+ */
+function normalizeVinChars(s) {
+  return normalizeIdChars(s).replace(/I/g, "1").replace(/O/g, "0");
+}
+
 function matchSearch(e, q){
   if (!q) return true;
-  const s = q.toLowerCase();
-  return [
-    e.ref, e.ro, e.ro_number, e.stock, e.vin, e.vin8, e.type, e.typeText, e.notes,
-  ].some(v => String(v||"").toLowerCase().includes(s));
+  const s = String(q).trim().toLowerCase();
+  const idQuery = normalizeIdChars(q);
+  const vinQuery = normalizeVinChars(q);
+
+  // Identifier fields (RO/STK numbers, VIN): match on the raw lowercase
+  // substring (cheap, catches the common case) OR the normalized form, so
+  // formatting differences between what's stored and what's typed don't
+  // hide a real match. VIN fields additionally forgive I/O <-> 1/0.
+  const idFields = [e.ref, e.ro, e.ro_number, e.stock];
+  const vinFields = [e.vin, e.vin8];
+  const proseFields = [e.type, e.typeText, e.notes];
+
+  // Bidirectional: covers both "stored has extra formatting the query
+  // doesn't" (stored "RO-12345", query "12345") AND "query has a prefix the
+  // stored value doesn't" (stored "12345", query "RO-12345" or "RO#12345")
+  // — a tech searching often adds the "RO"/"STK"/"#" label back in even
+  // though it was never saved as part of the number.
+  // The reverse direction (stored value is a substring of the query) is only
+  // trustworthy once the stored value is long enough to be a real identifier
+  // rather than a coincidental short fragment — a stored ref of "5" matching
+  // every query that happens to contain a "5" would be a false positive, not
+  // a feature.
+  const MIN_REVERSE_LEN = 3;
+  const idHit = idFields.some(v => {
+    const raw = String(v || "");
+    if (!raw) return false;
+    if (raw.toLowerCase().includes(s)) return true;
+    if (!idQuery) return false;
+    const rawKey = normalizeIdChars(raw);
+    if (rawKey.includes(idQuery)) return true;
+    return rawKey.length >= MIN_REVERSE_LEN && idQuery.includes(rawKey);
+  });
+  if (idHit) return true;
+
+  const vinHit = vinFields.some(v => {
+    const raw = String(v || "");
+    if (!raw) return false;
+    if (raw.toLowerCase().includes(s)) return true;
+    if (!vinQuery) return false;
+    const rawKey = normalizeVinChars(raw);
+    if (rawKey.includes(vinQuery)) return true;
+    return rawKey.length >= MIN_REVERSE_LEN && vinQuery.includes(rawKey);
+  });
+  if (vinHit) return true;
+
+  return proseFields.some(v => String(v || "").toLowerCase().includes(s));
 }
 
 function entryRoValue(e) {
@@ -2695,14 +2812,18 @@ function wirePhotoPickers() {
   inFile.setAttribute("accept", "image/*");
 
   // Buttons must trigger input click from a user gesture
-  btnTake?.addEventListener("click", (e) => { e.preventDefault(); inCamera.click(); });
-  btnPick?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
-  btnFile?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
+  btnTake?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inCamera.click(); });
+  btnPick?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inPicker.click(); });
+  btnFile?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inFile.click(); });
 
-  // Scan hero buttons (prominent top-of-form UI)
-  document.getElementById("scanRoHeroBtn")?.addEventListener("click", (e) => { e.preventDefault(); inCamera.click(); });
-  document.getElementById("scanPickLibraryBtn")?.addEventListener("click", (e) => { e.preventDefault(); inPicker.click(); });
-  document.getElementById("scanPickFileBtn")?.addEventListener("click", (e) => { e.preventDefault(); inFile.click(); });
+  // Scan hero buttons (prominent top-of-form UI). prewarmScanToken() fires
+  // here, not in scanPhotoAndPrefillForm — by the time the tech has framed
+  // and taken the photo (camera.click() -> onchange is seconds later, not
+  // milliseconds), the token round trip has already happened in the
+  // background and _callScanRo can skip straight to the OCR request.
+  document.getElementById("scanRoHeroBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inCamera.click(); });
+  document.getElementById("scanPickLibraryBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inPicker.click(); });
+  document.getElementById("scanPickFileBtn")?.addEventListener("click", (e) => { e.preventDefault(); prewarmScanToken(); inFile.click(); });
 
   // Change handlers (this is what you’re missing/broken)
   const handlePhotoChange = (input, label) => async () => {
@@ -3233,16 +3354,20 @@ function initPhotosUI(){
   });
 }
 
+// Fire-and-forget: called the moment the camera/library picker opens, so the
+// (possibly network-bound) token check — see getFreshAuthToken in utils.js —
+// happens while the tech is framing the photo, not after they've already
+// taken it. By the time onchange fires the token is warm and _callScanRo can
+// skip straight to the OCR request instead of a forced refresh first.
+function prewarmScanToken() {
+  prewarmAuthToken("scan-ro", window.__FR?.sb);
+}
+
 async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
 
-  const getToken = async () => {
-    // Always refresh to ensure a non-expired token
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
+  const getToken = () => consumePrewarmedAuthToken("scan-ro", sbInstance);
 
   const token = await getToken();
   if (!token) throw new Error("auth_expired");
@@ -3277,9 +3402,12 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) 
   try {
     return await doFetch(token);
   } catch (e) {
-    // On 401, refresh once more and retry
+    // On 401 the cached token looked fresh but the server disagrees (signed
+    // out elsewhere, clock skew) — force a real refresh here, not the cheap
+    // cached-token path, since that's exactly what just proved stale.
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;
@@ -3974,7 +4102,11 @@ function checkDuplicates() {
   const warn = document.getElementById("dupWarnGlobal");
   if (!warn) return;
 
-  const ref = String(document.getElementById("ref")?.value || "").trim().toUpperCase();
+  const refRaw = String(document.getElementById("ref")?.value || "").trim().toUpperCase();
+  // Compare on the punctuation-stripped form too — "RO-12345" and "RO 12345"
+  // are the same job, and a tech re-typing it slightly differently than the
+  // first time shouldn't defeat the duplicate check.
+  const refKey = normalizeIdChars(refRaw);
   const type = String(document.getElementById("typeText")?.value || "").trim().toLowerCase();
   const hours = round1(num(document.getElementById("hours")?.value));
   const dayKey = todayKeyLocal();
@@ -3983,12 +4115,15 @@ function checkDuplicates() {
     .filter(e => e.dayKey === dayKey && String(e.id ?? "") !== String(EDITING_ID ?? ""));
 
   // Strong: same RO on same day
-  if (ref.length >= 2) {
-    const hit = pool.find(e => String(e.ref || e.ro || "").trim().toUpperCase() === ref);
+  if (refRaw.length >= 2) {
+    const hit = pool.find(e => {
+      const eRef = String(e.ref || e.ro || "").trim().toUpperCase();
+      return eRef === refRaw || (refKey && normalizeIdChars(eRef) === refKey);
+    });
     if (hit) {
       warn.dataset.level = "strong";
       warn.style.display = "";
-      warn.textContent = `⛔ RO ${ref} already logged today — ${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}`;
+      warn.textContent = `⛔ RO ${refRaw} already logged today — ${hit.type || hit.typeText || "?"} · ${hit.hours} hrs · ${formatMoney(hit.earnings)}`;
       return;
     }
   }
@@ -10076,20 +10211,35 @@ async function refreshMorePagePanels() {
 
 window.refreshMorePagePanels = refreshMorePagePanels;
 
-async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto") {
+async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto", timeoutMs = 25000) {
   const sbInstance = window.__FR?.sb;
   const { data: { session } } = await sbInstance.auth.getSession();
   const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
-  const res = await fetch(fnUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      "apikey": window.__SUPABASE_CONFIG__.anonKey,
-    },
-    body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
-  });
+  // A silently-hanging fetch (dead wifi, edge function cold-starting behind a
+  // slow upstream) is exactly what "OCR sometimes takes forever" looks like
+  // from the tech's side — no error, no result, just a spinner that never
+  // resolves. Bound it so a stall turns into a clear, retryable failure.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(fnUrl, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "apikey": window.__SUPABASE_CONFIG__.anonKey,
+      },
+      body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
+    });
+  } catch (e) {
+    if (e?.name === "AbortError") throw new Error("Scan timed out — check your connection and try again");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Scan failed (${res.status}): ${txt}`);
@@ -10124,27 +10274,9 @@ async function scanPayrollReport(file) {
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
-    // Call edge function with payroll_report mode
-    const sbInstance = window.__FR?.sb;
-    const { data: { session } } = await sbInstance.auth.getSession();
-    const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
-    const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
-    const res = await fetch(fnUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "apikey": window.__SUPABASE_CONFIG__.anonKey,
-      },
-      body: JSON.stringify({ imageBase64: base64, mediaType, mode: "payroll_report" }),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Scan failed (${res.status}): ${txt}`);
-    }
-
-    const result = await res.json();
+    // Shared caller: same timeout guard + token handling as every other
+    // OCR call site, instead of a third copy of the raw fetch.
+    const result = await _callScanPayStub(base64, mediaType, "payroll_report");
 
     if (result.error) {
       toast(`Scan error: ${result.error}`);
@@ -10296,11 +10428,19 @@ async function scanPayrollForReconcile(file) {
   setBusy(true);
   say("Reading the report…");
   haptic?.("light");
+  // The status line going stale for 10+ seconds with no change is what reads
+  // as "broken" even when the scan is still genuinely working — this is the
+  // biggest, slowest photo the app uploads. Say so instead of going quiet.
+  const patienceTimer = setTimeout(() => say("Still reading — dense reports take a bit longer…"), 5000);
 
   try {
-    // Larger + higher quality than the check-stub scan: this page is dense
-    // small type and every RO number has to survive compression.
-    const dataUrl = await compressImageFileToDataUrl(file, 2000, 0.9);
+    // Larger than the check-stub scan: this page is dense small type and
+    // every RO number has to survive compression. Quality past ~0.85 buys
+    // almost nothing for legibility on a JPEG re-encode of a photo (the
+    // artifacts that matter are already baked in by then) but adds real
+    // upload time on shop wifi — 0.9 was making the biggest, slowest-to-fire
+    // scan in the app slower than it needed to be for no visible benefit.
+    const dataUrl = await compressImageFileToDataUrl(file, 2000, 0.85);
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
@@ -10352,6 +10492,7 @@ async function scanPayrollForReconcile(file) {
     console.warn("[scanPayrollReport]", e?.message || e);
     say(`Scan failed: ${e?.message || "try again"}`);
   } finally {
+    clearTimeout(patienceTimer);
     setBusy(false);
   }
 }
@@ -10884,6 +11025,61 @@ const OP_FAMILIES = [
   { id: "nci",      codes: ["ACNCIS"],              words: ["NCI"] },
 ];
 
+/* ── Learned op-codes ─────────────────────────────────────────────────────────
+ * The built-in table above is my reading of ONE shop's report. Any shop using
+ * different codes would quietly fail to match. So the app learns: every time a
+ * job matches by RO NUMBER — which is certain, not inferred — it records that
+ * this tech's wording goes with that shop's op-code.
+ *
+ * Three rules keep it honest:
+ *   1. Only RO-number matches teach it. Inferred matches would let it compound
+ *      its own mistakes into confident-looking nonsense.
+ *   2. Only ROs with a single op-code teach it. If an RO has three lines, which
+ *      word maps to which code is a guess, and guesses don't belong in here.
+ *   3. A pairing must be seen twice before it's used, so one typo can't
+ *      poison the vocabulary.
+ */
+const LS_LEARNED_OPS = "fr26_learned_opcodes";
+const LEARN_MIN_COUNT = 2;
+
+function getLearnedOps() {
+  try { return JSON.parse(localStorage.getItem(LS_LEARNED_OPS) || "{}") || {}; }
+  catch { return {}; }
+}
+function saveLearnedOps(map) {
+  try { localStorage.setItem(LS_LEARNED_OPS, JSON.stringify(map)); } catch {}
+}
+
+/** Op-codes a group's lines actually carry (first token of each line). */
+function groupOpCodes(descLines) {
+  const codes = new Set();
+  for (const d of descLines || []) {
+    const first = String(d || "").trim().split(/\s+/)[0];
+    if (first && /^[A-Z]{2,}/.test(first)) codes.add(first);
+  }
+  return codes;
+}
+
+/** Record confirmed wording→op-code pairings. Returns how many were added. */
+function learnOpCodesFromMatches(logged) {
+  const map = getLearnedOps();
+  let added = 0;
+  for (const L of logged || []) {
+    if (L.how !== "ro" || !L.matchedBucket) continue;       // rule 1
+    const codes = Array.from(groupOpCodes(L.matchedBucket.desc));
+    if (codes.length !== 1) continue;                        // rule 2
+    const code = codes[0];
+    for (const w of _descTokens(L.desc)) {
+      if (OP_FAMILIES.some(f => f.codes.includes(w))) continue; // already a code
+      map[w] = map[w] || {};
+      map[w][code] = (map[w][code] || 0) + 1;
+      added++;
+    }
+  }
+  if (added) saveLearnedOps(map);
+  return added;
+}
+
 /** Which op-code families a piece of text (either vocabulary) implies. */
 function opFamilies(text) {
   const s = String(text || "").toUpperCase();
@@ -10892,6 +11088,19 @@ function opFamilies(text) {
     if (f.codes.some(c => s.includes(c))) { found.add(f.id); continue; }
     if (f.words.some(w => s.includes(w))) found.add(f.id);
   }
+
+  // Learned vocabulary, applied symmetrically: a shop op-code appearing in the
+  // text counts, and so does a tech word that has been confirmed to mean it.
+  const learned = getLearnedOps();
+  for (const [word, codes] of Object.entries(learned)) {
+    for (const [code, n] of Object.entries(codes)) {
+      if (n < LEARN_MIN_COUNT) continue;                     // rule 3
+      if (s.includes(code) || s.includes(word)) found.add(`learned:${code}`);
+    }
+  }
+  // A raw op-code in the text should count even before anything is learned.
+  for (const c of groupOpCodes([s])) found.add(`learned:${c}`);
+
   return found;
 }
 
@@ -11139,6 +11348,10 @@ function reconcilePayroll(loggedEntries, paidLines, knownGapHours = null, empId 
       }
     }
   }
+
+  // Learn BEFORE the improvement pass, so only RO-number matches — which are
+  // certain — ever teach the vocabulary. Inferred and swapped matches must not.
+  const learnedCount = learnOpCodesFromMatches(logged);
 
   // ── Improvement pass ─────────────────────────────────────────────────
   // Taking candidates best-first is greedy: an early mediocre pick can consume
@@ -12979,18 +13192,12 @@ function gatherUnclusteredTypeCandidates() {
     .sort((a, b) => b.count - a.count);
 }
 
-/** Same auth-token dance the other edge-function callers use. */
+/** Shared cached-token helper (see getFreshAuthToken in utils.js). */
 async function _callClusterJobTypes(payload, timeoutMs = 20000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/cluster-job-types`;
 
-  const getToken = async () => {
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
-
-  const token = await getToken();
+  const token = await getFreshAuthToken(sbInstance);
   if (!token) throw new Error("auth_expired");
 
   const doFetch = async (tok) => {
@@ -13022,7 +13229,8 @@ async function _callClusterJobTypes(payload, timeoutMs = 20000) {
     return await doFetch(token);
   } catch (e) {
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;
@@ -13705,18 +13913,13 @@ function closeRequestModal() {
   unlockBodyScroll();
 }
 
-/** Same auth-token dance photo-service.js uses for scan-ro — fresh token, retry once on 401. */
+/** Shared cached-token helper (see getFreshAuthToken in utils.js) — cheap getSession()
+ *  instead of a forced refreshSession() network round trip on every draft. */
 async function _callDraftDispute(payload, timeoutMs = 15000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/draft-dispute`;
 
-  const getToken = async () => {
-    const refreshed = await sbInstance.auth.refreshSession().catch(() => null);
-    const session = refreshed?.data?.session || (await sbInstance.auth.getSession()).data?.session;
-    return session?.access_token || null;
-  };
-
-  const token = await getToken();
+  const token = await getFreshAuthToken(sbInstance);
   if (!token) throw new Error("auth_expired");
 
   const doFetch = async (tok) => {
@@ -13748,7 +13951,8 @@ async function _callDraftDispute(payload, timeoutMs = 15000) {
     return await doFetch(token);
   } catch (e) {
     if (e.status === 401) {
-      const fresh = await getToken();
+      const fresh = await sbInstance.auth.refreshSession().catch(() => null)
+        .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
     }
     throw e;
