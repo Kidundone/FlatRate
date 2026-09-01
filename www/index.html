@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.51561531ea.css">
+  <link rel="stylesheet" href="./app.f06e264eb1.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -1182,6 +1182,36 @@
     </div>
   </div>
 
+  <!-- Job detail sheet — tapping a job in the Log tab list shows this (read-only)
+       instead of dropping straight into the edit form. Edit/Delete/Photo are
+       one tap further from here, not the default outcome of a tap. -->
+  <div id="entryDetailModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Job Detail">
+    <div class="modalContent" style="max-width:420px;margin:14vh auto 0;padding:0 12px;">
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+          <div>
+            <div id="edType" style="font-size:17px;font-weight:700;"></div>
+            <div id="edSub" class="muted small" style="margin-top:2px;"></div>
+          </div>
+          <button class="modalCloseBtn" id="entryDetailCloseBtn" type="button" aria-label="Close">✕</button>
+        </div>
+        <button class="btn" id="edPhotoBtn" type="button" style="display:none;width:100%;">📷 View Photo</button>
+        <div class="insightGrid" style="margin:0;">
+          <div class="insightCell"><div class="insightLabel">Hours</div><div class="insightValue" id="edHours"></div></div>
+          <div class="insightCell"><div class="insightLabel">Pay</div><div class="insightValue" id="edPay"></div></div>
+        </div>
+        <div id="edNotesWrap" style="display:none;">
+          <div class="muted small">Notes</div>
+          <div id="edNotes" style="margin-top:2px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" id="edEditBtn" type="button" style="flex:1;">Edit</button>
+          <button class="btn" id="edDeleteBtn" type="button" style="flex:1;color:var(--danger,#ef4444);">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true -->
   <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Flatrate Buddy Pro">
     <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
@@ -1396,7 +1426,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.595453d0cd.js" defer></script>
+<script src="./app.0e9b903a06.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

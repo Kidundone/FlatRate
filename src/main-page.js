@@ -842,6 +842,10 @@ function renderHeroChart(entries, weekStart) {
         setT("hcRangeLabel", `${b.label} ${yr}`);
         svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === i ? "1" : "0.45"; });
         labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === i); });
+        // The job list below was the whole year's jobs — narrow it to just
+        // this month, same as the stats above it, so tapping a bar doesn't
+        // leave the numbers and the list disagreeing about the period.
+        renderRangeEntries(moEntries.slice().sort((a, b2) => (b2.createdAt || "").localeCompare(a.createdAt || "")), "month");
       });
     });
     // Default: highlight most recent month with data
@@ -928,6 +932,9 @@ function renderHeroChart(entries, weekStart) {
         setT("hcRangeLabel", b.label);
         svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === i ? "1" : "0.45"; });
         labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === i); });
+        // Same fix as year mode: narrow the job list below to just this
+        // week's jobs so it matches what the numbers above are showing.
+        renderRangeEntries(b.entries.slice().sort((a, b2) => (b2.createdAt || "").localeCompare(a.createdAt || "")), "week");
       });
     });
     // Default: highlight current week
@@ -1092,6 +1099,11 @@ function renderRangeEntries(entries, mode) {
 
   container.innerHTML = "";
 
+  // Rows flow in staggered instead of snapping into place — same treatment
+  // as the History list, so switching Day/Week/Month or tapping a bar reads
+  // as the list actually updating rather than an instant, jarring swap.
+  let __rowStagger = 0;
+
   for (const e of shown) {
     const refLabel = e.refType === "STOCK" ? "STK" : "RO";
     const refVal = e.ref || e.ro || "—";
@@ -1102,7 +1114,8 @@ function renderRangeEntries(entries, mode) {
 
     // Row wrapper
     const wrap = document.createElement("div");
-    wrap.className = "hcEntryWrap";
+    wrap.className = "hcEntryWrap entryPopIn";
+    wrap.style.animationDelay = (Math.min(__rowStagger++, 10) * 22) + "ms";
 
     // Main row
     const row = document.createElement("div");
@@ -1185,11 +1198,10 @@ function renderRangeEntries(entries, mode) {
     row.appendChild(right);
     row.appendChild(actions);
 
-    // Tap row body = edit (but not the action buttons)
-    row.addEventListener("click", () => {
-      startEditEntry(e);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+    // Tap row body = see what the job actually was (read-only) — jumping
+    // straight into the edit form on every tap was the wrong default; most
+    // taps are "what did I log here", not "I want to change this."
+    row.addEventListener("click", () => openEntryDetail(e));
 
     wrap.appendChild(row);
     container.appendChild(wrap);
@@ -1205,6 +1217,76 @@ function renderRangeEntries(entries, mode) {
   // (swipe-to-delete removed — buttons are always visible inline)
 }
 
+/* ─── Job detail sheet ────────────────────────────────────────────────────
+   Tapping a job in the list shows this read-only view instead of dropping
+   straight into the edit form. Edit/Delete/Photo are one deliberate tap
+   further, not the default outcome of just wanting to see what a job was. */
+let _entryDetailCurrent = null;
+
+function openEntryDetail(entry) {
+  if (!entry) return;
+  _entryDetailCurrent = entry;
+
+  const modal = document.getElementById("entryDetailModal");
+  if (!modal) return;
+
+  const refLabel = entry.refType === "STOCK" ? "STK" : "RO";
+  const refVal = entry.ref || entry.ro || "—";
+  const vin8 = String(entry.vin8 || "").trim();
+  const dk = entry.dayKey || dayKeyFromISO(entry.createdAt);
+  const dateTxt = dk ? new Date(dk + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
+  const subParts = [`${refLabel} ${refVal}`];
+  if (vin8) subParts.push(`VIN …${vin8.slice(-8)}`);
+  if (dateTxt) subParts.push(dateTxt);
+  if (entry.isComeback || entry.comeback) subParts.push("Comeback");
+
+  const setT = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setT("edType", entry.type || entry.typeText || "Job");
+  setT("edSub", subParts.join(" · "));
+  setT("edHours", `${(Math.round(Number(entry.hours || 0) * 10) / 10).toFixed(1)}h`);
+  setT("edPay", formatMoney(entry.earnings));
+
+  const notesWrap = document.getElementById("edNotesWrap");
+  const notes = String(entry.notes || "").trim();
+  if (notesWrap) notesWrap.style.display = notes ? "" : "none";
+  setT("edNotes", notes);
+
+  const photoBtn = document.getElementById("edPhotoBtn");
+  if (photoBtn) photoBtn.style.display = entryHasPhoto(entry) ? "" : "none";
+
+  modal.style.display = "";
+  requestAnimationFrame(() => modal.classList.add("open"));
+}
+
+function closeEntryDetail() {
+  const modal = document.getElementById("entryDetailModal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.style.display = "none";
+  _entryDetailCurrent = null;
+}
+
+document.getElementById("entryDetailCloseBtn")?.addEventListener("click", closeEntryDetail);
+document.getElementById("entryDetailModal")?.addEventListener("click", (ev) => {
+  if (ev.target?.id === "entryDetailModal") closeEntryDetail();
+});
+document.getElementById("edPhotoBtn")?.addEventListener("click", () => {
+  if (_entryDetailCurrent) openPhoto(_entryDetailCurrent);
+});
+document.getElementById("edEditBtn")?.addEventListener("click", () => {
+  const entry = _entryDetailCurrent;
+  closeEntryDetail();
+  if (entry) {
+    startEditEntry(entry);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+document.getElementById("edDeleteBtn")?.addEventListener("click", (ev) => {
+  const entry = _entryDetailCurrent;
+  closeEntryDetail();
+  if (entry) handleDeleteEntry(entry, ev);
+});
+
 /* ─── VIN search ──────────────────────────────────────── */
 
 function initVinSearch() {
@@ -1213,23 +1295,22 @@ function initVinSearch() {
   if (!input) return;
 
   const doSearch = () => {
-    const q = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    clearBtn && (clearBtn.style.display = q ? "" : "none");
+    const raw = input.value.trim();
+    clearBtn && (clearBtn.style.display = raw ? "" : "none");
 
-    if (!q) {
+    if (!raw) {
       // Restore normal range view — re-trigger current tab render
       const activeTab = document.querySelector("[data-hc-range].hcTab--active");
       activeTab?.click();
       return;
     }
 
+    // Same normalized VIN/RO matching as everywhere else in the app (History
+    // search, More page review) — this box used to have its own stricter
+    // copy that didn't forgive punctuation differences or the O/0, I/1 mix-ups
+    // that are the most common VIN transcription mistake.
     const all = Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [];
-    const matches = all.filter(e => {
-      const vin  = String(e.vin8 || e.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const ro   = String(e.ref || e.ro || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const type = String(e.type || e.typeText || "").toUpperCase().replace(/[^A-Z0-9 ]/g, "");
-      return (vin && vin.includes(q)) || (ro && ro.includes(q)) || (type && type.includes(q));
-    });
+    const matches = all.filter(e => matchSearch(e, raw));
 
     const container = document.getElementById("hcEntriesList");
     if (!container) return;
@@ -5427,7 +5508,7 @@ function renderBreakdownPage(period, customFrom, customTo) {
 
   // Donut + legend
   const legendHtml = types.slice(0, 7).map((t, i) => `
-    <div class="brkLegendItem">
+    <div class="brkLegendItem" data-brk-type="${escapeHtml(t.name)}" role="button" tabindex="0">
       <span class="brkDot" style="background:${BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length]}"></span>
       <span class="brkLegendName">${escapeHtml(t.name)}</span>
     </div>`).join("");
@@ -5463,6 +5544,9 @@ function renderBreakdownPage(period, customFrom, customTo) {
     listEl.innerHTML = '<div class="muted small" style="text-align:center;padding:32px 0;">No entries for this period.</div>';
     return;
   }
+  // Indexed by type, so the click wiring below can look a tapped job row
+  // back up to its real entry object without re-deriving it from the DOM.
+  const jobsByType = [];
   listEl.innerHTML = types.map((t, i) => {
     const color = BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length];
     const pct   = totalCount > 0 ? Math.round((t.count / totalCount) * 100) : 0;
@@ -5471,10 +5555,11 @@ function renderBreakdownPage(period, customFrom, customTo) {
     const jobs = entries
       .filter(e => normalizeJobType((e.typeText || e.type || "").trim()) === t.name)
       .sort((a, b) => String(b.dayKey || "").localeCompare(String(a.dayKey || "")));
-    const jobsHtml = jobs.map(e => {
+    jobsByType[i] = jobs;
+    const jobsHtml = jobs.map((e, ji) => {
       const refLbl = e.refType === "STOCK" ? "STK" : "RO";
       const ref = e.ref || e.ro || "—";
-      return `<div class="brkJob">
+      return `<div class="brkJob" data-brk-job-idx="${ji}" role="button" tabindex="0">
         <div class="brkJobLeft">
           <span class="brkJobRef mono">${escapeHtml(refLbl)} ${escapeHtml(String(ref))}</span>
           <span class="brkJobDate">${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}</span>
@@ -5485,7 +5570,7 @@ function renderBreakdownPage(period, customFrom, customTo) {
         </div>
       </div>`;
     }).join("");
-    return `<div class="brkRowWrap">
+    return `<div class="brkRowWrap" data-brk-type-idx="${i}">
       <button type="button" class="brkRow" data-brk-type="${escapeHtml(t.name)}" aria-expanded="false">
         <span class="brkDot" style="background:${color};margin-top:3px;flex-shrink:0;"></span>
         <div class="brkRowBody">
@@ -5518,6 +5603,35 @@ function renderBreakdownPage(period, customFrom, customTo) {
       }
       haptic?.("selection");
     });
+  });
+
+  // Tapping an individual job (once its type row is expanded) shows the same
+  // read-only detail sheet as the Log tab — "what did I actually do here",
+  // not just a number in a breakdown.
+  listEl.querySelectorAll(".brkJob").forEach(jobEl => {
+    jobEl.addEventListener("click", (ev) => {
+      ev.stopPropagation(); // don't also collapse the parent row
+      const wrap = jobEl.closest(".brkRowWrap");
+      const typeIdx = Number(wrap?.dataset.brkTypeIdx);
+      const jobIdx = Number(jobEl.dataset.brkJobIdx);
+      const entry = jobsByType[typeIdx]?.[jobIdx];
+      if (entry) openEntryDetail(entry);
+    });
+  });
+
+  // Donut slices and legend dots already carry the job-type name — wire them
+  // to open (and scroll to) the matching row's job list, so tapping the
+  // chart itself is a way into the work, not just a picture of it.
+  const openBrkType = (name) => {
+    const btn = listEl.querySelector(`[data-brk-type="${CSS.escape(name)}"].brkRow`);
+    const wrap = btn?.closest(".brkRowWrap");
+    if (!btn || !wrap) return;
+    if (!wrap.classList.contains("open")) btn.click();
+    wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  chartEl.querySelectorAll(".brkArc, .brkLegendItem").forEach(el => {
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => openBrkType(el.dataset.type || el.getAttribute("data-brk-type")));
   });
 }
 

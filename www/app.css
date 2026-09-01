@@ -276,7 +276,14 @@ body[data-page="stats"] #spa-stats {
   gap: 6px;
   font-size: 13px;
   color: var(--text1);
+  cursor: pointer;
+  touch-action: manipulation;
+  padding: 3px 2px;
+  margin: -3px -2px;
+  border-radius: 8px;
+  transition: background 120ms var(--ease, ease);
 }
+.brkLegendItem:active { background: var(--surface2, rgba(255,255,255,.06)); }
 .brkLegendName {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -387,7 +394,11 @@ body[data-page="stats"] #spa-stats {
   gap: 10px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--stroke);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 120ms var(--ease, ease);
 }
+.brkJob:active { background: var(--surface2, rgba(255,255,255,.05)); }
 .brkJob:last-child { border-bottom: none; }
 .brkJobLeft  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .brkJobRef   { font-size: 12.5px; font-weight: 600; color: var(--text2); }
