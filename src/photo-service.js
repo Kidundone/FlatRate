@@ -416,6 +416,7 @@ function openPhotoModal(url, pathLabel) {
 
   const zoomWrap = document.getElementById("photoImgZoomWrap");
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
+  setViewportZoomLocked(true);
 
   modal.classList.add("open");
   lockBodyScroll();
@@ -436,6 +437,7 @@ function closePhotoModal(){
   // photo is reopened. The cache revokes its own entries when it evicts them.
   if (img) img.src = "";
   document.getElementById("photoImgZoomWrap")?._photoZoom?.reset();
+  setViewportZoomLocked(false);
   if (shell) {
     shell.classList.remove("open");
     shell.style.display = "";
@@ -570,6 +572,7 @@ async function openPhotoViewer(e){
 
   const zoomWrap = document.getElementById("photoFullZoomWrap");
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
+  setViewportZoomLocked(true);
 
   let url = inlineData;
   if (!url) {
@@ -675,6 +678,7 @@ function closePhotoViewer(){
   // Same as closePhotoModal — the blob: URL is cache-owned now, not revoked here.
   if (img) img.src = "";
   document.getElementById("photoFullZoomWrap")?._photoZoom?.reset();
+  setViewportZoomLocked(false);
   shell.classList.remove("open");
   shell.style.display = "none";
 }

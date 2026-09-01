@@ -1112,6 +1112,37 @@ function initPhotoZoom(wrap) {
   return api;
 }
 
+/**
+ * Lock/unlock the page's native pinch-to-zoom via the viewport meta tag.
+ *
+ * WKWebView (and Safari generally) implements whole-page pinch-zoom purely
+ * from the viewport meta's user-scalable/maximum-scale — CSS touch-action
+ * has no power over it. That meant the photo zoom viewer's own JS-driven
+ * per-image zoom (initPhotoZoom) was fighting the OS-level page zoom on
+ * every pinch: the whole screen would pan/scale (the "screen in back is
+ * moving" bug) while the intended per-image zoom looked like it wasn't
+ * doing anything.
+ *
+ * Scoped to just while a photo viewer is open (rather than disabling zoom
+ * app-wide) so nothing about normal accessibility zoom elsewhere in the app
+ * changes — restores the original viewport content on unlock.
+ */
+function setViewportZoomLocked(locked) {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  if (locked) {
+    if (meta.dataset.origContent === undefined) {
+      meta.dataset.origContent = meta.getAttribute("content") || "";
+    }
+    meta.setAttribute(
+      "content",
+      "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+    );
+  } else if (meta.dataset.origContent !== undefined) {
+    meta.setAttribute("content", meta.dataset.origContent);
+  }
+}
+
 function entryRoValue(e) {
   return String(e?.ro || e?.ref || e?.ro_number || "").trim();
 }
