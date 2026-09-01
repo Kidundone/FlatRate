@@ -1816,6 +1816,34 @@ a.btn {
 
 .modalShell.open { display: flex; }
 
+/* Pinch/double-tap zoom wrapper for photo viewers (photoModal, photoViewer).
+   overflow:hidden crops panned/zoomed image to the frame; touch-action:none
+   stops the browser's own scroll/zoom gestures from fighting the JS-driven
+   pinch handler in utils.js (initPhotoZoom). */
+.photoZoomWrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.photoZoomWrap img {
+  width: 100%;
+  display: block;
+  border-radius: inherit;
+  transform-origin: 0 0;
+  cursor: zoom-in;
+}
+
+.photoZoomWrap.photoZoomed img { cursor: grab; }
+
+.photoZoomHint {
+  text-align: center;
+  margin-top: 6px;
+}
+
 .photo-error {
   margin-top: 12px;
   padding: 14px;

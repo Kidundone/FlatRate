@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.f06e264eb1.css">
+  <link rel="stylesheet" href="./app.ce1dc3c3e7.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -1174,7 +1174,10 @@
           <div class="muted small" id="photoViewerMeta"></div>
           <button class="btn" id="closePhotoViewerBtn" type="button">Close</button>
         </div>
-        <img id="photoFull" style="width:100%;border-radius:14px;margin-top:12px;display:block;" />
+        <div class="photoZoomWrap" id="photoFullZoomWrap" style="margin-top:12px;">
+          <img id="photoFull" />
+        </div>
+        <div class="muted small photoZoomHint">Pinch or double-tap to zoom</div>
         <div style="display:flex;gap:8px;margin-top:10px;">
           <a class="btn" id="downloadPhotoBtn" download="proof.jpg">Download</a>
         </div>
@@ -1386,7 +1389,10 @@
         <div class="mono small" id="photoMeta"></div>
         <button class="btn" id="closePhotoBtn" type="button">Close</button>
       </div>
-      <img id="photoImg" alt="Proof photo" style="width:100%;border-radius:12px;display:block;" />
+      <div class="photoZoomWrap" id="photoImgZoomWrap">
+        <img id="photoImg" alt="Proof photo" />
+      </div>
+      <div class="muted small photoZoomHint">Pinch or double-tap to zoom</div>
     </div>
   </div>
 </div>
@@ -1426,7 +1432,7 @@
 </div>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.a1bb52bd89.js" defer></script>
+<script src="./app.4637effc6d.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

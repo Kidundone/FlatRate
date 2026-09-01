@@ -967,6 +967,151 @@ function matchSearch(e, q){
   return proseFields.some(v => String(v || "").toLowerCase().includes(s));
 }
 
+/**
+ * Pinch-to-zoom / double-tap-zoom / drag-to-pan for a photo viewer.
+ *
+ * Wire this to a wrapper <div> once (it's idempotent — a second call on the
+ * same element is a no-op). The wrapper is expected to contain a single
+ * <img> — but that img can get swapped out at runtime (applyPhotoLoadGuard
+ * replaces a failed load with a ".photo-error" div, and ensurePhotoImg later
+ * replaces that back with a fresh <img>), so this looks the img up fresh on
+ * every gesture rather than caching a reference that could go stale.
+ *
+ * Uses Pointer Events so touch, mouse, and pen all go through one code path
+ * — no separate touchstart/mousedown handling needed.
+ *
+ * Returns the same { reset, scale } handle on every call for a given wrap.
+ */
+function initPhotoZoom(wrap) {
+  if (!wrap) return null;
+  if (wrap._photoZoom) return wrap._photoZoom;
+
+  const MAX_SCALE = 4;
+  const DBL_TAP_SCALE = 2.75;
+  const pointers = new Map();
+  let scale = 1, tx = 0, ty = 0;
+  let pinchStartDist = 0, pinchStartScale = 1;
+  let dragStart = null;
+  let lastTapTime = 0, lastTapPt = null;
+
+  const img = () => wrap.querySelector("img");
+
+  function apply(animate) {
+    const el = img();
+    if (!el) return;
+    el.style.transition = animate ? "transform .2s ease-out" : "none";
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    wrap.classList.toggle("photoZoomed", scale > 1.01);
+  }
+
+  function clamp() {
+    const rect = wrap.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    // Let the image drift up to 15% of the frame past its natural edge
+    // before clamping — a hard stop right at the edge feels like a wall.
+    const maxX = Math.max(0, ((rect.width * scale) - rect.width) / 2 + rect.width * 0.15);
+    const maxY = Math.max(0, ((rect.height * scale) - rect.height) / 2 + rect.height * 0.15);
+    tx = Math.min(maxX, Math.max(-maxX, tx));
+    ty = Math.min(maxY, Math.max(-maxY, ty));
+  }
+
+  function reset(animate) {
+    scale = 1; tx = 0; ty = 0;
+    apply(animate);
+  }
+
+  // Scales around (clientX, clientY) — the point under the finger/cursor
+  // stays visually still while the rest of the image scales around it.
+  function zoomAt(clientX, clientY, newScale) {
+    const rect = wrap.getBoundingClientRect();
+    const cx = clientX - rect.left - rect.width / 2;
+    const cy = clientY - rect.top - rect.height / 2;
+    const ratio = newScale / scale;
+    tx = cx - (cx - tx) * ratio;
+    ty = cy - (cy - ty) * ratio;
+    scale = newScale;
+    clamp();
+  }
+
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    wrap.setPointerCapture?.(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.size === 1) {
+      dragStart = { x: e.clientX, y: e.clientY, tx, ty };
+
+      // Double-tap/double-click toggles zoom. Tracked here (not a separate
+      // dblclick listener) so it works identically for touch and mouse.
+      const now = Date.now();
+      const pt = { x: e.clientX, y: e.clientY };
+      const isDouble = now - lastTapTime < 320 && lastTapPt &&
+        Math.hypot(pt.x - lastTapPt.x, pt.y - lastTapPt.y) < 30;
+      lastTapTime = isDouble ? 0 : now;
+      lastTapPt = pt;
+      if (isDouble) {
+        dragStart = null;
+        if (scale > 1.01) reset(true);
+        else { zoomAt(e.clientX, e.clientY, DBL_TAP_SCALE); apply(true); }
+      }
+    } else if (pointers.size === 2) {
+      dragStart = null;
+      const pts = [...pointers.values()];
+      pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      pinchStartScale = scale;
+    }
+  });
+
+  wrap.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.size === 2) {
+      const pts = [...pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      const newScale = Math.min(MAX_SCALE, Math.max(1, pinchStartScale * (dist / pinchStartDist)));
+      zoomAt(mid.x, mid.y, newScale);
+      apply(false);
+    } else if (pointers.size === 1 && dragStart && scale > 1.01) {
+      tx = dragStart.tx + (e.clientX - dragStart.x);
+      ty = dragStart.ty + (e.clientY - dragStart.y);
+      clamp();
+      apply(false);
+    }
+  });
+
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchStartDist = 0;
+    if (pointers.size === 0) {
+      dragStart = null;
+      // Snap back to the frame rather than leaving the image parked at 1x
+      // scale but off-center from a pan that ended mid-zoom-out.
+      if (scale < 1.02) reset(true);
+    }
+  }
+  wrap.addEventListener("pointerup", endPointer);
+  wrap.addEventListener("pointercancel", endPointer);
+  wrap.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") endPointer(e); });
+
+  // Trackpad pinch / mouse wheel zoom, for testing in a desktop browser.
+  wrap.addEventListener("wheel", (e) => {
+    if (scale <= 1.01 && e.deltaY > 0) return; // nothing to zoom out of
+    e.preventDefault();
+    const newScale = Math.min(MAX_SCALE, Math.max(1, scale - e.deltaY * 0.01));
+    zoomAt(e.clientX, e.clientY, newScale);
+    apply(false);
+  }, { passive: false });
+
+  const api = {
+    reset,
+    get scale() { return scale; },
+  };
+  wrap._photoZoom = api;
+  return api;
+}
+
 function entryRoValue(e) {
   return String(e?.ro || e?.ref || e?.ro_number || "").trim();
 }
