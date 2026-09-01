@@ -17,6 +17,7 @@ class MainViewController: CAPBridgeViewController {
         webView?.scrollView.alwaysBounceHorizontal = false
         webView?.scrollView.bounces = true
         webView?.scrollView.showsHorizontalScrollIndicator = false
+        disableNativeWebViewZoom()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -25,5 +26,26 @@ class MainViewController: CAPBridgeViewController {
         // configuring the scroll view on first appearance — some plugins touch
         // scrollView properties during their own viewDidAppear-timed setup.
         webView?.scrollView.alwaysBounceHorizontal = false
+        disableNativeWebViewZoom()
+    }
+
+    // The photo viewer (index.html / utils.js initPhotoZoom) implements its
+    // own pinch-to-zoom on a single image so it can constrain panning to that
+    // image's frame instead of the whole page. WKWebView's own pinch-zoom
+    // gesture scales the ENTIRE page, and it was winning the fight against
+    // the JS handler — a JS-only fix (toggling the viewport meta tag's
+    // user-scalable) turned out to be unreliable, since WKWebView computes
+    // its zoom limits from the viewport meta at initial page load and
+    // doesn't reliably re-read it on a later DOM mutation. Disabling the
+    // scroll view's own pinch/double-tap zoom recognizers here removes the
+    // conflict at its source instead of racing it.
+    private func disableNativeWebViewZoom() {
+        guard let scrollView = webView?.scrollView else { return }
+        scrollView.pinchGestureRecognizer?.isEnabled = false
+        for recognizer in scrollView.gestureRecognizers ?? [] {
+            if let tap = recognizer as? UITapGestureRecognizer, tap.numberOfTapsRequired == 2 {
+                tap.isEnabled = false
+            }
+        }
     }
 }
