@@ -17,6 +17,17 @@ function logErr(label) {
 // blocked, and only for gestures that aren't inside something meant to
 // scroll sideways (chip rows, period tabs, etc. keep working normally).
 (function killHorizontalBounce() {
+  // On the native iOS app this is now handled at the source — MainViewController
+  // sets webView.scrollView.alwaysBounceHorizontal = false directly, which is
+  // race-free (nothing to out-run) and costs nothing per touch. This JS version
+  // is a document-wide, non-passive touchmove listener: the browser can't do
+  // off-main-thread scrolling on ANY drag anywhere in the app until it's run,
+  // because a passive:false listener might call preventDefault(). That's real
+  // cost on every scroll/swipe/pull-to-refresh, everywhere, all the time — worth
+  // paying on Android/web (Capacitor's WebView/mobile Safari have no native hook
+  // for this), but pure overhead on iOS now that the native fix covers it.
+  if (window.Capacitor?.getPlatform?.() === "ios") return;
+
   let startX = 0, startY = 0, decided = false, blockHorizontal = false, allowNative = false;
 
   // Fast path: elements known to scroll sideways. Kept because closest() costs

@@ -1296,7 +1296,6 @@ function initVinSearch() {
 
   const doSearch = () => {
     const raw = input.value.trim();
-    clearBtn && (clearBtn.style.display = raw ? "" : "none");
 
     if (!raw) {
       // Restore normal range view — re-trigger current tab render
@@ -1327,9 +1326,24 @@ function initVinSearch() {
     renderRangeEntries(sorted, "year");
   };
 
-  input.addEventListener("input", doSearch);
+  // Debounced like every other search-as-you-type box in the app (History
+  // search, More page review search — see historySearchInput/reviewSearch in
+  // boot.js). This one was the odd one out, re-filtering the full entry list
+  // and rebuilding up to 60 DOM rows (with entrance animations) on every
+  // single keystroke — the kind of thing that reads as "the app feels slow"
+  // even though the rest of the app was already snappy. The clear (×) button
+  // still shows/hides instantly since that's a cheap style toggle, not tied
+  // to the expensive part.
+  let _vinSearchT = null;
+  input.addEventListener("input", () => {
+    clearBtn && (clearBtn.style.display = input.value.trim() ? "" : "none");
+    clearTimeout(_vinSearchT);
+    _vinSearchT = setTimeout(doSearch, 180);
+  });
   clearBtn?.addEventListener("click", () => {
     input.value = "";
+    clearBtn.style.display = "none";
+    clearTimeout(_vinSearchT);
     doSearch();
     input.focus();
   });

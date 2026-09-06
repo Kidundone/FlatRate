@@ -535,8 +535,14 @@ header {
   padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
   background: rgba(7,7,15,.94);
   border-bottom: 1px solid var(--stroke);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Background is already 94% opaque, so a heavy blur here was buying almost
+     no visible difference — barely anything shows through to blur — while
+     costing real GPU time on every scroll frame on mobile (this bar sits over
+     scrolling content on every single screen, unlike a modal backdrop that's
+     only blurred once while open). 8px reads the same, costs a fraction as
+     much. See also .tabBar and .top below — same fix, same reasoning. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Standalone PWA: guarantee status-bar clearance on every iPhone model */
@@ -576,8 +582,10 @@ main {
   z-index: 200;
   display: flex;
   background: rgba(17,17,19,.96);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  /* See header comment above — 96% opaque background, heavy blur here was
+     nearly invisible but sits under every scroll gesture in the app. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--stroke2);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -2137,8 +2145,11 @@ a.btn {
   top: 0;
   z-index: 100;
   background: rgba(17,17,19,.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Same fix as the main header/.tabBar — near-opaque background made the
+     heavy blur mostly invisible, but it still had to run on every scroll
+     frame of the More page. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
   border-bottom: 1px solid var(--stroke);
 }

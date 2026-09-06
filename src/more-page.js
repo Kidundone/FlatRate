@@ -3662,8 +3662,16 @@ function initEntrySearch() {
     }
   };
 
-  input.addEventListener("input", runSearch);
-  input.addEventListener("search", runSearch); // native clear (×) on type=search
+  // Debounced like every other search-as-you-type box in the app (see
+  // historySearchInput/reviewSearch in boot.js) — this one was re-filtering
+  // the full entry list and rebuilding all the History rows on every
+  // keystroke instead of once the user pauses typing.
+  let _entrySearchT = null;
+  input.addEventListener("input", () => {
+    clearTimeout(_entrySearchT);
+    _entrySearchT = setTimeout(runSearch, 180);
+  });
+  input.addEventListener("search", () => { clearTimeout(_entrySearchT); runSearch(); }); // native clear (×) on type=search
 
   // Clear on tab switch (reset search)
   document.querySelectorAll(".moreTab").forEach(tab => {
