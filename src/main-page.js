@@ -1091,6 +1091,16 @@ function renderRangeEntries(entries, mode) {
   const hasMore = entries.length > MAX;
   const showDate = mode !== "day";
 
+  // Kick off signed-URL/download fetches for every photo about to be listed,
+  // in the background, before the tech ever taps "View Photo" — this was
+  // built (see prewarmPhotoUrls in photo-service.js) but never actually
+  // wired up anywhere, so every photo open was a cold fetch: on native iOS
+  // that's a full download of the image through the Supabase SDK before
+  // anything shows, and it was ALWAYS paying that cost, warm cache or not.
+  // Fire-and-forget; getCachedPhotoUrl's own cache is what makes the actual
+  // tap-to-view instant once this finishes.
+  if (typeof prewarmPhotoUrls === "function") prewarmPhotoUrls(shown);
+
   const fmtDay = (dk) => {
     if (!dk) return "";
     const d = new Date(dk + "T12:00:00");
@@ -2247,6 +2257,12 @@ async function renderHistory() {
 const _photoUrlCache = new Map(); // path -> { url, fetchedAt }
 const _PHOTO_CACHE_TTL_MS = 25 * 60 * 1000; // signed URLs last 30 min server-side
 const _PHOTO_CACHE_MAX = 60; // cap blob: URL accumulation on a long native session
+// In-flight de-dupe: prewarmPhotoUrls() now fires for everything in the
+// visible list, so a tap on "View Photo" often lands WHILE that background
+// fetch is still running — without this, the tap would start a second,
+// fully redundant download of the same file instead of just waiting on the
+// one already in progress.
+const _photoUrlInFlight = new Map(); // path -> Promise<url>
 
 async function getCachedPhotoUrl(path) {
   if (!path) return null;
@@ -2254,7 +2270,11 @@ async function getCachedPhotoUrl(path) {
   if (cached && (Date.now() - cached.fetchedAt < _PHOTO_CACHE_TTL_MS)) {
     return cached.url;
   }
-  const url = await getPhotoUrl(path);
+  if (_photoUrlInFlight.has(path)) return _photoUrlInFlight.get(path);
+
+  const promise = getPhotoUrl(path).finally(() => _photoUrlInFlight.delete(path));
+  _photoUrlInFlight.set(path, promise);
+  const url = await promise;
   if (url) {
     if (_photoUrlCache.size >= _PHOTO_CACHE_MAX) {
       const oldestKey = _photoUrlCache.keys().next().value;
@@ -5496,6 +5516,11 @@ function renderBreakdownPage(period, customFrom, customTo) {
 
   const [from, to] = _statsDateRange(period, window.__STATS_CUSTOM_FROM__, window.__STATS_CUSTOM_TO__);
   const entries    = _statsFilterByRange(own, from, to);
+
+  // Same reasoning as renderRangeEntries: start fetching photos for this
+  // period's jobs now, in the background, so drilling into a job from here
+  // doesn't hit a cold fetch either.
+  if (typeof prewarmPhotoUrls === "function") prewarmPhotoUrls(entries);
 
   const types         = computeTypeBreakdown(entries);
   const totalCount    = entries.length;
