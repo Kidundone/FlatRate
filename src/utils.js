@@ -988,12 +988,10 @@ function initPhotoZoom(wrap) {
 
   const MAX_SCALE = 4;
   const DBL_TAP_SCALE = 2.75;
-  const pointers = new Map();
   let scale = 1, tx = 0, ty = 0;
   let pinchStartDist = 0, pinchStartScale = 1;
   let dragStart = null;
   let lastTapTime = 0, lastTapPt = null;
-  let gestureActive = false, gestureStartScale = 1;
 
   const img = () => wrap.querySelector("img");
 
@@ -1034,72 +1032,115 @@ function initPhotoZoom(wrap) {
     clamp();
   }
 
-  wrap.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    wrap.setPointerCapture?.(e.pointerId);
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  // ── Touch (iOS/Android): raw Touch Events, read directly off e.touches. ──
+  // Three earlier attempts at this all depended on something WebKit
+  // SYNTHESIZES from the underlying touch stream: two-finger Pointer Events,
+  // then the proprietary gesturestart/gesturechange/gestureend GestureEvent
+  // API. Both were reported still broken on-device. Touch Events are not a
+  // synthesized layer — they're the actual hardware touch delivery every
+  // other API is built on top of, so there's nothing left upstream that can
+  // silently fail to fire. This is also what production pinch-zoom libraries
+  // (Panzoom, PhotoSwipe, Hammer.js) use for exactly this reason. Paired
+  // with touch-action:none on .photoZoomWrap (see app.css) so the browser
+  // never starts its own competing scroll/zoom gesture in the first place.
+  function touchPt(t) { return { x: t.clientX, y: t.clientY }; }
 
-    if (pointers.size === 1) {
-      dragStart = { x: e.clientX, y: e.clientY, tx, ty };
+  wrap.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      const t = touchPt(e.touches[0]);
+      dragStart = { x: t.x, y: t.y, tx, ty };
 
-      // Double-tap/double-click toggles zoom. Tracked here (not a separate
-      // dblclick listener) so it works identically for touch and mouse.
+      // Double-tap toggles zoom.
       const now = Date.now();
-      const pt = { x: e.clientX, y: e.clientY };
       const isDouble = now - lastTapTime < 320 && lastTapPt &&
-        Math.hypot(pt.x - lastTapPt.x, pt.y - lastTapPt.y) < 30;
+        Math.hypot(t.x - lastTapPt.x, t.y - lastTapPt.y) < 30;
       lastTapTime = isDouble ? 0 : now;
-      lastTapPt = pt;
+      lastTapPt = t;
       if (isDouble) {
         dragStart = null;
         if (scale > 1.01) reset(true);
-        else { zoomAt(e.clientX, e.clientY, DBL_TAP_SCALE); apply(true); }
+        else { zoomAt(t.x, t.y, DBL_TAP_SCALE); apply(true); }
       }
-    } else if (pointers.size === 2) {
+    } else if (e.touches.length === 2) {
       dragStart = null;
-      const pts = [...pointers.values()];
-      pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      const p0 = touchPt(e.touches[0]), p1 = touchPt(e.touches[1]);
+      pinchStartDist = Math.hypot(p0.x - p1.x, p0.y - p1.y) || 1;
       pinchStartScale = scale;
     }
-  });
+  }, { passive: false });
 
-  wrap.addEventListener("pointermove", (e) => {
-    if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    // On iOS/WKWebView, two-finger touches are handled by the gesturestart/
-    // change/end listeners below instead (see comment there) — bail out here
-    // so the two pinch implementations don't both try to scale at once.
-    if (gestureActive) return;
-
-    if (pointers.size === 2) {
-      const pts = [...pointers.values()];
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
-      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+  wrap.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const p0 = touchPt(e.touches[0]), p1 = touchPt(e.touches[1]);
+      const dist = Math.hypot(p0.x - p1.x, p0.y - p1.y) || 1;
+      const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
       const newScale = Math.min(MAX_SCALE, Math.max(1, pinchStartScale * (dist / pinchStartDist)));
       zoomAt(mid.x, mid.y, newScale);
       apply(false);
-    } else if (pointers.size === 1 && dragStart && scale > 1.01) {
-      tx = dragStart.tx + (e.clientX - dragStart.x);
-      ty = dragStart.ty + (e.clientY - dragStart.y);
+    } else if (e.touches.length === 1 && dragStart && scale > 1.01) {
+      e.preventDefault();
+      const t = touchPt(e.touches[0]);
+      tx = dragStart.tx + (t.x - dragStart.x);
+      ty = dragStart.ty + (t.y - dragStart.y);
       clamp();
       apply(false);
     }
-  });
+  }, { passive: false });
 
-  function endPointer(e) {
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) pinchStartDist = 0;
-    if (pointers.size === 0) {
+  function endTouch(e) {
+    if (e.touches.length < 2) pinchStartDist = 0;
+    if (e.touches.length === 0) {
       dragStart = null;
       // Snap back to the frame rather than leaving the image parked at 1x
       // scale but off-center from a pan that ended mid-zoom-out.
       if (scale < 1.02) reset(true);
+    } else if (e.touches.length === 1) {
+      // One finger lifted out of a pinch — re-anchor panning from whichever
+      // finger is still down instead of jumping using stale coordinates.
+      const t = touchPt(e.touches[0]);
+      dragStart = { x: t.x, y: t.y, tx, ty };
     }
   }
-  wrap.addEventListener("pointerup", endPointer);
-  wrap.addEventListener("pointercancel", endPointer);
-  wrap.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") endPointer(e); });
+  wrap.addEventListener("touchend", endTouch, { passive: false });
+  wrap.addEventListener("touchcancel", endTouch, { passive: false });
+
+  // ── Mouse (desktop testing only): Pointer Events, mouse pointers only. ──
+  // Touch devices are fully handled above; this path exists so pinch/pan
+  // can still be exercised with a mouse in a desktop browser.
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    dragStart = { x: e.clientX, y: e.clientY, tx, ty };
+
+    const now = Date.now();
+    const pt = { x: e.clientX, y: e.clientY };
+    const isDouble = now - lastTapTime < 320 && lastTapPt &&
+      Math.hypot(pt.x - lastTapPt.x, pt.y - lastTapPt.y) < 30;
+    lastTapTime = isDouble ? 0 : now;
+    lastTapPt = pt;
+    if (isDouble) {
+      dragStart = null;
+      if (scale > 1.01) reset(true);
+      else { zoomAt(e.clientX, e.clientY, DBL_TAP_SCALE); apply(true); }
+    }
+  });
+
+  wrap.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse" || !dragStart || scale <= 1.01) return;
+    tx = dragStart.tx + (e.clientX - dragStart.x);
+    ty = dragStart.ty + (e.clientY - dragStart.y);
+    clamp();
+    apply(false);
+  });
+
+  function endMousePointer(e) {
+    if (e.pointerType !== "mouse") return;
+    dragStart = null;
+    if (scale < 1.02) reset(true);
+  }
+  wrap.addEventListener("pointerup", endMousePointer);
+  wrap.addEventListener("pointercancel", endMousePointer);
+  wrap.addEventListener("pointerleave", endMousePointer);
 
   // Trackpad pinch / mouse wheel zoom, for testing in a desktop browser.
   wrap.addEventListener("wheel", (e) => {
@@ -1108,39 +1149,6 @@ function initPhotoZoom(wrap) {
     const newScale = Math.min(MAX_SCALE, Math.max(1, scale - e.deltaY * 0.01));
     zoomAt(e.clientX, e.clientY, newScale);
     apply(false);
-  }, { passive: false });
-
-  // WebKit/Safari's proprietary GestureEvent (gesturestart/change/end, with
-  // e.scale relative to gesture start) — this is what actually drives pinch
-  // reliably on iOS. Reconstructing pinch from two-finger Pointer Events
-  // (the pointerdown/pointermove branches above) is the standards-based
-  // approach and does work on Chromium (Android/desktop), but WKWebView has
-  // long-standing gaps tracking two SIMULTANEOUS pointers through a pinch —
-  // this was the actual reason pinch never responded on the phone even after
-  // the native scroll-view zoom conflict was fixed. Gesture events are
-  // WebKit-only, so this is additive: Android/desktop keep using the pointer
-  // path above, gated off here whenever a real gesture is in progress so the
-  // two don't both try to scale the same touch.
-  wrap.addEventListener("gesturestart", (e) => {
-    e.preventDefault();
-    gestureActive = true;
-    dragStart = null;
-    gestureStartScale = scale;
-  }, { passive: false });
-
-  wrap.addEventListener("gesturechange", (e) => {
-    if (!gestureActive) return;
-    e.preventDefault();
-    const newScale = Math.min(MAX_SCALE, Math.max(1, gestureStartScale * e.scale));
-    zoomAt(e.clientX, e.clientY, newScale);
-    apply(false);
-  }, { passive: false });
-
-  wrap.addEventListener("gestureend", (e) => {
-    if (!gestureActive) return;
-    e.preventDefault();
-    gestureActive = false;
-    if (scale < 1.02) reset(true);
   }, { passive: false });
 
   const api = {

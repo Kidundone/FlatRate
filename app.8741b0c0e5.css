@@ -1826,23 +1826,19 @@ a.btn {
 
 /* Pinch/double-tap zoom wrapper for photo viewers (photoModal, photoViewer).
    overflow:hidden crops panned/zoomed image to the frame.
-   touch-action WAS "none" here, which turned out to be the actual reason
-   pinch never worked on iOS: "none" tells WebKit not to engage its own
-   pinch gesture recognizer over this element at all — and that recognizer
-   is exactly what fires the gesturestart/gesturechange/gestureend DOM
-   events initPhotoZoom() listens for in utils.js. With it set to "none",
-   those events could never fire here no matter what we changed in JS or
-   at the native Swift layer. "pinch-zoom" tells the browser to keep
-   recognizing (and firing) the pinch gesture, while single-finger panning
-   stays un-handled by default so our own pointer-based drag-to-pan logic
-   doesn't fight the browser for it. The whole PAGE still can't visually
-   zoom — that's separately capped via scrollView.minimumZoomScale/
-   maximumZoomScale in MainViewController.swift. */
+   initPhotoZoom() (utils.js) now handles every touch gesture itself via raw
+   touchstart/touchmove/touchend Touch Events — not the browser's own pinch
+   recognition — so touch-action:none is correct and intentional here: it
+   tells the browser not to start any gesture of its own on this element at
+   all, so there's no race between "browser decides this might be a scroll"
+   and our own e.preventDefault() in touchmove. The whole PAGE still can't
+   visually zoom regardless — that's separately capped via scrollView.
+   minimumZoomScale/maximumZoomScale in MainViewController.swift. */
 .photoZoomWrap {
   position: relative;
   overflow: hidden;
   border-radius: 14px;
-  touch-action: pinch-zoom;
+  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
