@@ -995,6 +995,45 @@ function initPhotoZoom(wrap) {
 
   const img = () => wrap.querySelector("img");
 
+  // ── TEMPORARY on-device debug badge ──────────────────────────────────────
+  // Three rewrites of the touch handling here have all been reported as
+  // "still doesn't work" with no way to tell WHY from a phone alone — no
+  // Mac/Xcode console needed to read this. It shows exactly what this code
+  // sees in real time: whether touchstart/touchmove/touchend fire at all,
+  // how many fingers it counts, and what scale it computes. Pinch a photo,
+  // read what's on this badge, and remove this whole block once we know
+  // what the phone is actually reporting. Delete when this is confirmed
+  // working — it's not meant to ship long-term.
+  let dbg = wrap.querySelector(".zoomDebugBadge");
+  if (!dbg) {
+    dbg = document.createElement("div");
+    dbg.className = "zoomDebugBadge";
+    dbg.style.cssText = "position:absolute;top:4px;left:4px;z-index:50;background:rgba(0,0,0,.75);color:#0f0;font:11px/1.4 monospace;padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre;max-width:90%;";
+    dbg.textContent = "zoom debug: waiting for touch…";
+    wrap.appendChild(dbg);
+  }
+  function dbgLog(msg) { if (dbg) dbg.textContent = "zoom debug: " + msg; }
+
+  // Document-level CAPTURE-phase listener: catches a touch the instant it
+  // lands anywhere, before any other handler on the page has a chance to
+  // stopPropagation() it. If the wrap's own touchstart below never logs but
+  // THIS does, something between the document and the wrap is eating the
+  // touch before it gets here — that's a completely different bug (an
+  // overlapping element or an ancestor's stopPropagation) than anything
+  // fixed in the last three attempts. Installed once, globally, since it's
+  // only ever relevant while a photo viewer is open (dbg would be null
+  // otherwise since it's re-fetched by wrap each time).
+  if (!window.__FR_ZOOM_CAPTURE_WIRED__) {
+    window.__FR_ZOOM_CAPTURE_WIRED__ = true;
+    document.addEventListener("touchstart", (e) => {
+      const openWrap = document.querySelector(".photoZoomWrap");
+      const badge = openWrap?.querySelector(".zoomDebugBadge");
+      if (!badge) return;
+      const onWrap = openWrap.contains(e.target);
+      badge.textContent = `zoom debug: [capture] x${e.touches.length} target=${e.target?.tagName}.${e.target?.className || ""} onWrap=${onWrap}`;
+    }, { capture: true, passive: true });
+  }
+
   function apply(animate) {
     const el = img();
     if (!el) return;
@@ -1046,6 +1085,7 @@ function initPhotoZoom(wrap) {
   function touchPt(t) { return { x: t.clientX, y: t.clientY }; }
 
   wrap.addEventListener("touchstart", (e) => {
+    dbgLog(`touchstart x${e.touches.length} target=${e.target?.tagName}.${e.target?.className || ""}`);
     if (e.touches.length === 1) {
       const t = touchPt(e.touches[0]);
       dragStart = { x: t.x, y: t.y, tx, ty };
@@ -1076,6 +1116,7 @@ function initPhotoZoom(wrap) {
       const dist = Math.hypot(p0.x - p1.x, p0.y - p1.y) || 1;
       const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
       const newScale = Math.min(MAX_SCALE, Math.max(1, pinchStartScale * (dist / pinchStartDist)));
+      dbgLog(`pinch dist=${dist.toFixed(0)} scale=${newScale.toFixed(2)}`);
       zoomAt(mid.x, mid.y, newScale);
       apply(false);
     } else if (e.touches.length === 1 && dragStart && scale > 1.01) {
@@ -1083,12 +1124,16 @@ function initPhotoZoom(wrap) {
       const t = touchPt(e.touches[0]);
       tx = dragStart.tx + (t.x - dragStart.x);
       ty = dragStart.ty + (t.y - dragStart.y);
+      dbgLog(`pan tx=${tx.toFixed(0)} ty=${ty.toFixed(0)}`);
       clamp();
       apply(false);
+    } else if (e.touches.length === 1) {
+      dbgLog(`touchmove x1 (no drag/scale<=1) scale=${scale.toFixed(2)}`);
     }
   }, { passive: false });
 
   function endTouch(e) {
+    dbgLog(`touchend/cancel remaining=${e.touches.length} scale=${scale.toFixed(2)}`);
     if (e.touches.length < 2) pinchStartDist = 0;
     if (e.touches.length === 0) {
       dragStart = null;
