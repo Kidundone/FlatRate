@@ -780,40 +780,61 @@ async function refreshMorePagePanels() {
 
 window.refreshMorePagePanels = refreshMorePagePanels;
 
-async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto", timeoutMs = 25000) {
+// timeoutMs default covers "auto" mode's 3 server-side attempts (see
+// supabase/functions/scan-paystub) at up to 9s each plus ~3.6s of backoff —
+// about 30.6s worst case. payroll_report mode allows up to 16s per attempt
+// (it can generate a full table, up to 8192 tokens) so callers using that
+// mode pass a larger explicit timeoutMs — see scanPayrollReport below.
+async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto", timeoutMs = 32000) {
   const sbInstance = window.__FR?.sb;
   const { data: { session } } = await sbInstance.auth.getSession();
   const token = session?.access_token || window.__SUPABASE_CONFIG__.anonKey;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-paystub`;
-  // A silently-hanging fetch (dead wifi, edge function cold-starting behind a
-  // slow upstream) is exactly what "OCR sometimes takes forever" looks like
-  // from the tech's side — no error, no result, just a spinner that never
-  // resolves. Bound it so a stall turns into a clear, retryable failure.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  let res;
+
+  const doFetch = async (tok) => {
+    // A silently-hanging fetch (dead wifi, edge function cold-starting behind
+    // a slow upstream) is exactly what "OCR sometimes takes forever" looks
+    // like from the tech's side — no error, no result, just a spinner that
+    // never resolves. Bound it so a stall turns into a clear, retryable failure.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tok}`,
+          "apikey": window.__SUPABASE_CONFIG__.anonKey,
+        },
+        body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => String(res.status));
+        throw Object.assign(new Error(`Scan failed (${res.status}): ${txt}`), { status: res.status });
+      }
+      return res.json();
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("Scan timed out — check your connection and try again");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   try {
-    res = await fetch(fnUrl, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "apikey": window.__SUPABASE_CONFIG__.anonKey,
-      },
-      body: JSON.stringify({ imageBase64: base64, mediaType, mode }),
-    });
+    return await doFetch(token);
   } catch (e) {
-    if (e?.name === "AbortError") throw new Error("Scan timed out — check your connection and try again");
+    // Same reasoning as scan-ro's _callScanRo: a dropped connection throws a
+    // plain network error before any response — distinct from a real timeout
+    // or an HTTP error the edge function already retried. One quick retry
+    // covers a brief wifi/cell blip instead of making the tech rescan.
+    if (!e.status && e.name !== "AbortError" && /fetch|network/i.test(e.message || "")) {
+      await new Promise(r => setTimeout(r, 700));
+      return await doFetch(token);
+    }
     throw e;
-  } finally {
-    clearTimeout(timer);
   }
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Scan failed (${res.status}): ${txt}`);
-  }
-  return res.json();
 }
 
 /* ── Payroll Report (Shop Technician Payroll Report) ─────────────────────── */
@@ -844,8 +865,10 @@ async function scanPayrollReport(file) {
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
     // Shared caller: same timeout guard + token handling as every other
-    // OCR call site, instead of a third copy of the raw fetch.
-    const result = await _callScanPayStub(base64, mediaType, "payroll_report");
+    // OCR call site, instead of a third copy of the raw fetch. Explicit
+    // 55s budget here — this mode reads a whole table (up to 8192 tokens
+    // of output), so the default "auto"-mode timeout is too tight for it.
+    const result = await _callScanPayStub(base64, mediaType, "payroll_report", 55000);
 
     if (result.error) {
       toast(`Scan error: ${result.error}`);
@@ -967,8 +990,11 @@ function initPayrollReportUI() {
     input.value = "";
   };
 
-  libBtn?.addEventListener("click", () => picker?.click());
-  camBtn?.addEventListener("click", () => camPicker?.click());
+  // Wake the edge function the moment the picker opens (see prewarmEdgeFunction
+  // in photo-service.js) so this — the biggest, slowest scan in the app — isn't
+  // also paying a cold-start on top of everything else.
+  libBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); picker?.click(); });
+  camBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); camPicker?.click(); });
   picker?.addEventListener("change", onFile(picker));
   camPicker?.addEventListener("change", onFile(camPicker));
 
@@ -1013,7 +1039,9 @@ async function scanPayrollForReconcile(file) {
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
-    const result = await _callScanPayStub(base64, mediaType, "payroll_report");
+    // Explicit 55s budget — same reasoning as scanPayrollReport above, and
+    // this is the largest/densest image the app scans, so it needs it most.
+    const result = await _callScanPayStub(base64, mediaType, "payroll_report", 55000);
     const rows = Array.isArray(result?.rows) ? result.rows : [];
     if (!rows.length) {
       say(result?.error ? `Couldn't read it: ${result.error}` : "Couldn't find any RO lines — try a straighter, closer photo.");
@@ -1238,8 +1266,8 @@ function initPayStubUI() {
   document.getElementById("payStubHoursPaid")?.addEventListener("input", redrawPayStub);
 
   // ── Payroll report reconciliation ──
-  document.getElementById("scanPayrollCamBtn")?.addEventListener("click", () => document.getElementById("payrollCamera")?.click());
-  document.getElementById("scanPayrollLibBtn")?.addEventListener("click", () => document.getElementById("payrollPicker")?.click());
+  document.getElementById("scanPayrollCamBtn")?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); document.getElementById("payrollCamera")?.click(); });
+  document.getElementById("scanPayrollLibBtn")?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); document.getElementById("payrollPicker")?.click(); });
   const onPayrollFile = (input) => () => {
     const f = input.files?.[0];
     if (f) scanPayrollForReconcile(f);
@@ -1274,8 +1302,8 @@ function initPayStubUI() {
     input.value = "";
   };
 
-  libBtn?.addEventListener("click", () => picker?.click());
-  camBtn?.addEventListener("click", () => camPicker?.click());
+  libBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); picker?.click(); });
+  camBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); camPicker?.click(); });
   picker?.addEventListener("change", onPickerChange(picker));
   camPicker?.addEventListener("change", onPickerChange(camPicker));
 

@@ -730,11 +730,30 @@ function initPhotosUI(){
 // happens while the tech is framing the photo, not after they've already
 // taken it. By the time onchange fires the token is warm and _callScanRo can
 // skip straight to the OCR request instead of a forced refresh first.
-function prewarmScanToken() {
-  prewarmAuthToken("scan-ro", window.__FR?.sb);
+// Fire-and-forget: an OPTIONS request the edge function answers immediately
+// (it's the CORS-preflight branch, no auth check and no Gemini call) but it
+// still has to reach a running Deno isolate first. Sending it the moment the
+// picker opens gives Supabase a head start on spinning up a cold function so
+// the real POST — fired only after the tech has actually picked a photo —
+// lands on a warm one instead of paying that cold-start latency itself.
+function prewarmEdgeFunction(fnName) {
+  try {
+    const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/${fnName}`;
+    fetch(fnUrl, { method: "OPTIONS" }).catch(() => {});
+  } catch {}
 }
 
-async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) {
+function prewarmScanToken() {
+  prewarmAuthToken("scan-ro", window.__FR?.sb);
+  prewarmEdgeFunction("scan-ro");
+}
+
+// 3 server-side attempts at up to 9s each plus ~3.6s of backoff between them
+// (see supabase/functions/scan-ro) tops out around 30.6s in the worst case —
+// the old 18000ms budget was shorter than that, so the client could abort
+// and hand the tech a false "timed out" right as a later retry was about to
+// come back with a good read.
+async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 32000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
 
@@ -780,6 +799,15 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 18000) 
       const fresh = await sbInstance.auth.refreshSession().catch(() => null)
         .then(r => r?.data?.session?.access_token || null);
       if (fresh && fresh !== token) return await doFetch(fresh);
+    }
+    // A dropped connection (shop wifi/cell handoff mid-request) throws a
+    // plain network error before any response comes back at all — distinct
+    // from a real timeout (AbortError) or an HTTP error the edge function
+    // already retried server-side. One quick retry covers the common "wifi
+    // blipped for a second" case instead of making the tech re-tap the button.
+    if (!e.status && e.name !== "AbortError" && /fetch|network/i.test(e.message || "")) {
+      await new Promise(r => setTimeout(r, 700));
+      return await doFetch(token);
     }
     throw e;
   }

@@ -90,15 +90,38 @@ Use {"gross": null} if gross pay is not visible.`;
     // public API and shouldn't surface as a hard failure on the first hiccup.
     const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
     const RETRIES = 3;
-    let geminiRes!: Response;
+    // Same gap as scan-ro had: an unbounded fetch() meant one stalled attempt
+    // could eat the whole client-side timeout with the retry loop never
+    // getting a turn. payroll_report mode generates up to 8192 tokens (a full
+    // table) so it genuinely needs longer per attempt than the ~500-token
+    // gross-pay read; give it its own budget instead of sharing one number.
+    const PER_ATTEMPT_TIMEOUT_MS = mode === "payroll_report" ? 16000 : 9000;
+    let geminiRes: Response | null = null;
+    let lastErr: unknown = null;
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 1200));
-      geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
-      );
+      const attemptCtrl = new AbortController();
+      const attemptTimer = setTimeout(() => attemptCtrl.abort(), PER_ATTEMPT_TIMEOUT_MS);
+      try {
+        geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody, signal: attemptCtrl.signal }
+        );
+        lastErr = null;
+      } catch (e) {
+        lastErr = e;
+        geminiRes = null;
+        console.warn(`Gemini attempt ${attempt + 1} stalled/failed: ${(e as Error)?.message || e}`);
+        continue;
+      } finally {
+        clearTimeout(attemptTimer);
+      }
       if (!RETRYABLE_STATUSES.has(geminiRes.status)) break;
       console.warn(`Gemini ${geminiRes.status} on attempt ${attempt + 1}, retrying...`);
+    }
+
+    if (!geminiRes) {
+      throw lastErr instanceof Error ? lastErr : new Error(String(lastErr || "Gemini request failed after retries"));
     }
 
     if (!geminiRes.ok) {
