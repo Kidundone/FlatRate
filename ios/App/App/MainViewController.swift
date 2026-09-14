@@ -36,12 +36,27 @@ class MainViewController: CAPBridgeViewController {
     // the JS handler — a JS-only fix (toggling the viewport meta tag's
     // user-scalable) turned out to be unreliable, since WKWebView computes
     // its zoom limits from the viewport meta at initial page load and
-    // doesn't reliably re-read it on a later DOM mutation. Disabling the
-    // scroll view's own pinch/double-tap zoom recognizers here removes the
-    // conflict at its source instead of racing it.
+    // doesn't reliably re-read it on a later DOM mutation.
+    //
+    // IMPORTANT: an earlier version of this fix disabled the scroll view's
+    // pinchGestureRecognizer outright (`.isEnabled = false`). That stopped
+    // the whole-page zoom, but it also silently killed the JS-side pinch
+    // entirely — WKWebView synthesizes the `gesturestart`/`gesturechange`/
+    // `gestureend` DOM events straight off that SAME native recognizer's
+    // callbacks, so a disabled recognizer never fires its native pinch
+    // callback and JS never sees a gesture event either. That's why the
+    // in-app photo pinch-zoom stopped responding at all once this was added.
+    //
+    // The fix: leave the recognizer itself enabled (so it keeps recognizing
+    // pinches and keeps dispatching gesture events to JS), and instead pin
+    // the scroll view's zoom range to 1.0 so there's nothing for it to
+    // visually zoom. The recognizer still fires; the page just can't scale.
     private func disableNativeWebViewZoom() {
         guard let scrollView = webView?.scrollView else { return }
-        scrollView.pinchGestureRecognizer?.isEnabled = false
+        scrollView.pinchGestureRecognizer?.isEnabled = true
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 1.0
+        scrollView.bouncesZoom = false
         for recognizer in scrollView.gestureRecognizers ?? [] {
             if let tap = recognizer as? UITapGestureRecognizer, tap.numberOfTapsRequired == 2 {
                 tap.isEnabled = false
