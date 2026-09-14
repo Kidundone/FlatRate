@@ -993,6 +993,7 @@ function initPhotoZoom(wrap) {
   let pinchStartDist = 0, pinchStartScale = 1;
   let dragStart = null;
   let lastTapTime = 0, lastTapPt = null;
+  let gestureActive = false, gestureStartScale = 1;
 
   const img = () => wrap.querySelector("img");
 
@@ -1066,6 +1067,11 @@ function initPhotoZoom(wrap) {
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+    // On iOS/WKWebView, two-finger touches are handled by the gesturestart/
+    // change/end listeners below instead (see comment there) — bail out here
+    // so the two pinch implementations don't both try to scale at once.
+    if (gestureActive) return;
+
     if (pointers.size === 2) {
       const pts = [...pointers.values()];
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
@@ -1102,6 +1108,39 @@ function initPhotoZoom(wrap) {
     const newScale = Math.min(MAX_SCALE, Math.max(1, scale - e.deltaY * 0.01));
     zoomAt(e.clientX, e.clientY, newScale);
     apply(false);
+  }, { passive: false });
+
+  // WebKit/Safari's proprietary GestureEvent (gesturestart/change/end, with
+  // e.scale relative to gesture start) — this is what actually drives pinch
+  // reliably on iOS. Reconstructing pinch from two-finger Pointer Events
+  // (the pointerdown/pointermove branches above) is the standards-based
+  // approach and does work on Chromium (Android/desktop), but WKWebView has
+  // long-standing gaps tracking two SIMULTANEOUS pointers through a pinch —
+  // this was the actual reason pinch never responded on the phone even after
+  // the native scroll-view zoom conflict was fixed. Gesture events are
+  // WebKit-only, so this is additive: Android/desktop keep using the pointer
+  // path above, gated off here whenever a real gesture is in progress so the
+  // two don't both try to scale the same touch.
+  wrap.addEventListener("gesturestart", (e) => {
+    e.preventDefault();
+    gestureActive = true;
+    dragStart = null;
+    gestureStartScale = scale;
+  }, { passive: false });
+
+  wrap.addEventListener("gesturechange", (e) => {
+    if (!gestureActive) return;
+    e.preventDefault();
+    const newScale = Math.min(MAX_SCALE, Math.max(1, gestureStartScale * e.scale));
+    zoomAt(e.clientX, e.clientY, newScale);
+    apply(false);
+  }, { passive: false });
+
+  wrap.addEventListener("gestureend", (e) => {
+    if (!gestureActive) return;
+    e.preventDefault();
+    gestureActive = false;
+    if (scale < 1.02) reset(true);
   }, { passive: false });
 
   const api = {
