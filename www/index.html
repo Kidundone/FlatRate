@@ -1430,9 +1430,15 @@
     <div class="levelUpSub" id="levelUpSub"></div>
   </div>
 </div>
-<script src="./vendor/jspdf.umd.min.js"></script>
+<!-- 357KB — was loading render-blocking on EVERY page load even though it's
+     only touched when someone taps an "Export PDF" button. defer lets the
+     browser parse/paint the actual app first; script order among defer'd
+     tags is preserved (this still runs before app.js), and every jsPDF call
+     site already guards for "not ready yet" so there's no behavior change,
+     just no more paying for it before first paint. -->
+<script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.fde4484ffa.js" defer></script>
+<script src="./app.753a6e1f72.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
