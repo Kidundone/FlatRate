@@ -1173,8 +1173,20 @@ function initPhotoZoom(wrap) {
  * Scoped to just while a photo viewer is open (rather than disabling zoom
  * app-wide) so nothing about normal accessibility zoom elsewhere in the app
  * changes — restores the original viewport content on unlock.
+ *
+ * SKIPPED ENTIRELY on native iOS. MainViewController.swift already locks
+ * page zoom at the native layer (scrollView.minimumZoomScale/maximumZoomScale
+ * = 1.0) without ever touching this meta tag, so this toggle is redundant
+ * there — and mutating the viewport meta at runtime is a known WKWebView
+ * trouble spot: its internal layout/touch-hit-testing can get out of sync
+ * with what's actually rendered until something else forces a re-layout
+ * (e.g. a horizontal scroll), which matches reports of taps landing wrong
+ * or not registering until scrolling sideways, right after opening/closing
+ * a photo viewer repeatedly. Left in place for PWA/mobile Safari, where
+ * there's no native layer to lock zoom for us instead.
  */
 function setViewportZoomLocked(locked) {
+  if (window.Capacitor?.getPlatform?.() === "ios") return;
   const meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
   if (locked) {
