@@ -507,29 +507,42 @@ async function runOnce() {
   if (window.__FR_BOOTED__) return;
   window.__FR_BOOTED__ = true;
 
-  // Init tabs FIRST — synchronously, before any await that could hang on network.
-  // bootAuth() awaits a Supabase network call and can hang indefinitely on slow
-  // connections (especially iOS). Tabs must work even if auth never resolves.
-  initMoreTabs?.();
-
-  wirePhotoPickers?.();
-  setSelectedPhotoFile?.(null);
-  setPhotoUploadTarget?.("");
-  initEmpIdBoot?.();
-  wireEmpIdReload?.();
-  wireAuthUI();
-  if (window.__APP_BOOTED__) {
-    console.warn("App already booted.");
-  } else {
-    window.__APP_BOOTED__ = true;
-    await bootAuth().catch(logErr("bootAuth"));
-  }
-
-  // Dismiss splash — auth is done, app is ready to show
+  // Dismiss splash — defined up front and run in a `finally` below so a
+  // thrown error anywhere in the pre-splash boot steps can NEVER leave the
+  // user stuck staring at a permanent black screen. Any one of those steps
+  // throwing synchronously used to abort runOnce() entirely before this
+  // code ever ran — same failure mode bootAuth's own withTimeout guards
+  // against for a hung network call, but for a plain thrown error instead.
   const _splash = document.getElementById("appSplash");
-  if (_splash) {
-    _splash.classList.add("hide");
-    setTimeout(() => { _splash.style.display = "none"; }, 380);
+  const hideSplash = () => {
+    if (_splash) {
+      _splash.classList.add("hide");
+      setTimeout(() => { _splash.style.display = "none"; }, 380);
+    }
+  };
+
+  try {
+    // Init tabs FIRST — synchronously, before any await that could hang on network.
+    // bootAuth() awaits a Supabase network call and can hang indefinitely on slow
+    // connections (especially iOS). Tabs must work even if auth never resolves.
+    initMoreTabs?.();
+
+    wirePhotoPickers?.();
+    setSelectedPhotoFile?.(null);
+    setPhotoUploadTarget?.("");
+    initEmpIdBoot?.();
+    wireEmpIdReload?.();
+    wireAuthUI();
+    if (window.__APP_BOOTED__) {
+      console.warn("App already booted.");
+    } else {
+      window.__APP_BOOTED__ = true;
+      await bootAuth().catch(logErr("bootAuth"));
+    }
+  } catch (e) {
+    console.error("[runOnce] a pre-splash boot step threw — showing the app anyway:", e);
+  } finally {
+    hideSplash();
   }
 
   await ensureDefaultTypes().catch(logErr("ensureDefaultTypes"));
