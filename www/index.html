@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.8741b0c0e5.css">
+  <link rel="stylesheet" href="./app.67223a1167.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -761,13 +761,30 @@
     <!-- SETTINGS TAB -->
     <div class="moreTabPanel" id="mPanel-settings" role="tabpanel">
 
-      <!-- Profile -->
+      <!-- Profile & Rate — kept always visible: these are the handful of
+           settings people actually touch often (or need once at setup). -->
       <section class="card moreCard" style="margin-top:12px;">
         <div class="moreCardHeader">Profile</div>
         <div class="moreRow">
           <div class="moreRowLabel">Employee #</div>
           <!-- settingsEmpId: separate from main-page empId to avoid duplicate-ID conflict in SPA -->
           <input id="settingsEmpId" inputmode="numeric" placeholder="12345" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Your Name</div>
+            <div class="moreRowSub">Used to greet you and to sign your dispute reports</div>
+          </div>
+          <input id="settingsUserName" type="text" maxlength="40" autocomplete="given-name" placeholder="First name" class="moreInput moreInputNarrow" />
+        </div>
+        <div class="moreDivider"></div>
+        <div class="moreRow">
+          <div>
+            <div class="moreRowLabel">Default Rate ($/hr)</div>
+            <div class="moreRowSub">Applied to all new entries</div>
+          </div>
+          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Your $/hr" class="moreInput moreInputNarrow" />
         </div>
         <div class="moreDivider"></div>
         <div id="authForm">
@@ -796,105 +813,92 @@
         </div>
       </section>
 
-      <!-- Rate & Display -->
+      <!-- Pay Period — configured once at setup, rarely touched again, so it's
+           tucked behind a details toggle instead of sitting open by default.
+           (Team link removed here: the "Manage a shop, or on a team?" banner
+           at the top of the More page already covers it — no need to say it twice.) -->
       <section class="card moreCard">
-        <div class="moreCardHeader">Rate &amp; Display</div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Default Rate ($/hr)</div>
-            <div class="moreRowSub">Applied to all new entries</div>
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Pay Period</summary>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Standard Day</div>
+              <div class="moreRowSub">Hours in a full shift — the baseline your efficiency is measured against</div>
+            </div>
+            <input id="settingsStandardDay" type="number" inputmode="decimal" min="1" max="24" step="0.5" placeholder="8" class="moreInput moreInputNarrow" />
           </div>
-          <input id="settingsDefaultRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Your $/hr" class="moreInput moreInputNarrow" />
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Your Name</div>
-            <div class="moreRowSub">Used to greet you and to sign your dispute reports</div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Pay Week Starts</div>
+              <div class="moreRowSub">Match your shop's payroll week so app totals line up with your check</div>
+            </div>
+            <select id="payWeekStartDay" class="moreInput moreInputNarrow">
+              <option value="0">Sun</option>
+              <option value="1" selected>Mon</option>
+              <option value="2">Tue</option>
+              <option value="3">Wed</option>
+              <option value="4">Thu</option>
+              <option value="5">Fri</option>
+              <option value="6">Sat</option>
+            </select>
           </div>
-          <input id="settingsUserName" type="text" maxlength="40" autocomplete="given-name" placeholder="First name" class="moreInput moreInputNarrow" />
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Standard Day</div>
-            <div class="moreRowSub">Hours in a full shift — the baseline your efficiency is measured against</div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Payroll Cutoff Time</div>
+              <div class="moreRowSub">Work turned in after this on the start day counts toward the next check</div>
+            </div>
+            <input id="payWeekCutoff" type="time" class="moreInput moreInputNarrow" value="00:00" />
           </div>
-          <input id="settingsStandardDay" type="number" inputmode="decimal" min="1" max="24" step="0.5" placeholder="8" class="moreInput moreInputNarrow" />
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Pay Week Starts</div>
-            <div class="moreRowSub">Match your shop's payroll week so app totals line up with your check</div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Weekly Goal</div>
+              <div class="moreRowSub">Target hours — shows ring progress</div>
+            </div>
+            <div class="moreInputGroup">
+              <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
+              <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
+            </div>
           </div>
-          <select id="payWeekStartDay" class="moreInput moreInputNarrow">
-            <option value="0">Sun</option>
-            <option value="1" selected>Mon</option>
-            <option value="2">Tue</option>
-            <option value="3">Wed</option>
-            <option value="4">Thu</option>
-            <option value="5">Fri</option>
-            <option value="6">Sat</option>
-          </select>
-        </div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Payroll Cutoff Time</div>
-            <div class="moreRowSub">Work turned in after this on the start day counts toward the next check</div>
+        </details>
+      </section>
+
+      <!-- Display -->
+      <section class="card moreCard">
+        <details class="moreSectionDetails">
+          <summary class="moreCardHeader moreSectionSummary">Display</summary>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Appearance</div>
+              <div class="moreRowSub">Auto follows system setting</div>
+            </div>
+            <div class="seg">
+              <button class="segBtn" id="dmAuto" type="button">Auto</button>
+              <button class="segBtn" id="dmLight" type="button">Light</button>
+              <button class="segBtn" id="dmDark" type="button">Dark</button>
+            </div>
           </div>
-          <input id="payWeekCutoff" type="time" class="moreInput moreInputNarrow" value="00:00" />
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Weekly Goal</div>
-            <div class="moreRowSub">Target hours — shows ring progress</div>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div class="moreRowLabel">Accent Color</div>
+            <label class="accentPickerLabel" title="Choose accent color">
+              <input type="color" id="accentColorInput" />
+              <div id="accentColorPreview" class="accentColorPreview"></div>
+            </label>
           </div>
-          <div class="moreInputGroup">
-            <input id="flaggedHours" inputmode="decimal" type="number" step="0.5" min="0" placeholder="40" class="moreInput moreInputNarrow" />
-            <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
+          <div class="moreDivider"></div>
+          <div class="moreRow">
+            <div>
+              <div class="moreRowLabel">Compact List</div>
+              <div class="moreRowSub">More entries on screen at once</div>
+            </div>
+            <label class="moreToggle">
+              <input id="settingsCompactList" type="checkbox" />
+              <span class="moreToggleTrack"></span>
+            </label>
           </div>
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Appearance</div>
-            <div class="moreRowSub">Auto follows system setting</div>
-          </div>
-          <div class="seg">
-            <button class="segBtn" id="dmAuto" type="button">Auto</button>
-            <button class="segBtn" id="dmLight" type="button">Light</button>
-            <button class="segBtn" id="dmDark" type="button">Dark</button>
-          </div>
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div class="moreRowLabel">Accent Color</div>
-          <label class="accentPickerLabel" title="Choose accent color">
-            <input type="color" id="accentColorInput" />
-            <div id="accentColorPreview" class="accentColorPreview"></div>
-          </label>
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Compact List</div>
-            <div class="moreRowSub">More entries on screen at once</div>
-          </div>
-          <label class="moreToggle">
-            <input id="settingsCompactList" type="checkbox" />
-            <span class="moreToggleTrack"></span>
-          </label>
-        </div>
-        <div class="moreDivider"></div>
-        <div class="moreRow">
-          <div>
-            <div class="moreRowLabel">Team</div>
-            <div class="moreRowSub">Create or join a shop — managers see team jobs</div>
-          </div>
-          <a href="./team.html" class="btn" style="text-decoration:none;">Open</a>
-        </div>
+        </details>
       </section>
 
       <!-- Notifications -->
@@ -1438,7 +1442,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.518fb6126c.js" defer></script>
+<script src="./app.50bbeb9829.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

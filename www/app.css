@@ -134,9 +134,16 @@ button, a, [role="button"], summary, label { touch-action: manipulation; }
   /* Slid off-screen right by default; CSS moves it on-screen for the active page */
   transform: translateX(100%);
   -webkit-overflow-scrolling: touch;
+  /* Mis-tap fix: translateX(100%) should put this fully outside the viewport,
+     but iOS WKWebView's hit-test area can lag the painted position by a frame
+     (dynamic toolbar/viewport resize, mid page-switch). Disabling
+     pointer-events while off-screen means a stray hit here is simply ignored
+     instead of landing on a control that isn't visually where the finger is. */
+  pointer-events: none;
 }
 body[data-page="more"] #spa-more {
   transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* ── Stats / Breakdown page ──────────────────────────────────────────────── */
@@ -152,9 +159,13 @@ body[data-page="more"] #spa-more {
   transform: translateX(100%);
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  /* See #spa-more above: same mis-tap defense for the off-screen state. */
+  pointer-events: none;
 }
 body[data-page="stats"] #spa-stats {
   transform: translateX(0);
+  pointer-events: auto;
+  pointer-events: auto;
 }
 .statsPageInner {
   padding: 0 0 24px;
@@ -862,7 +873,7 @@ main {
 }
 .iBtn {
   padding: 10px 16px;
-  min-height: 40px;
+  min-height: 44px; /* Apple HIG / Android minimum tap target — was 40px */
   font-size: 12px;
   font-weight: 600;
   border-radius: var(--r-pill);
@@ -979,7 +990,7 @@ a.btn {
   justify-content: center;
   gap: 8px;
   padding: 9px 16px;
-  min-height: 40px;
+  min-height: 44px; /* Apple HIG / Android minimum tap target — was 40px */
   border-radius: var(--r-pill);
   border: 1px solid var(--stroke2);
   background: var(--surface2);
@@ -3202,7 +3213,7 @@ body.compact .list    { gap: 1px; }
 /* RO# always-visible row */
 .fr26RowRef .fr26LabelRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .fr26RefTypeSeg { font-size: 11px; }
-.fr26RefTypeSeg .segBtn { padding: 8px 12px; font-size: 11px; min-height: 36px; }
+.fr26RefTypeSeg .segBtn { padding: 8px 12px; font-size: 11px; min-height: 40px; } /* was 36px — this toggle gets tapped on every entry */
 
 .moreCardHeaderRow {
   display: flex;
