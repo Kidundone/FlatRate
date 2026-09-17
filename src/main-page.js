@@ -2109,6 +2109,26 @@ async function handleSave(ev) {
   }
 }
 
+// History panel's own period-stepping state. Deliberately separate from
+// window.__NAV_OFFSET__ (the main log's day picker) — paging back through
+// old weeks in here used to accidentally piggyback on whatever day you had
+// selected on the main page (both read navRefDate()), so opening History
+// while looking at "yesterday" near a week boundary could silently show the
+// wrong week. Each range type gets a fresh offset of 0 when you switch tabs.
+let _histOffset = 0;
+let _histCustomStart = null;
+let _histCustomEnd = null;
+let _lastHistorySlice = [];
+let _lastHistoryLabel = "";
+let _lastHistorySlug = "history";
+
+/** "Sep 8" for a single day, "Sep 8 – Sep 14" for a span. */
+function fmtHistRange(startKey, endKey) {
+  const one = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (!startKey || !endKey) return "";
+  return startKey === endKey ? one(startKey) : `${one(startKey)} – ${one(endKey)}`;
+}
+
 function showHistory(open = true) {
   const p = $("historyPanel");
   if (!p) return;
@@ -2191,44 +2211,12 @@ async function renderHistory() {
     .slice()
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
+  const dayOf = (e) => e.dayKey || dayKeyFromISO(e.createdAt);
+
   let slice = all;
-  if (q) {
-    // searching always spans all time so you don't miss anything
-    slice = all.filter(e => matchSearch(e, q));
-  } else if (range === "today") {
-    const dk = selectedHistoryDayKey();
-    slice = all.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)) === dk);
-  } else if (range === "week") {
-    const ws = dateKey(startOfWeekLocal(navRefDate()));
-    const we = dateKey(endOfWeekLocal(navRefDate()));
-    slice = all.filter(e => { const d = e.dayKey || dayKeyFromISO(e.createdAt); return d >= ws && d <= we; });
-  } else if (range === "month") {
-    const now = new Date();
-    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    slice = all.filter(e => (e.dayKey || dayKeyFromISO(e.createdAt)).startsWith(prefix));
-  }
-
-  const totals = computeTotals(slice);
-  const avgJob = totals.count > 0 ? round2(totals.dollars / totals.count) : 0;
-
-  const setText = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-  const rangeLabel = q ? `"${q}"` : range === "today" ? "Today" : range === "week" ? "This Week" : range === "month" ? "This Month" : "All Time";
-  setText("historyMeta", `${slice.length} ${slice.length === 1 ? "entry" : "entries"} · ${rangeLabel}`);
-  setText("histSumCount", String(totals.count));
-  setText("histSumHours", formatHours(totals.hours));
-  setText("histSumDollars", formatMoney(totals.dollars));
-  setText("histSumAvg", totals.count > 0 ? formatMoney(avgJob) : "—");
-
-  const box = $("historyList");
-  if (!box) return;
-  box.innerHTML = "";
-
-  if (!slice.length) {
-    box.innerHTML = `<div class="emptyState"><div class="emptyStateTitle">No entries found</div><div class="emptyStateSub">${q ? `No results for "${escapeHtml(q)}"` : "Nothing logged for this period"}</div></div>`;
-    return;
-  }
-
-  const fmt = (iso) => {
+  let rangeLabel = "";
+  let slugPart = "history";
+  const fmtDayLabel = (iso) => {
     const d = new Date(iso + "T00:00:00");
     const today = todayKeyLocal();
     const yest = (() => { const x = new Date(); x.setDate(x.getDate() - 1); return dateKey(x); })();
@@ -2237,13 +2225,112 @@ async function renderHistory() {
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
+  if (q) {
+    // searching always spans all time so you don't miss anything
+    slice = all.filter(e => matchSearch(e, q));
+    rangeLabel = `"${q}"`;
+    slugPart = "search";
+  } else if (range === "today") {
+    const dk = selectedHistoryDayKey();
+    slice = all.filter(e => dayOf(e) === dk);
+    rangeLabel = fmtDayLabel(dk);
+    slugPart = dk;
+  } else if (range === "week") {
+    const ref = new Date();
+    ref.setDate(ref.getDate() + _histOffset * 7);
+    const ws = dateKey(startOfWeekLocal(ref));
+    const we = dateKey(endOfWeekLocal(ref));
+    slice = all.filter(e => { const d = dayOf(e); return d >= ws && d <= we; });
+    rangeLabel = _histOffset === 0 ? "This Week" : fmtHistRange(ws, we);
+    slugPart = `${ws}_to_${we}`;
+  } else if (range === "month") {
+    const ref = new Date();
+    ref.setMonth(ref.getMonth() + _histOffset, 1);
+    const ms = dateKey(new Date(ref.getFullYear(), ref.getMonth(), 1));
+    const me = dateKey(new Date(ref.getFullYear(), ref.getMonth() + 1, 0));
+    slice = all.filter(e => { const d = dayOf(e); return d >= ms && d <= me; });
+    rangeLabel = _histOffset === 0 ? "This Month" : ref.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    slugPart = ms.slice(0, 7);
+  } else if (range === "custom") {
+    if (!_histCustomStart) _histCustomStart = dateKey(startOfWeekLocal(new Date()));
+    if (!_histCustomEnd) _histCustomEnd = todayKeyLocal();
+    const cs = _histCustomStart, ce = _histCustomEnd > cs ? _histCustomEnd : cs;
+    slice = all.filter(e => { const d = dayOf(e); return d >= cs && d <= ce; });
+    rangeLabel = fmtHistRange(cs, ce);
+    slugPart = `${cs}_to_${ce}`;
+  } else {
+    rangeLabel = "All Time";
+    slugPart = "all-time";
+  }
+
+  const totals = computeTotals(slice);
+  const avgJob = totals.count > 0 ? round2(totals.dollars / totals.count) : 0;
+  const effRate = totals.hours > 0 ? round2(totals.dollars / totals.hours) : 0;
+  const cbCount = slice.filter(e => e.isComeback).length;
+
+  const setText = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+  const metaBits = [`${slice.length} ${slice.length === 1 ? "entry" : "entries"}`, rangeLabel];
+  if (effRate > 0) metaBits.push(`⚡ ${formatMoney(effRate)}/hr`);
+  if (cbCount > 0) metaBits.push(`⚠️ ${cbCount} comeback${cbCount !== 1 ? "s" : ""}`);
+  setText("historyMeta", metaBits.join(" · "));
+  setText("histSumCount", String(totals.count));
+  setText("histSumHours", formatHours(totals.hours));
+  setText("histSumDollars", formatMoney(totals.dollars));
+  setText("histSumAvg", totals.count > 0 ? formatMoney(avgJob) : "—");
+
+  // Nav row (step through weeks/months) and the custom date row only make
+  // sense for their own tab, and never while a search is overriding the range.
+  const navRow = $("histNavRow");
+  const navLabel = $("histNavLabel");
+  const customRow = $("histCustomRow");
+  const showNav = !q && (range === "week" || range === "month");
+  if (navRow) navRow.style.display = showNav ? "" : "none";
+  if (navLabel) navLabel.textContent = rangeLabel;
+  const nextBtn = $("histNavNext");
+  if (nextBtn) { nextBtn.disabled = _histOffset >= 0; nextBtn.style.opacity = _histOffset >= 0 ? ".35" : ""; }
+  if (customRow) customRow.style.display = (!q && range === "custom") ? "" : "none";
+  const csInput = $("histCustomStart"), ceInput = $("histCustomEnd");
+  if (csInput && !csInput.value && _histCustomStart) csInput.value = _histCustomStart;
+  if (ceInput && !ceInput.value && _histCustomEnd) ceInput.value = _histCustomEnd;
+
+  // Whatever's on screen right now is exactly what Export PDF ships.
+  _lastHistorySlice = slice;
+  _lastHistoryLabel = rangeLabel;
+  _lastHistorySlug = slugPart;
+  const exportRow = $("historyExportRow");
+  const exportNote = $("historyExportNote");
+  if (exportRow) exportRow.style.display = slice.length ? "" : "none";
+  if (exportNote) exportNote.textContent = `Export ${rangeLabel} · ${slice.length} ${slice.length === 1 ? "entry" : "entries"}`;
+
+  // A short fade so switching ranges/typing a search reads as a refresh,
+  // not an abrupt content swap.
+  const summaryEl = $("historySummary") || document.querySelector(".historySummary");
+  [summaryEl].forEach(el => {
+    if (!el) return;
+    el.classList.remove("histRefresh");
+    void el.offsetWidth; // restart the animation even if it's already mid-fade
+    el.classList.add("histRefresh");
+  });
+
+  const box = $("historyList");
+  if (!box) return;
+  box.classList.remove("histRefresh");
+  void box.offsetWidth;
+  box.classList.add("histRefresh");
+  box.innerHTML = "";
+
+  if (!slice.length) {
+    box.innerHTML = `<div class="emptyState"><div class="emptyStateTitle">No entries found</div><div class="emptyStateSub">${q ? `No results for "${escapeHtml(q)}"` : "Nothing logged for this period"}</div></div>`;
+    return;
+  }
+
   const groups = groupByDay(slice);
   for (const g of groups) {
     const t = computeTotals(g.entries);
     const dayHdr = document.createElement("div");
     dayHdr.className = "histDayHeader";
     dayHdr.innerHTML = `
-      <div class="histDayKey">${escapeHtml(fmt(g.dayKey))}</div>
+      <div class="histDayKey">${escapeHtml(fmtDayLabel(g.dayKey))}</div>
       <div class="histDayTotals">${formatHours(t.hours)} hrs · <span class="histDayPay">${formatMoney(t.dollars)}</span> · ${t.count} job${t.count !== 1 ? "s" : ""}</div>
     `;
     box.appendChild(dayHdr);
@@ -2518,26 +2605,32 @@ function renderWeekChart(thisWeekDollars, lastWeekDollars) {
     </svg>`;
 }
 
-// ── Email / share week PDF ───────────────────────────────────────
-async function shareWeekPDF() {
+// ── Email / share PDF for any timeframe ───────────────────────────
+// Shared by the History panel's "Export PDF" (whatever range/search is
+// currently on screen there) and the old one-tap "this week" shortcut.
+// Pulled out of what used to be shareWeekPDF() so both go through the same,
+// already-proven share-sheet-first/download-fallback path instead of two
+// copies of the same PDF-building code drifting apart over time.
+async function shareRangePDF(entries, label, filenameSlug) {
   const empId = getEmpId();
   if (!empId) { toast("Employee # required"); return; }
 
-  const weekKey = dateKey(startOfWeekLocal(new Date()));
-  const entries = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
-    .filter(e => String(e.weekStartKey || "") === weekKey || String(e.dayKey || "").startsWith(weekKey));
-
-  if (!entries.length) { toast("No entries this week to export"); return; }
+  const rows = Array.isArray(entries) ? entries : [];
+  if (!rows.length) { toast(`No entries for ${label || "this range"} to export`); return; }
 
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) { toast("PDF not ready — refresh and try again"); return; }
 
+  // Oldest first reads like an actual report; the on-screen lists are
+  // newest-first for scanning, which isn't the order you'd want on paper.
+  const sorted = rows.slice().sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+
   const doc = new jsPDF();
   const left = 14;
-  let y = pdfHeader(doc, "Flatrate Buddy — Weekly Report", `Employee: ${empId}   Week: ${weekKey}`);
+  let y = pdfHeader(doc, "Flatrate Buddy — Report", `Employee: ${empId}   ${label || ""}`);
 
   let totalHours = 0, totalPay = 0;
-  const rows = entries.map((e) => {
+  const tableRows = sorted.map((e) => {
     const ro = String(e.ref || e.ro || e.ro_number || "—");
     const type = String(e.type || e.typeText || "—");
     const hrs = round1(Number(e.hours || e.flat_hours || 0));
@@ -2555,7 +2648,7 @@ async function shareWeekPDF() {
       { label: "Hrs", width: 1, align: "right" },
       { label: "Pay", width: 1.2, align: "right" },
     ],
-    rows,
+    rows: tableRows,
   });
 
   doc.setFont(undefined, "bold");
@@ -2565,7 +2658,7 @@ async function shareWeekPDF() {
 
   pdfFooter(doc);
 
-  const filename = `flat-rate-week-${weekKey}.pdf`;
+  const filename = `flat-rate-${filenameSlug || "report"}.pdf`;
 
   // Try Web Share API with file first (works on iOS/Android)
   try {
@@ -2582,6 +2675,24 @@ async function shareWeekPDF() {
   toast("PDF saved!");
 }
 
+/** The old one-tap "Email PDF" shortcut — kept for anything still calling
+ *  it directly, but the button now opens History on the Week tab instead
+ *  (see shareWeekPDFBtn wiring in boot.js) so you can pick a different
+ *  timeframe before exporting rather than always getting this week. */
+async function shareWeekPDF() {
+  const weekKey = dateKey(startOfWeekLocal(new Date()));
+  const entries = (Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])
+    .filter(e => String(e.weekStartKey || "") === weekKey || String(e.dayKey || "").startsWith(weekKey));
+  await shareRangePDF(entries, "This Week", `week-${weekKey}`);
+}
+
+/** Exports exactly what's currently filtered in the History panel —
+ *  whatever range tab, step, custom dates, or search produced the list
+ *  on screen — via the History panel's own "Export PDF" button. */
+async function exportHistoryPDF() {
+  await shareRangePDF(_lastHistorySlice, _lastHistoryLabel, _lastHistorySlug);
+}
+
 window.__FR = window.__FR || {};
 window.__FR.shareDaySummary = shareDaySummary;
 window.__FR.updateShortPayBadge = updateShortPayBadge;
@@ -2589,6 +2700,8 @@ window.__FR.maybeShowOnboarding = maybeShowOnboarding;
 window.__FR.maybeStartTour = maybeStartTour;
 window.__FR.shareReferral = shareReferral;
 window.__FR.shareWeekPDF = shareWeekPDF;
+window.__FR.shareRangePDF = shareRangePDF;
+window.__FR.exportHistoryPDF = exportHistoryPDF;
 window.__FR.shareWeekCard = shareWeekCard;
 window.__FR.requestPushPermission = requestPushPermission;
 window.__FR.render8WeekChart = render8WeekChart;

@@ -940,7 +940,17 @@ async function runOnce() {
     });
 
     document.getElementById("shareTodayBtn")?.addEventListener("click", () => shareDaySummary?.());
-    document.getElementById("shareWeekPDFBtn")?.addEventListener("click", () => shareWeekPDF?.());
+    // Used to just export "this week" straight away. Now it opens History
+    // on the Week tab instead — same one-tap starting point, but History's
+    // own range picker (Today/Week/Month/All/Custom, with step arrows) is
+    // right there if this week isn't actually the one you want.
+    document.getElementById("shareWeekPDFBtn")?.addEventListener("click", () => {
+      document.querySelectorAll("[data-hist-range]").forEach(b => b.classList.remove("active"));
+      document.querySelector('[data-hist-range="week"]')?.classList.add("active");
+      _histOffset = 0;
+      showHistory(true);
+      renderHistory();
+    });
     document.getElementById("shareWeekCardBtn")?.addEventListener("click", () => shareWeekCard?.());
     document.getElementById("shareReferralBtn")?.addEventListener("click", () => shareReferral?.());
     document.getElementById("notifSetupBtn")?.addEventListener("click", () => requestPushPermission?.());
@@ -960,9 +970,39 @@ async function runOnce() {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-hist-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
+        // Fresh step count every time the range TYPE changes — stepping
+        // back 3 weeks, then tapping over to Month, shouldn't leave Month
+        // starting 3 months back too.
+        _histOffset = 0;
+        if (btn.dataset.histRange === "custom") {
+          // Seed sensible defaults the first time Custom is opened so the
+          // two date inputs don't start out blank.
+          if (!_histCustomStart) _histCustomStart = dateKey(startOfWeekLocal(new Date()));
+          if (!_histCustomEnd) _histCustomEnd = todayKeyLocal();
+          const s = document.getElementById("histCustomStart");
+          const e = document.getElementById("histCustomEnd");
+          if (s) s.value = _histCustomStart;
+          if (e) e.value = _histCustomEnd;
+        }
         renderHistory();
       });
     });
+    document.getElementById("histNavPrev")?.addEventListener("click", () => {
+      _histOffset -= 1;
+      renderHistory();
+    });
+    document.getElementById("histNavNext")?.addEventListener("click", () => {
+      if (_histOffset < 0) { _histOffset += 1; renderHistory(); }
+    });
+    document.getElementById("histCustomStart")?.addEventListener("change", (e) => {
+      _histCustomStart = e.target.value || _histCustomStart;
+      renderHistory();
+    });
+    document.getElementById("histCustomEnd")?.addEventListener("change", (e) => {
+      _histCustomEnd = e.target.value || _histCustomEnd;
+      renderHistory();
+    });
+    document.getElementById("historyExportPdfBtn")?.addEventListener("click", () => exportHistoryPDF?.());
     document.getElementById("historySearchInput")?.addEventListener("input", () => {
       clearTimeout(window.__HIST_SEARCH_T__);
       window.__HIST_SEARCH_T__ = setTimeout(renderHistory, 180);

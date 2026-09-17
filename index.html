@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.60f00e186c.css">
+  <link rel="stylesheet" href="./app.0c0c265133.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -573,6 +573,21 @@
           <button type="button" class="segBtn" data-hist-range="week">Week</button>
           <button type="button" class="segBtn" data-hist-range="month">Month</button>
           <button type="button" class="segBtn" data-hist-range="all">All</button>
+          <button type="button" class="segBtn" data-hist-range="custom">Custom</button>
+        </div>
+        <!-- Step back/forward through whichever period (week or month) is
+             selected above — its own offset, independent of the main log's
+             day picker, so paging through past weeks in here never nudges
+             what day you're logging jobs against. -->
+        <div class="histNavRow" id="histNavRow" style="display:none;">
+          <button class="hcNavBtn" id="histNavPrev" type="button" aria-label="Previous period">‹</button>
+          <div class="histNavLabel" id="histNavLabel"></div>
+          <button class="hcNavBtn" id="histNavNext" type="button" aria-label="Next period">›</button>
+        </div>
+        <div class="histCustomRow" id="histCustomRow" style="display:none;">
+          <input type="date" id="histCustomStart" class="fr26Input histCustomInput" aria-label="Start date" />
+          <span class="histCustomSep">–</span>
+          <input type="date" id="histCustomEnd" class="fr26Input histCustomInput" aria-label="End date" />
         </div>
       </div>
       <div class="historySummary">
@@ -580,6 +595,13 @@
         <div class="histSumCell"><div class="stripLabel">Hours</div><div class="stripValue" id="histSumHours">—</div></div>
         <div class="histSumCell"><div class="stripLabel">Pay</div><div class="stripValue stripValue--accent" id="histSumDollars">—</div></div>
         <div class="histSumCell"><div class="stripLabel">Avg/Job</div><div class="stripValue" id="histSumAvg">—</div></div>
+      </div>
+      <!-- Whatever's currently filtered above — this range, this search —
+           is exactly what gets exported. The picker above IS the timeframe
+           picker for the PDF, instead of a second one bolted on elsewhere. -->
+      <div class="historyExportRow" id="historyExportRow" style="display:none;">
+        <span class="historyExportNote" id="historyExportNote"></span>
+        <button class="btn" id="historyExportPdfBtn" type="button">📄 Export PDF</button>
       </div>
       <div id="historyList" class="historyList"></div>
     </div>
@@ -1442,7 +1464,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.6dc7772f93.js" defer></script>
+<script src="./app.55940f1847.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
