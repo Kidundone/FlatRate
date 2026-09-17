@@ -1632,3 +1632,82 @@ function drawPdfTable(doc, { columns, rows, startY }) {
 window.drawPdfTable = drawPdfTable;
 window.pdfHeader = pdfHeader;
 window.pdfFooter = pdfFooter;
+
+/* ── Shared .modalShell open/close ───────────────────────────────────────────
+ * Every .modalShell instance (upgrade, entry detail, photo viewer/modal,
+ * onboarding, payday summary, what's new) used to toggle style.display or
+ * the "open" class directly, each call site inventing its own version —
+ * some animated, most just snapped instantly. These two are now the only
+ * way any of them should open or close, so they all move the same way.
+ *
+ * Opening: clear any stale inline display override, flush a reflow, then
+ * add "open" — the reflow is what makes the opacity/scale transition in
+ * app.css actually have a starting point to animate from instead of
+ * jumping straight to its end state.
+ *
+ * Closing: "open" comes off right away (so anything checking .open — e.g.
+ * a background click handler re-firing — sees the modal as closed
+ * immediately), but "closing" keeps display:flex alive just long enough
+ * for the fade-and-shrink to actually render before the base rule's
+ * display:none takes over. Skipping straight to display:none the instant
+ * .open is removed is exactly what made every close instant before.
+ */
+const MODAL_SHELL_CLOSE_MS = 240;
+
+function openModalShell(el) {
+  if (!el) return;
+  el.classList.remove("closing");
+  clearTimeout(el.__modalShellCloseT);
+  el.style.display = "";
+  void el.offsetWidth; // flush before adding .open so the transition fires
+  el.classList.add("open");
+}
+
+function closeModalShell(el) {
+  if (!el) return;
+  if (!el.classList.contains("open") && !el.classList.contains("closing")) {
+    el.style.display = "none";
+    return;
+  }
+  el.classList.remove("open");
+  el.classList.add("closing");
+  clearTimeout(el.__modalShellCloseT);
+  el.__modalShellCloseT = setTimeout(() => {
+    el.classList.remove("closing");
+    el.style.display = "none";
+  }, MODAL_SHELL_CLOSE_MS);
+}
+window.openModalShell = openModalShell;
+window.closeModalShell = closeModalShell;
+
+/* ── Shared .ltModal open/close ──────────────────────────────────────────────
+ * .ltModal (reqModal, reqThreadModal, lostTimeModal) already had a real
+ * entrance — its base rule is display:flex with a keyframe animation that
+ * replays automatically whenever display actually changes from none, so
+ * simply clearing the inline none is enough to open it correctly, no class
+ * needed there. Closing had no such luck: every call site just set
+ * display:none outright, cutting straight to invisible. closeLtModal() adds
+ * .closing (app.css plays the reverse fade+slide off that) and only applies
+ * display:none once it's finished. openLtModal() exists mainly to cancel a
+ * pending close cleanly if the same modal gets reopened before that timeout
+ * fires — otherwise .closing's forwards-filled exit animation would still be
+ * sitting on the element, fighting the reopen.
+ */
+function openLtModal(el) {
+  if (!el) return;
+  clearTimeout(el.__ltCloseT);
+  el.classList.remove("closing");
+  el.style.display = "flex";
+}
+
+function closeLtModal(el) {
+  if (!el || el.style.display === "none") return;
+  clearTimeout(el.__ltCloseT);
+  el.classList.add("closing");
+  el.__ltCloseT = setTimeout(() => {
+    el.classList.remove("closing");
+    el.style.display = "none";
+  }, 220);
+}
+window.openLtModal = openLtModal;
+window.closeLtModal = closeLtModal;

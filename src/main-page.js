@@ -1264,15 +1264,13 @@ function openEntryDetail(entry) {
   const photoBtn = document.getElementById("edPhotoBtn");
   if (photoBtn) photoBtn.style.display = entryHasPhoto(entry) ? "" : "none";
 
-  modal.style.display = "";
-  requestAnimationFrame(() => modal.classList.add("open"));
+  openModalShell(modal);
 }
 
 function closeEntryDetail() {
   const modal = document.getElementById("entryDetailModal");
   if (!modal) return;
-  modal.classList.remove("open");
-  modal.style.display = "none";
+  closeModalShell(modal);
   _entryDetailCurrent = null;
 }
 
@@ -2114,9 +2112,22 @@ async function handleSave(ev) {
 function showHistory(open = true) {
   const p = $("historyPanel");
   if (!p) return;
-  p.classList.toggle("open", open);
+  // .open drove display:flex directly before — closing it just fell straight
+  // back to the base rule's display:none with no chance for the sheet's
+  // slideDown/backdrop fade (app.css) to actually render. .closing keeps
+  // display:flex alive for exactly as long as those need.
+  clearTimeout(p.__histCloseT);
+  if (open) {
+    p.classList.remove("closing");
+    p.classList.add("open");
+    lockBodyScroll();
+  } else {
+    p.classList.remove("open");
+    p.classList.add("closing");
+    p.__histCloseT = setTimeout(() => p.classList.remove("closing"), 240);
+    unlockBodyScroll();
+  }
   p.setAttribute("aria-hidden", open ? "false" : "true");
-  if (open) lockBodyScroll(); else unlockBodyScroll();
 }
 
 function buildHistEntryRow(e) {
@@ -2420,7 +2431,7 @@ function maybeShowOnboarding() {
 
   const modal = document.getElementById("onboardingModal");
   if (!modal) return;
-  modal.style.display = "flex";
+  openModalShell(modal);
 
   document.getElementById("onboardDoneBtn")?.addEventListener("click", () => {
     const empVal = (document.getElementById("onboardEmpId")?.value || "").trim();
@@ -2443,7 +2454,7 @@ function maybeShowOnboarding() {
       updateEarningsPreview?.();
     }
     localStorage.setItem("fr_onboard_done", "1");
-    modal.style.display = "none";
+    closeModalShell(modal);
     setTimeout(() => startTour(), 400);
   });
 }
@@ -4906,7 +4917,7 @@ function openLostTimeModal(gapHours, dayKey) {
   };
 
   const close = () => {
-    modal.style.display = "none";
+    closeLtModal(modal);
     unlockBodyScroll();
     chipsEl.onclick = null;
     rowsEl.onclick = null;
@@ -4929,7 +4940,7 @@ function openLostTimeModal(gapHours, dayKey) {
   skipBtn.onclick = close;
 
   renderRows();
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
 }
 

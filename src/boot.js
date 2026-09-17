@@ -1258,12 +1258,11 @@ function showWhatsNew(version) {
   if (!items.length) return;
   list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
   if (verLbl) verLbl.textContent = version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
-  modal.style.display = "flex";
+  openModalShell(modal);
 }
 
 function closeWhatsNew() {
-  const modal = document.getElementById("whatsNewModal");
-  if (modal) modal.style.display = "none";
+  closeModalShell(document.getElementById("whatsNewModal"));
   localStorage.setItem(LS_SEEN_VER, APP_VERSION);
 }
 

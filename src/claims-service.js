@@ -240,7 +240,7 @@ async function openRequestModal(prefill = {}) {
   if (draftErr) { draftErr.style.display = "none"; draftErr.textContent = ""; }
 
   applyKindHint();
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
   setTimeout(() => document.getElementById("reqSubject")?.focus(), 80);
 }
@@ -255,8 +255,7 @@ function applyKindHint() {
 }
 
 function closeRequestModal() {
-  const m = document.getElementById("reqModal");
-  if (m) m.style.display = "none";
+  closeLtModal(document.getElementById("reqModal"));
   unlockBodyScroll();
 }
 
@@ -402,7 +401,7 @@ async function openClaimThread(claimId) {
   const wd = document.getElementById("reqWithdrawBtn");
   if (wd) wd.style.display = c.status === "open" ? "" : "none";
 
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
   await renderClaimMessages(c.id);
 }
@@ -470,7 +469,7 @@ async function withdrawClaim() {
   try {
     const { error } = await sb().from("claims").delete().eq("id", ACTIVE_CLAIM.id);
     if (error) throw error;
-    document.getElementById("reqThreadModal").style.display = "none";
+    closeLtModal(document.getElementById("reqThreadModal"));
     unlockBodyScroll();
     ACTIVE_CLAIM = null;
     toast("Request withdrawn");
@@ -508,7 +507,7 @@ function initRequestsUI() {
   });
   document.getElementById("reqWithdrawBtn")?.addEventListener("click", withdrawClaim);
   document.getElementById("reqThreadCloseBtn")?.addEventListener("click", () => {
-    document.getElementById("reqThreadModal").style.display = "none";
+    closeLtModal(document.getElementById("reqThreadModal"));
     unlockBodyScroll();
     ACTIVE_CLAIM = null;
     renderRequests();

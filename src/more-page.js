@@ -168,12 +168,11 @@ function showUpgradeModal() {
     if (m) m.textContent = window.__BILLING__?.monthlyLabel || "Monthly";
     if (y) y.textContent = window.__BILLING__?.yearlyLabel || "Yearly";
   }
-  modal.style.display = "flex";
+  openModalShell(modal);
 }
 
 function hideUpgradeModal() {
-  const modal = document.getElementById("upgradeModal");
-  if (modal) modal.style.display = "none";
+  closeModalShell(document.getElementById("upgradeModal"));
 }
 
 async function startCheckout(plan) {
@@ -3158,7 +3157,7 @@ async function showPaydaySummary() {
   const modal = document.getElementById("paydaySummaryModal");
   if (!modal) return;
   const s = await buildWeekSummary();
-  if (!s) { modal.classList.add("open"); return; } // show blank if no emp
+  if (!s) { openModalShell(modal); return; } // show blank if no emp
 
   const weekLbl = document.getElementById("paydaySummaryWeek");
   const statsEl = document.getElementById("paydaySummaryStats");
@@ -3206,19 +3205,19 @@ async function showPaydaySummary() {
   const pdfBtn = document.getElementById("paydayPdfBtn");
   if (pdfBtn) {
     pdfBtn.onclick = async () => {
-      modal.classList.remove("open");
+      closeModalShell(modal);
       await exportEntriesToPDF(s.weekEntries);
     };
   }
 
-  modal.classList.add("open");
+  openModalShell(modal);
 }
 
 document.getElementById("paydaySummaryCloseBtn")?.addEventListener("click", () => {
-  document.getElementById("paydaySummaryModal")?.classList.remove("open");
+  closeModalShell(document.getElementById("paydaySummaryModal"));
 });
 document.getElementById("paydaySummaryModal")?.addEventListener("click", (e) => {
-  if (e.target === e.currentTarget) e.currentTarget.classList.remove("open");
+  if (e.target === e.currentTarget) closeModalShell(e.currentTarget);
 });
 
 window.__FR.showPaydaySummary = showPaydaySummary;

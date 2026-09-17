@@ -418,7 +418,7 @@ function openPhotoModal(url, pathLabel) {
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
   setViewportZoomLocked(true);
 
-  modal.classList.add("open");
+  openModalShell(modal);
   lockBodyScroll();
 }
 
@@ -438,10 +438,7 @@ function closePhotoModal(){
   if (img) img.src = "";
   document.getElementById("photoImgZoomWrap")?._photoZoom?.reset();
   setViewportZoomLocked(false);
-  if (shell) {
-    shell.classList.remove("open");
-    shell.style.display = "";
-  }
+  closeModalShell(shell);
   unlockBodyScroll();
 }
 
@@ -567,8 +564,11 @@ async function openPhotoViewer(e){
   // round trip, and awaiting it before showing anything made the tap look dead —
   // you'd back out to another page and come back to find it had loaded.
   meta.textContent = `${label} • ${e.work_date || e.dayKey || ""}`;
-  shell.style.display = "block";
-  shell.classList.add("open");
+  // Was inline display:block before .open ever got added — since inline
+  // style outranks the .modalShell.open{display:flex} class rule, that
+  // silently defeated the shell's flex centering the whole time. openModalShell()
+  // never sets an inline display like that, so this also fixes it.
+  openModalShell(shell);
 
   const zoomWrap = document.getElementById("photoFullZoomWrap");
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
@@ -679,8 +679,7 @@ function closePhotoViewer(){
   if (img) img.src = "";
   document.getElementById("photoFullZoomWrap")?._photoZoom?.reset();
   setViewportZoomLocked(false);
-  shell.classList.remove("open");
-  shell.style.display = "none";
+  closeModalShell(shell);
 }
 
 
