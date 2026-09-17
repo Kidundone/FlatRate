@@ -38,18 +38,24 @@ async function saveWeekPayroll({ photoDataUrl }){
   await put(STORES.payroll, { weekStartKey: key, photoDataUrl: photoDataUrl || null, updatedAt: nowISO() });
 }
 
+// Entries can arrive shaped either way depending on how they were loaded —
+// mapServerLogToEntry() (fresh from Supabase) sets .rate/.earnings, but the
+// offline/IndexedDB-cached shape only ever has .cash_amount/.hourly_rate.
+// Checking only .rate/.earnings meant every PDF export done from cached or
+// offline data (exactly the shop-floor, no-signal case this app is built
+// for) silently showed $0.00 for every row instead of falling back.
 function rateForPdfEntry(entry, hours) {
-  const directRate = Number(entry?.rate);
+  const directRate = Number(entry?.rate ?? entry?.hourly_rate);
   if (Number.isFinite(directRate) && directRate >= 0) return directRate;
 
-  const earnings = Number(entry?.earnings);
+  const earnings = Number(entry?.earnings ?? entry?.cash_amount ?? entry?.cash);
   if (Number.isFinite(earnings) && hours > 0) return earnings / hours;
 
   return 0;
 }
 
 function payForPdfEntry(entry, hours, rate) {
-  const earnings = Number(entry?.earnings);
+  const earnings = Number(entry?.earnings ?? entry?.cash_amount ?? entry?.cash);
   if (Number.isFinite(earnings)) return round2(earnings);
   return round2(hours * rate);
 }
@@ -68,56 +74,41 @@ async function exportEntriesToPDF(entries) {
   }
 
   const doc = new jsPDF();
-  const left = 20;
-  const pageBottom = doc.internal.pageSize.getHeight() - 16;
-  let y = 20;
-
-  const nextLine = (step = 6) => {
-    y += step;
-    if (y > pageBottom) {
-      doc.addPage();
-      y = 20;
-    }
-  };
-
-  doc.setFontSize(16);
-  doc.text("Flatrate Buddy Report", left, y);
-
-  nextLine(10);
-
+  const left = 14;
   const emp = getEmpId() || "N/A";
-  doc.setFontSize(11);
-  doc.text(`Employee: ${emp}`, left, y);
-
-  nextLine(10);
-  doc.text("RO      Type      Hours      Pay", left, y);
-  nextLine(6);
+  let y = pdfHeader(doc, "Flatrate Buddy Report", `Employee: ${emp}`);
 
   let totalHours = 0;
   let totalPay = 0;
-
-  for (const e of rows) {
+  const tableRows = rows.map((e) => {
     const ro = e?.ro_number || e?.ref || e?.ro || "-";
     const type = e?.type || e?.typeText || e?.category || "-";
     const hours = Number(e?.hours ?? e?.flat_hours ?? 0) || 0;
     const rate = rateForPdfEntry(e, hours);
     const pay = payForPdfEntry(e, hours, rate);
-
-    doc.text(
-      `${String(ro).slice(0, 14)}   ${String(type).slice(0, 18)}   ${round1(hours)}   $${pay.toFixed(2)}`,
-      left,
-      y
-    );
-    nextLine(6);
-
     totalHours += hours;
     totalPay += pay;
-  }
+    return [String(ro), String(type), round1(hours), formatMoney(pay)];
+  });
 
-  nextLine(4);
-  doc.text(`Total Hours: ${round1(totalHours)}`, left, y);
-  nextLine(6);
-  doc.text(`Total Pay: $${round2(totalPay).toFixed(2)}`, left, y);
+  y = drawPdfTable(doc, {
+    startY: y,
+    columns: [
+      { label: "RO / STK", width: 2 },
+      { label: "Type", width: 3 },
+      { label: "Hours", width: 1, align: "right" },
+      { label: "Pay", width: 1.2, align: "right" },
+    ],
+    rows: tableRows,
+  });
+
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(11);
+  doc.text(`Total Hours: ${round1(totalHours)}`, left, y + 6);
+  doc.text(`Total Pay: ${formatMoney(round2(totalPay))}`, left, y + 14);
+  doc.setFont(undefined, "normal");
+
+  pdfFooter(doc);
 
   doc.save(`flat-rate-report-${todayKeyLocal()}.pdf`);
 }
@@ -521,23 +512,6 @@ function renderPayStubComparison() {
     `Logged: ${formatHours(loggedHrs)} hrs • ${formatMoney(loggedPay)} | Check: ${formatMoney(checkAmt)} | ${deltaLabel}`;
 }
 
-function drawAuditLines(doc, rows, left, startY) {
-  const pageBottom = doc.internal.pageSize.getHeight() - 16;
-  let y = startY;
-
-  for (const row of rows) {
-    const line = String(row || "");
-    doc.text(line, left, y);
-    y += 6;
-    if (y > pageBottom) {
-      doc.addPage();
-      y = 20;
-    }
-  }
-
-  return y;
-}
-
 async function exportAuditReport() {
   if (!requirePro()) return;
   const { jsPDF } = window.jspdf || {};
@@ -553,28 +527,65 @@ async function exportAuditReport() {
   }
 
   const doc = new jsPDF();
-  const left = 20;
-  let y = 20;
+  const left = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
   const emp = getEmpId() || "N/A";
+  const weekRange = `${ctx.weekStartKey}${ctx.weekEnd ? ` – ${ctx.weekEnd}` : ""}`;
 
-  doc.setFontSize(16);
-  doc.text("Flatrate Buddy — Audit Report", left, y);
-  y += 10;
+  let y = pdfHeader(doc, "Flatrate Buddy — Audit Report", `Employee: ${emp}   Week Ending: ${ctx.weekEnding}   (${weekRange})`);
 
-  doc.setFontSize(11);
-  y = drawAuditLines(doc, [
-    `Employee: ${emp}`,
-    `Week Ending: ${ctx.weekEnding}`,
-    `Week Range: ${ctx.weekStartKey}${ctx.weekEnd ? ` -> ${ctx.weekEnd}` : ""}`,
-    "",
-    `Check Amount: ${ctx.actual.pay > 0 ? formatMoney(ctx.actual.pay) : "Not entered"}`,
-    `Logged Hours: ${formatHours(ctx.expected.hours)}`,
-    `Logged Pay: ${formatMoney(ctx.expected.pay)}`,
-    `Delta (check - logged): ${signedMoneyLabel(ctx.comparison.missingPay * -1)}`,
-    "",
-    `Entries used in expected totals: ${ctx.entries.length}`,
-    "RO      Type      Day      Hours      Pay",
-  ], left, y);
+  // Two-column summary: Check Amount / Logged Hours / Logged Pay on the
+  // left, a highlighted delta callout on the right — the delta is the one
+  // number this whole report exists to prove, so it shouldn't be buried in
+  // a wall of text with everything else.
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  const summaryLines = [
+    ["Check Amount", ctx.actual.pay > 0 ? formatMoney(ctx.actual.pay) : "Not entered"],
+    ["Logged Hours", formatHours(ctx.expected.hours)],
+    ["Logged Pay", formatMoney(ctx.expected.pay)],
+  ];
+  const summaryColWidth = pageWidth * 0.58;
+  let sy = y;
+  summaryLines.forEach(([label, value]) => {
+    doc.setFont(undefined, "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, left, sy);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(30, 30, 30);
+    doc.text(String(value), left + 42, sy);
+    sy += 7;
+  });
+
+  // Delta callout box, right side, colored by outcome.
+  const delta = ctx.comparison.missingPay * -1;
+  const shortPay = delta < -0.01;
+  const boxColor = shortPay ? { r: 254, g: 234, b: 234 } : { r: 230, g: 246, b: 236 };
+  const textColor = shortPay ? { r: 185, g: 28, b: 28 } : { r: 21, g: 128, b: 61 };
+  const boxX = left + summaryColWidth;
+  const boxW = pageWidth - left - boxX;
+  const boxY = y - 8;
+  const boxH = 26;
+  doc.setFillColor(boxColor.r, boxColor.g, boxColor.b);
+  doc.roundedRect(boxX, boxY, boxW, boxH, 3, 3, "F");
+  doc.setFontSize(8.5);
+  doc.setTextColor(textColor.r, textColor.g, textColor.b);
+  doc.setFont(undefined, "normal");
+  doc.text(shortPay ? "SHORTED" : "DELTA (check - logged)", boxX + boxW / 2, boxY + 9, { align: "center" });
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(15);
+  // jsPDF's built-in fonts only cover WinAnsi, not the Unicode minus sign
+  // (U+2212) signedMoneyLabel() uses for on-screen text — it rendered as a
+  // garbled stray character here. Swap in a plain ASCII hyphen for print.
+  doc.text(signedMoneyLabel(delta).replace(/−/g, "-"), boxX + boxW / 2, boxY + 20, { align: "center" });
+  doc.setTextColor(30, 30, 30);
+
+  y = Math.max(sy, boxY + boxH) + 8;
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(10);
+  doc.text(`Entries used in expected totals: ${ctx.entries.length}`, left, y);
+  y += 6;
+  doc.setFont(undefined, "normal");
 
   const entryRows = ctx.entries.map((e) => {
     const ro = e?.ro_number || e?.ref || e?.ro || "-";
@@ -583,19 +594,36 @@ async function exportAuditReport() {
     const hours = Number(e?.hours ?? e?.flat_hours ?? 0) || 0;
     const rate = rateForPdfEntry(e, hours);
     const pay = payForPdfEntry(e, hours, rate);
-    return `${String(ro).slice(0, 10)}   ${String(type).slice(0, 14)}   ${day}   ${round1(hours)}   $${pay.toFixed(2)}`;
+    return [String(ro), String(type), day, round1(hours), formatMoney(pay)];
   });
 
   if (entryRows.length) {
-    y = drawAuditLines(doc, entryRows, left, y + 2);
+    y = drawPdfTable(doc, {
+      startY: y,
+      columns: [
+        { label: "RO / STK", width: 1.6 },
+        { label: "Type", width: 2.4 },
+        { label: "Day", width: 1.3 },
+        { label: "Hours", width: 1, align: "right" },
+        { label: "Pay", width: 1.2, align: "right" },
+      ],
+      rows: entryRows,
+    });
   } else {
-    y = drawAuditLines(doc, ["No entries found for that week."], left, y + 2);
+    doc.setFont(undefined, "italic");
+    doc.setTextColor(120, 120, 120);
+    doc.text("No entries found for that week.", left, y + 4);
+    doc.setFont(undefined, "normal");
+    doc.setTextColor(30, 30, 30);
+    y += 10;
   }
 
-  y = drawAuditLines(doc, [
-    "",
-    `Totals: ${formatHours(ctx.expected.hours)} hrs • ${formatMoney(ctx.expected.pay)}`,
-  ], left, y + 2);
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(11);
+  doc.text(`Totals: ${formatHours(ctx.expected.hours)} hrs • ${formatMoney(ctx.expected.pay)}`, left, y + 6);
+  doc.setFont(undefined, "normal");
+
+  pdfFooter(doc);
 
   doc.save(`flat-rate-audit-${ctx.weekStartKey}.pdf`);
 }

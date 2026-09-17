@@ -2522,41 +2522,37 @@ async function shareWeekPDF() {
   if (!jsPDF) { toast("PDF not ready — refresh and try again"); return; }
 
   const doc = new jsPDF();
-  const left = 20;
-  const pageBottom = doc.internal.pageSize.getHeight() - 16;
-  let y = 20;
-  const nl = (step = 6) => { y += step; if (y > pageBottom) { doc.addPage(); y = 20; } };
-
-  doc.setFontSize(16);
-  doc.text("Flatrate Buddy — Weekly Report", left, y);
-  nl(8);
-  doc.setFontSize(10);
-  doc.text(`Employee: ${empId}   Week: ${weekKey}`, left, y);
-  nl(8);
-  doc.setFontSize(11);
-  doc.text(`${"RO / STK".padEnd(16)} ${"Type".padEnd(20)} ${"Hrs".padEnd(6)} Pay`, left, y);
-  nl(2);
-  doc.line(left, y, 190, y);
-  nl(5);
+  const left = 14;
+  let y = pdfHeader(doc, "Flatrate Buddy — Weekly Report", `Employee: ${empId}   Week: ${weekKey}`);
 
   let totalHours = 0, totalPay = 0;
-  for (const e of entries) {
-    const ro = String(e.ref || e.ro || e.ro_number || "—").slice(0, 14);
-    const type = String(e.type || e.typeText || "—").slice(0, 18);
+  const rows = entries.map((e) => {
+    const ro = String(e.ref || e.ro || e.ro_number || "—");
+    const type = String(e.type || e.typeText || "—");
     const hrs = round1(Number(e.hours || e.flat_hours || 0));
     const pay = round2(Number(e.earnings || e.cash_amount || 0));
-    doc.setFontSize(10);
-    doc.text(`${ro.padEnd(16)} ${type.padEnd(20)} ${String(hrs).padEnd(6)} $${pay.toFixed(2)}`, left, y);
-    nl(6);
     totalHours += hrs;
     totalPay += pay;
-  }
+    return [ro, type, String(hrs), formatMoney(pay)];
+  });
 
-  nl(4);
-  doc.line(left, y, 190, y);
-  nl(6);
+  y = drawPdfTable(doc, {
+    startY: y,
+    columns: [
+      { label: "RO / STK", width: 2 },
+      { label: "Type", width: 3 },
+      { label: "Hrs", width: 1, align: "right" },
+      { label: "Pay", width: 1.2, align: "right" },
+    ],
+    rows,
+  });
+
+  doc.setFont(undefined, "bold");
   doc.setFontSize(11);
-  doc.text(`Total: ${round1(totalHours)} hrs   ${formatMoney(round2(totalPay))}`, left, y);
+  doc.text(`Total: ${round1(totalHours)} hrs   ${formatMoney(round2(totalPay))}`, left, y + 6);
+  doc.setFont(undefined, "normal");
+
+  pdfFooter(doc);
 
   const filename = `flat-rate-week-${weekKey}.pdf`;
 

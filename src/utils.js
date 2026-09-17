@@ -1509,3 +1509,126 @@ function summarizeLostTime(empId, fromKey, toKey, rate) {
     byCategory,
   };
 }
+
+/* ── PDF table renderer ───────────────────────────────────────────────────
+ * Every PDF export used to build its "columns" by string-padding
+ * (`ro.padEnd(16)`), which only lines up in a monospaced font. jsPDF's
+ * default font (Helvetica) isn't monospaced, so real data — a 3-digit RO
+ * next to a 6-digit one, "PDI" next to "Full Detail on Pre-Owned Vehicle" —
+ * drifted the columns out of alignment immediately. That's the #1 reason
+ * these reports look broken.
+ *
+ * This draws real columns at fixed x-positions instead, with a branded
+ * header band, a shaded header row, alternating row stripes, grid lines,
+ * automatic pagination (repeating the header row on new pages), and a
+ * footer with page numbers. Used by shareWeekPDF, exportEntriesToPDF, and
+ * exportAuditReport — the dispute report especially is what a tech hands
+ * to a manager, so it should look like something worth trusting.
+ */
+const PDF_BRAND = { r: 37, g: 99, b: 235 }; // matches app --primary (#2563EB)
+
+function pdfHeader(doc, title, subtitle) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFillColor(PDF_BRAND.r, PDF_BRAND.g, PDF_BRAND.b);
+  doc.rect(0, 0, pageWidth, subtitle ? 32 : 24, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(15);
+  doc.text(title, 14, 16);
+  if (subtitle) {
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(10);
+    doc.text(String(subtitle), 14, 25);
+  }
+  doc.setTextColor(30, 30, 30);
+  doc.setFont(undefined, "normal");
+  doc.setFontSize(10);
+  return (subtitle ? 32 : 24) + 12; // y cursor just below the header band
+}
+
+function pdfFooter(doc, brandLabel = "Flatrate Buddy") {
+  const pageCount = doc.internal.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 140);
+    doc.text(brandLabel, 14, pageHeight - 8);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 8, { align: "right" });
+  }
+  doc.setTextColor(30, 30, 30);
+}
+
+/**
+ * Draws a bordered, column-aligned table starting at startY.
+ * columns: [{ label, width, align: "left"|"right" }] — `width` is a
+ *   relative weight (like flex-grow), stretched to fill the page.
+ * rows: array of arrays of cell values (same length/order as columns).
+ * Returns the y position immediately after the table (before totals/footer).
+ */
+function drawPdfTable(doc, { columns, rows, startY }) {
+  const left = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageBottom = doc.internal.pageSize.getHeight() - 20;
+  const rowHeight = 8;
+  const headerHeight = 9;
+  let y = startY;
+
+  const totalWeight = columns.reduce((sum, c) => sum + c.width, 0);
+  const usableWidth = pageWidth - left * 2;
+  const colWidths = columns.map((c) => (c.width / totalWeight) * usableWidth);
+  const colX = [];
+  { let x = left; for (const w of colWidths) { colX.push(x); x += w; } }
+
+  function cellX(ci) {
+    const align = columns[ci].align || "left";
+    return align === "right" ? colX[ci] + colWidths[ci] - 3 : colX[ci] + 3;
+  }
+
+  function drawHeaderRow() {
+    doc.setFillColor(226, 233, 250);
+    doc.rect(left, y, usableWidth, headerHeight, "F");
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 89);
+    columns.forEach((c, i) => {
+      doc.text(String(c.label), cellX(i), y + headerHeight - 2.5, { align: c.align || "left" });
+    });
+    doc.setDrawColor(196, 206, 230);
+    doc.line(left, y + headerHeight, left + usableWidth, y + headerHeight);
+    y += headerHeight;
+    doc.setFont(undefined, "normal");
+    doc.setTextColor(30, 30, 30);
+  }
+
+  drawHeaderRow();
+
+  rows.forEach((row, i) => {
+    if (y + rowHeight > pageBottom) {
+      doc.addPage();
+      y = 20;
+      drawHeaderRow();
+    }
+    if (i % 2 === 1) {
+      doc.setFillColor(246, 248, 252);
+      doc.rect(left, y, usableWidth, rowHeight, "F");
+    }
+    doc.setFontSize(9);
+    doc.setTextColor(30, 30, 30);
+    row.forEach((cell, ci) => {
+      doc.text(String(cell ?? ""), cellX(ci), y + rowHeight - 2.5, {
+        align: columns[ci].align || "left",
+        maxWidth: colWidths[ci] - 4,
+      });
+    });
+    y += rowHeight;
+  });
+
+  doc.setDrawColor(196, 206, 230);
+  doc.line(left, y, left + usableWidth, y);
+  return y + 4;
+}
+window.drawPdfTable = drawPdfTable;
+window.pdfHeader = pdfHeader;
+window.pdfFooter = pdfFooter;
