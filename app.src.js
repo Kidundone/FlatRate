@@ -14938,28 +14938,90 @@ window.__FR.supabase = window.supabase;
 let _moreSectionLoaded = false;
 let _statsPageLoaded   = false;
 
+// Tab order left→right, matching the bottom tab bar — used to pick a slide
+// direction so switching tabs reads as one continuous strip instead of a
+// snap plus a generic fade-pop.
+const SPA_TAB_ORDER = ["main", "stats", "more"];
+let _spaTransitToken = 0;
+
 function showSpaPage(name) {
   const main  = document.getElementById("spa-main");
   const more  = document.getElementById("spa-more");
   const stats = document.getElementById("spa-stats");
-  if (main) main.style.display = name === "main" ? "" : "none";
-  // #spa-more and #spa-stats use CSS transforms — never display:none (iOS WKWebView bug).
+  const prevName = document.body.dataset.page || "main";
+  if (prevName === name) return; // re-tapping the active tab: nothing to animate
+
+  const dir = SPA_TAB_ORDER.indexOf(name) > SPA_TAB_ORDER.indexOf(prevName) ? 1 : -1;
+  // #spa-main stays a normal in-flow element (never transform-driven) — its
+  // scroll position is what main-page.js's pull-to-refresh and swipe-tracking
+  // read directly, so it can't become a fixed/transform panel without risking
+  // that. #spa-more/#spa-stats are the two that actually slide; whichever of
+  // them is leaving or arriving gets positioned off to the correct side, then
+  // transitions to/from translateX(0). Main itself needs no animation of its
+  // own — it's simply revealed as the opaque overlay slides off it, or
+  // covered as one slides over it, same as a native push/pop transition.
+  const overlays = { stats, more };
+  const prevOverlay = overlays[prevName];
+  const nextOverlay = overlays[name];
+
+  if (nextOverlay) {
+    nextOverlay.style.transitionProperty = "none";
+    nextOverlay.style.transform = `translateX(${dir * 100}%)`;
+    void nextOverlay.offsetWidth; // flush the starting position before animating
+    nextOverlay.style.transitionProperty = "";
+  }
+  if (prevOverlay) prevOverlay.style.transform = `translateX(${-dir * 100}%)`;
+
   document.body.dataset.page = name;
   window.__PAGE__ = name;
+  // Main needs to already be there to be revealed as an overlay slides off
+  // it, so show it immediately when it's the destination. When it's the
+  // origin, leave it visible until the incoming overlay has fully covered
+  // it (handled in the timeout below) — hiding it now would flash bare
+  // background for a frame before the overlay finishes sliding in.
+  if (main && name === "main") main.style.display = "";
+  // #spa-more and #spa-stats use CSS transforms — never display:none (iOS WKWebView bug).
   document.querySelectorAll(".tabItem[data-spa-page]").forEach(t => {
     const active = t.dataset.spaPage === name;
     t.classList.toggle("tabItem--active", active);
     if (active) t.setAttribute("aria-current", "page");
     else t.removeAttribute("aria-current");
   });
-  // Page-enter animation
-  const pageEl = name === "main" ? main : name === "more" ? more : name === "stats" ? stats : null;
-  if (pageEl) {
-    pageEl.classList.remove("spaPageIn");
-    void pageEl.offsetWidth;
-    pageEl.classList.add("spaPageIn");
-    setTimeout(() => pageEl.classList.remove("spaPageIn"), 260);
-  }
+
+  const myToken = ++_spaTransitToken;
+  requestAnimationFrame(() => {
+    // A rapid follow-up tap before this frame paints supersedes it — without
+    // this check, this stale callback would still fire on the next frame and
+    // yank a panel the user already navigated away from back on screen.
+    if (myToken !== _spaTransitToken) return;
+    if (nextOverlay) nextOverlay.style.transform = "translateX(0)";
+  });
+
+  setTimeout(() => {
+    // Only clear these two panels' inline transforms if no newer switch has
+    // started since — otherwise this stale timeout would stomp on a
+    // still-in-flight animation from a rapid follow-up tap.
+    if (myToken === _spaTransitToken) {
+      [prevOverlay, nextOverlay].forEach((el) => {
+        if (!el) return;
+        // Both off-screen resting spots (this one's animated end position,
+        // and the CSS default it falls back to once cleared) are invisible
+        // on their own — but clearing with the transition still live would
+        // animate BETWEEN them, sweeping straight across the visible center.
+        // Suppressing it for this one instant swap keeps that jump unseen.
+        el.style.transitionProperty = "none";
+        el.style.transform = "";
+        void el.offsetWidth;
+        el.style.transitionProperty = "";
+      });
+    }
+    // Main's hide, in contrast, is checked against the CURRENT page rather
+    // than gated on the token — idempotent, so it self-corrects no matter
+    // how many switches happened while this was pending, and can never
+    // leave main stuck visible underneath everything.
+    if (main && document.body.dataset.page !== "main") main.style.display = "none";
+  }, 340);
+
   window.scrollTo(0, 0);
   if (name === "more"  && more)  more.scrollTop  = 0;
   if (name === "stats" && stats) stats.scrollTop = 0;

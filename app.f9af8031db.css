@@ -131,8 +131,12 @@ button, a, [role="button"], summary, label { touch-action: manipulation; }
   overscroll-behavior-x: none;
   background: var(--bg);
   z-index: 10;
-  /* Slid off-screen right by default; CSS moves it on-screen for the active page */
+  /* Slid off-screen right by default; CSS moves it on-screen for the active page.
+     showSpaPage() in boot.js drives the actual left/right slide via inline
+     transform (direction depends on tab order) — this transition is what
+     turns those JS-set values into real motion instead of an instant snap. */
   transform: translateX(100%);
+  transition: transform 320ms var(--ease);
   -webkit-overflow-scrolling: touch;
   /* Mis-tap fix: translateX(100%) should put this fully outside the viewport,
      but iOS WKWebView's hit-test area can lag the painted position by a frame
@@ -157,6 +161,7 @@ body[data-page="more"] #spa-more {
   background: var(--bg);
   z-index: 10;
   transform: translateX(100%);
+  transition: transform 320ms var(--ease);
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   /* See #spa-more above: same mis-tap defense for the off-screen state. */
@@ -164,7 +169,6 @@ body[data-page="more"] #spa-more {
 }
 body[data-page="stats"] #spa-stats {
   transform: translateX(0);
-  pointer-events: auto;
   pointer-events: auto;
 }
 .statsPageInner {
