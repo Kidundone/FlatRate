@@ -939,7 +939,6 @@ async function runOnce() {
       });
     });
 
-    document.getElementById("shareTodayBtn")?.addEventListener("click", () => shareDaySummary?.());
     // Used to just export "this week" straight away. Now it opens History
     // on the Week tab instead — same one-tap starting point, but History's
     // own range picker (Today/Week/Month/All/Custom, with step arrows) is
@@ -951,7 +950,6 @@ async function runOnce() {
       showHistory(true);
       renderHistory();
     });
-    document.getElementById("shareWeekCardBtn")?.addEventListener("click", () => shareWeekCard?.());
     document.getElementById("shareReferralBtn")?.addEventListener("click", () => shareReferral?.());
     document.getElementById("notifSetupBtn")?.addEventListener("click", () => requestPushPermission?.());
 
