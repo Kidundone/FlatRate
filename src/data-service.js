@@ -96,7 +96,14 @@ async function bootAuth() {
         loadSubscription().catch(() => {});
         window.__FR?.loadCustomTypeAliases?.().catch(() => {});
 
-        if (window.__PAGE__ === "main") {
+        // Always paint the Log page's DOM here, even if the user is
+        // currently on Stats/More — it's an in-memory SPA, so #spa-main's
+        // elements exist the whole time, just visually behind whichever
+        // tab is showing. Signing in from the More tab used to load the
+        // entries but skip this repaint entirely (gated on __PAGE__ ===
+        // "main"), so switching back to Log still showed nothing until a
+        // full app relaunch. refreshUI() is cheap and DOM-safe off-screen.
+        {
           await refreshUI(rows);
           // Flush any entries queued while offline — boot is the right moment
           // since the online event only fires on transitions, not on fresh loads.
