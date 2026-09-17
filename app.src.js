@@ -2997,6 +2997,85 @@ window.drawPdfTable = drawPdfTable;
 window.pdfHeader = pdfHeader;
 window.pdfFooter = pdfFooter;
 
+/* ── Shared .modalShell open/close ───────────────────────────────────────────
+ * Every .modalShell instance (upgrade, entry detail, photo viewer/modal,
+ * onboarding, payday summary, what's new) used to toggle style.display or
+ * the "open" class directly, each call site inventing its own version —
+ * some animated, most just snapped instantly. These two are now the only
+ * way any of them should open or close, so they all move the same way.
+ *
+ * Opening: clear any stale inline display override, flush a reflow, then
+ * add "open" — the reflow is what makes the opacity/scale transition in
+ * app.css actually have a starting point to animate from instead of
+ * jumping straight to its end state.
+ *
+ * Closing: "open" comes off right away (so anything checking .open — e.g.
+ * a background click handler re-firing — sees the modal as closed
+ * immediately), but "closing" keeps display:flex alive just long enough
+ * for the fade-and-shrink to actually render before the base rule's
+ * display:none takes over. Skipping straight to display:none the instant
+ * .open is removed is exactly what made every close instant before.
+ */
+const MODAL_SHELL_CLOSE_MS = 240;
+
+function openModalShell(el) {
+  if (!el) return;
+  el.classList.remove("closing");
+  clearTimeout(el.__modalShellCloseT);
+  el.style.display = "";
+  void el.offsetWidth; // flush before adding .open so the transition fires
+  el.classList.add("open");
+}
+
+function closeModalShell(el) {
+  if (!el) return;
+  if (!el.classList.contains("open") && !el.classList.contains("closing")) {
+    el.style.display = "none";
+    return;
+  }
+  el.classList.remove("open");
+  el.classList.add("closing");
+  clearTimeout(el.__modalShellCloseT);
+  el.__modalShellCloseT = setTimeout(() => {
+    el.classList.remove("closing");
+    el.style.display = "none";
+  }, MODAL_SHELL_CLOSE_MS);
+}
+window.openModalShell = openModalShell;
+window.closeModalShell = closeModalShell;
+
+/* ── Shared .ltModal open/close ──────────────────────────────────────────────
+ * .ltModal (reqModal, reqThreadModal, lostTimeModal) already had a real
+ * entrance — its base rule is display:flex with a keyframe animation that
+ * replays automatically whenever display actually changes from none, so
+ * simply clearing the inline none is enough to open it correctly, no class
+ * needed there. Closing had no such luck: every call site just set
+ * display:none outright, cutting straight to invisible. closeLtModal() adds
+ * .closing (app.css plays the reverse fade+slide off that) and only applies
+ * display:none once it's finished. openLtModal() exists mainly to cancel a
+ * pending close cleanly if the same modal gets reopened before that timeout
+ * fires — otherwise .closing's forwards-filled exit animation would still be
+ * sitting on the element, fighting the reopen.
+ */
+function openLtModal(el) {
+  if (!el) return;
+  clearTimeout(el.__ltCloseT);
+  el.classList.remove("closing");
+  el.style.display = "flex";
+}
+
+function closeLtModal(el) {
+  if (!el || el.style.display === "none") return;
+  clearTimeout(el.__ltCloseT);
+  el.classList.add("closing");
+  el.__ltCloseT = setTimeout(() => {
+    el.classList.remove("closing");
+    el.style.display = "none";
+  }, 220);
+}
+window.openLtModal = openLtModal;
+window.closeLtModal = closeLtModal;
+
 const PHOTO_BUCKET = "proofs"; // private
 
 function setPhotoUploadTarget(path) {
@@ -3417,7 +3496,7 @@ function openPhotoModal(url, pathLabel) {
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
   setViewportZoomLocked(true);
 
-  modal.classList.add("open");
+  openModalShell(modal);
   lockBodyScroll();
 }
 
@@ -3437,10 +3516,7 @@ function closePhotoModal(){
   if (img) img.src = "";
   document.getElementById("photoImgZoomWrap")?._photoZoom?.reset();
   setViewportZoomLocked(false);
-  if (shell) {
-    shell.classList.remove("open");
-    shell.style.display = "";
-  }
+  closeModalShell(shell);
   unlockBodyScroll();
 }
 
@@ -3566,8 +3642,11 @@ async function openPhotoViewer(e){
   // round trip, and awaiting it before showing anything made the tap look dead —
   // you'd back out to another page and come back to find it had loaded.
   meta.textContent = `${label} • ${e.work_date || e.dayKey || ""}`;
-  shell.style.display = "block";
-  shell.classList.add("open");
+  // Was inline display:block before .open ever got added — since inline
+  // style outranks the .modalShell.open{display:flex} class rule, that
+  // silently defeated the shell's flex centering the whole time. openModalShell()
+  // never sets an inline display like that, so this also fixes it.
+  openModalShell(shell);
 
   const zoomWrap = document.getElementById("photoFullZoomWrap");
   if (zoomWrap) initPhotoZoom(zoomWrap)?.reset();
@@ -3678,8 +3757,7 @@ function closePhotoViewer(){
   if (img) img.src = "";
   document.getElementById("photoFullZoomWrap")?._photoZoom?.reset();
   setViewportZoomLocked(false);
-  shell.classList.remove("open");
-  shell.style.display = "none";
+  closeModalShell(shell);
 }
 
 
@@ -5394,15 +5472,13 @@ function openEntryDetail(entry) {
   const photoBtn = document.getElementById("edPhotoBtn");
   if (photoBtn) photoBtn.style.display = entryHasPhoto(entry) ? "" : "none";
 
-  modal.style.display = "";
-  requestAnimationFrame(() => modal.classList.add("open"));
+  openModalShell(modal);
 }
 
 function closeEntryDetail() {
   const modal = document.getElementById("entryDetailModal");
   if (!modal) return;
-  modal.classList.remove("open");
-  modal.style.display = "none";
+  closeModalShell(modal);
   _entryDetailCurrent = null;
 }
 
@@ -6244,9 +6320,22 @@ async function handleSave(ev) {
 function showHistory(open = true) {
   const p = $("historyPanel");
   if (!p) return;
-  p.classList.toggle("open", open);
+  // .open drove display:flex directly before — closing it just fell straight
+  // back to the base rule's display:none with no chance for the sheet's
+  // slideDown/backdrop fade (app.css) to actually render. .closing keeps
+  // display:flex alive for exactly as long as those need.
+  clearTimeout(p.__histCloseT);
+  if (open) {
+    p.classList.remove("closing");
+    p.classList.add("open");
+    lockBodyScroll();
+  } else {
+    p.classList.remove("open");
+    p.classList.add("closing");
+    p.__histCloseT = setTimeout(() => p.classList.remove("closing"), 240);
+    unlockBodyScroll();
+  }
   p.setAttribute("aria-hidden", open ? "false" : "true");
-  if (open) lockBodyScroll(); else unlockBodyScroll();
 }
 
 function buildHistEntryRow(e) {
@@ -6550,7 +6639,7 @@ function maybeShowOnboarding() {
 
   const modal = document.getElementById("onboardingModal");
   if (!modal) return;
-  modal.style.display = "flex";
+  openModalShell(modal);
 
   document.getElementById("onboardDoneBtn")?.addEventListener("click", () => {
     const empVal = (document.getElementById("onboardEmpId")?.value || "").trim();
@@ -6573,7 +6662,7 @@ function maybeShowOnboarding() {
       updateEarningsPreview?.();
     }
     localStorage.setItem("fr_onboard_done", "1");
-    modal.style.display = "none";
+    closeModalShell(modal);
     setTimeout(() => startTour(), 400);
   });
 }
@@ -9036,7 +9125,7 @@ function openLostTimeModal(gapHours, dayKey) {
   };
 
   const close = () => {
-    modal.style.display = "none";
+    closeLtModal(modal);
     unlockBodyScroll();
     chipsEl.onclick = null;
     rowsEl.onclick = null;
@@ -9059,7 +9148,7 @@ function openLostTimeModal(gapHours, dayKey) {
   skipBtn.onclick = close;
 
   renderRows();
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
 }
 
@@ -10146,12 +10235,11 @@ function showUpgradeModal() {
     if (m) m.textContent = window.__BILLING__?.monthlyLabel || "Monthly";
     if (y) y.textContent = window.__BILLING__?.yearlyLabel || "Yearly";
   }
-  modal.style.display = "flex";
+  openModalShell(modal);
 }
 
 function hideUpgradeModal() {
-  const modal = document.getElementById("upgradeModal");
-  if (modal) modal.style.display = "none";
+  closeModalShell(document.getElementById("upgradeModal"));
 }
 
 async function startCheckout(plan) {
@@ -13136,7 +13224,7 @@ async function showPaydaySummary() {
   const modal = document.getElementById("paydaySummaryModal");
   if (!modal) return;
   const s = await buildWeekSummary();
-  if (!s) { modal.classList.add("open"); return; } // show blank if no emp
+  if (!s) { openModalShell(modal); return; } // show blank if no emp
 
   const weekLbl = document.getElementById("paydaySummaryWeek");
   const statsEl = document.getElementById("paydaySummaryStats");
@@ -13184,19 +13272,19 @@ async function showPaydaySummary() {
   const pdfBtn = document.getElementById("paydayPdfBtn");
   if (pdfBtn) {
     pdfBtn.onclick = async () => {
-      modal.classList.remove("open");
+      closeModalShell(modal);
       await exportEntriesToPDF(s.weekEntries);
     };
   }
 
-  modal.classList.add("open");
+  openModalShell(modal);
 }
 
 document.getElementById("paydaySummaryCloseBtn")?.addEventListener("click", () => {
-  document.getElementById("paydaySummaryModal")?.classList.remove("open");
+  closeModalShell(document.getElementById("paydaySummaryModal"));
 });
 document.getElementById("paydaySummaryModal")?.addEventListener("click", (e) => {
-  if (e.target === e.currentTarget) e.currentTarget.classList.remove("open");
+  if (e.target === e.currentTarget) closeModalShell(e.currentTarget);
 });
 
 window.__FR.showPaydaySummary = showPaydaySummary;
@@ -14504,7 +14592,7 @@ async function openRequestModal(prefill = {}) {
   if (draftErr) { draftErr.style.display = "none"; draftErr.textContent = ""; }
 
   applyKindHint();
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
   setTimeout(() => document.getElementById("reqSubject")?.focus(), 80);
 }
@@ -14519,8 +14607,7 @@ function applyKindHint() {
 }
 
 function closeRequestModal() {
-  const m = document.getElementById("reqModal");
-  if (m) m.style.display = "none";
+  closeLtModal(document.getElementById("reqModal"));
   unlockBodyScroll();
 }
 
@@ -14666,7 +14753,7 @@ async function openClaimThread(claimId) {
   const wd = document.getElementById("reqWithdrawBtn");
   if (wd) wd.style.display = c.status === "open" ? "" : "none";
 
-  modal.style.display = "flex";
+  openLtModal(modal);
   lockBodyScroll();
   await renderClaimMessages(c.id);
 }
@@ -14734,7 +14821,7 @@ async function withdrawClaim() {
   try {
     const { error } = await sb().from("claims").delete().eq("id", ACTIVE_CLAIM.id);
     if (error) throw error;
-    document.getElementById("reqThreadModal").style.display = "none";
+    closeLtModal(document.getElementById("reqThreadModal"));
     unlockBodyScroll();
     ACTIVE_CLAIM = null;
     toast("Request withdrawn");
@@ -14772,7 +14859,7 @@ function initRequestsUI() {
   });
   document.getElementById("reqWithdrawBtn")?.addEventListener("click", withdrawClaim);
   document.getElementById("reqThreadCloseBtn")?.addEventListener("click", () => {
-    document.getElementById("reqThreadModal").style.display = "none";
+    closeLtModal(document.getElementById("reqThreadModal"));
     unlockBodyScroll();
     ACTIVE_CLAIM = null;
     renderRequests();
@@ -16049,12 +16136,11 @@ function showWhatsNew(version) {
   if (!items.length) return;
   list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
   if (verLbl) verLbl.textContent = version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
-  modal.style.display = "flex";
+  openModalShell(modal);
 }
 
 function closeWhatsNew() {
-  const modal = document.getElementById("whatsNewModal");
-  if (modal) modal.style.display = "none";
+  closeModalShell(document.getElementById("whatsNewModal"));
   localStorage.setItem(LS_SEEN_VER, APP_VERSION);
 }
 

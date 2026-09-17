@@ -1824,6 +1824,15 @@ a.btn {
 }
 
 /* ── Modal ───────────────────────────────────────── */
+/* All 8 modalShell instances (upgrade, entry detail, photo viewer/modal,
+   onboarding, payday summary, what's new, lost time) now open/close through
+   the shared openModalShell()/closeModalShell() helpers in utils.js — same
+   backdrop fade + content scale for every one instead of each call site
+   inventing its own instant display:none/flex snap.
+   .closing exists only so the close fade has display:flex to animate against
+   for its 240ms — display can't be transitioned directly, and dropping
+   straight to the base rule's display:none the instant .open is removed
+   would cut the fade off before a single frame of it rendered. */
 .modalShell {
   position: fixed;
   inset: 0;
@@ -1835,9 +1844,29 @@ a.btn {
   overscroll-behavior: contain;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  transition: opacity 220ms var(--ease);
 }
 
-.modalShell.open { display: flex; }
+.modalShell.open, .modalShell.closing { display: flex; }
+.modalShell.open { opacity: 1; }
+
+/* The dialog itself settles into place slightly ahead of the backdrop
+   finishing its fade — matches iOS's alert/sheet presentation, where the
+   content arrives a beat before the dim reaches full strength, rather than
+   both popping in at once. Targets the direct child structurally (every
+   modalShell's single content wrapper has its own class already —
+   .modalContent, .onboardCard, .whatsNewSheet, etc.) so this applies
+   uniformly without needing to touch each modal's markup. */
+.modalShell > :first-child {
+  transform: scale(.94);
+  opacity: 0;
+  transition: transform 220ms var(--ease), opacity 180ms var(--ease);
+}
+.modalShell.open > :first-child {
+  transform: scale(1);
+  opacity: 1;
+}
 
 /* Pinch/double-tap zoom wrapper for photo viewers (photoModal, photoViewer).
    overflow:hidden crops panned/zoomed image to the frame.
@@ -1894,6 +1923,10 @@ a.btn {
 }
 
 /* ── History overlay ─────────────────────────────── */
+/* showHistory() in main-page.js toggles .open/.closing the same way the
+   modalShell helpers do (see there for why .closing exists) — the sheet
+   already had a nice slideUp on the way in, it just had no way back down;
+   this gives the backdrop a fade to match and the sheet a proper exit. */
 .historyOverlay {
   position: fixed;
   inset: 0;
@@ -1903,9 +1936,12 @@ a.btn {
   align-items: flex-end;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 220ms var(--ease);
 }
 
-.historyOverlay.open { display: flex; }
+.historyOverlay.open, .historyOverlay.closing { display: flex; }
+.historyOverlay.open { opacity: 1; }
 
 .historySheet {
   width: 100%;
@@ -1919,10 +1955,17 @@ a.btn {
   overflow: hidden;
   animation: slideUp 240ms var(--ease);
 }
+.historyOverlay.closing .historySheet {
+  animation: slideDown 220ms var(--ease) forwards;
+}
 
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
 }
 
 .historyHeader {
@@ -5226,7 +5269,14 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   display: flex; align-items: flex-end; justify-content: center;
   padding: 0; animation: ltFadeIn 160ms ease both;
 }
+/* Had an entrance but no exit — close() just set display:none outright.
+   .closing plays the reverse pair and openLostTimeModal()'s close() now
+   delays the actual display:none until they finish. */
+.ltModal.closing { animation: ltFadeOut 200ms ease forwards; }
+.ltModal.closing .ltInner { animation: ltSlideDown 200ms cubic-bezier(.25,.46,.45,.94) forwards; }
 @keyframes ltFadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes ltFadeOut { from { opacity:1; } to { opacity:0; } }
+@keyframes ltSlideDown { from { transform: translateY(0); } to { transform: translateY(28px); } }
 .ltInner {
   width: 100%; max-width: 520px;
   border-radius: 20px 20px 0 0;
