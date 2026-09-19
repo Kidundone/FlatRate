@@ -473,6 +473,21 @@ body[data-page="stats"] #spa-stats {
   letter-spacing: .05em;
   margin-bottom: 10px;
 }
+/* Outer hosts the fade so it overlays the row instead of scrolling away
+   with it — same split as .statsChipsOuter/.recentTypeChipsOuter. Fade
+   color matches .mnthTrend's own background (--surface2), not the page
+   background, since this row is nested inside that card. */
+.mnthBarsScrollOuter {
+  position: relative;
+}
+.mnthBarsScrollOuter::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--surface2));
+}
 .mnthBarsScroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

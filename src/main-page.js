@@ -5549,9 +5549,15 @@ function _renderMonthlyTrendHtml(entries) {
       <div class="mnthBarLabel">${b.label}</div>
     </div>`;
   }).join("");
+  // .mnthBarsScrollOuter hosts the right-edge fade (same pattern as
+  // .statsChipsOuter/.recentTypeChipsOuter) — without it this row has no
+  // visible scroll affordance on iOS, where the native scrollbar is an
+  // overlay that's invisible until actively dragged.
   return `<div class="mnthTrend">
     <div class="mnthTrendTitle">Monthly Earnings</div>
+    <div class="mnthBarsScrollOuter">
     <div class="mnthBarsScroll"><div class="mnthBarsWrap">${bars}</div></div>
+    </div>
   </div>`;
 }
 
