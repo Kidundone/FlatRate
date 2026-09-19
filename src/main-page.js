@@ -540,27 +540,15 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
     }
   }
 
-  // Goal celebration + milestone check
-  // refreshUI() runs on boot with no user gesture, and __lastGoalPct /
-  // __lastTodayDollars start at 0 — so the very first render of the day's
-  // already-existing data (e.g. $199.50 already earned) looked like a
-  // brand-new crossing of every milestone below it, firing a bogus
-  // celebration toast + haptic?.("success") on every cold load. WebKit
-  // then blocked the vibrate call since no tap had happened yet — that's
-  // the "Blocked call to navigator.vibrate" console error found live.
-  // Prime the trackers silently on the first render instead of checking.
-  if (!__milestonesPrimed) {
-    __milestonesPrimed = true;
-    __lastTodayDollars = todayDollars;
-    if (flaggedHours > 0) {
-      __lastGoalPct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
-    }
-  } else {
-    if (flaggedHours > 0) {
-      const pct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
-      checkGoalCelebration(pct);
-    }
+  // Goal celebration + milestone check — see __milestoneCheckArmed comment above.
+  const _goalPct = flaggedHours > 0 ? Math.min(100, Math.round((weekHours / flaggedHours) * 100)) : null;
+  if (__milestoneCheckArmed) {
+    __milestoneCheckArmed = false;
+    if (_goalPct !== null) checkGoalCelebration(_goalPct);
     checkPayMilestone(todayDollars);
+  } else {
+    __lastTodayDollars = todayDollars;
+    if (_goalPct !== null) __lastGoalPct = _goalPct;
   }
   updateStreakBadge(computeStreak(allEntries || []));
   updateHeroRecords(allEntries || []);
@@ -1377,7 +1365,16 @@ function initVinSearch() {
 
 let __lastGoalPct = 0;
 let __lastTodayDollars = 0;
-let __milestonesPrimed = false;
+// updateHeroSection() runs on EVERY refreshUI() call, not just after a save —
+// boot's initial load, auth-state changes, and a Supabase realtime callback via
+// safeLoadEntries() all trigger it too, with no user gesture behind any of them.
+// If a milestone check ran on those, progressively-more-complete data loading
+// during boot could look like a fresh crossing and fire a toast + haptic with
+// no tap ever having happened (WebKit then blocks the vibrate call outright).
+// So the check only actually runs when handleSave() explicitly arms it for the
+// one render right after a real save; every other render just keeps the
+// trackers current so the next real check has an accurate "before" value.
+let __milestoneCheckArmed = false;
 const PAY_MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
 
 /* ── Tech Rank system ─────────────────────────────────────────────────────────
@@ -2068,6 +2065,11 @@ async function handleSave(ev) {
       CURRENT_ENTRIES = syncStateEntries([savedEntry, ...(Array.isArray(CURRENT_ENTRIES) ? CURRENT_ENTRIES : [])]);
       setCachedEntries(empId, CURRENT_ENTRIES);
     }
+    // Arm the goal/milestone check for this one render only — see
+    // __milestoneCheckArmed comment near its declaration. A new entry is the
+    // only case where a fresh crossing is real; an edit can move earnings
+    // around without representing "new" money just landed.
+    if (!isEditing) __milestoneCheckArmed = true;
     refreshUI(CURRENT_ENTRIES);
     if (!isEditing) animateFirstEntry();
     // Fun save quote toast + rank check (after a brief delay so UI settles)
