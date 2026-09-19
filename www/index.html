@@ -34,7 +34,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.0c0c265133.css">
+  <link rel="stylesheet" href="./app.55fcb45334.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -354,6 +354,11 @@
         Bucket: <span id="photoBucketName">proofs</span> · <span id="photoPathPreview">—</span>
       </div>
 
+      <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
+           pattern as .statsChipsOuter (see app.55fcb45334.css). Without the fade, this row
+           silently clips its last chip(s) off-screen with no indication there's
+           more to scroll to — found during a UI pass, not reported by a user. -->
+      <div class="fr26QuickToolsOuter">
       <div class="fr26QuickTools">
         <button id="comebackChipBtn" class="fr26Chip fr26ChipComeback" type="button">Comeback</button>
         <button id="repeatLastBtn" class="fr26Chip" type="button">Repeat Last</button>
@@ -361,6 +366,7 @@
         <button id="clearBtn" class="fr26Chip fr26ChipGhost fr26ChipDanger" type="button">Clear</button>
         <button id="cancelEditBtn" class="fr26Chip fr26ChipGhost" type="button" style="display:none;">Cancel Edit</button>
       </div>
+      </div><!-- /.fr26QuickToolsOuter -->
 
       <section id="detailsPanel" class="fr26Details" style="display:none;">
         <div class="fr26Group">
