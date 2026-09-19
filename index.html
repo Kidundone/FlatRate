@@ -308,8 +308,14 @@
           <div class="fr26LabelRow">
             <label class="fr26Label" for="typeText">Work Done</label>
           </div>
-          <!-- Recent job type quick-tap chips -->
+          <!-- Recent job type quick-tap chips — same scroll-fade pattern as
+               .statsChipsOuter/.fr26QuickToolsOuter. Outer has no fixed
+               height of its own, so when #recentTypeChips is empty (new
+               user, no history yet) and collapses via .recentTypeChips:empty,
+               this wrapper collapses right along with it — no :has() needed. -->
+          <div class="recentTypeChipsOuter">
           <div id="recentTypeChips" class="recentTypeChips" aria-label="Recent job types"></div>
+          </div><!-- /.recentTypeChipsOuter -->
           <div class="fr26InlineField">
             <input name="typeText" id="typeText"
                    placeholder="Describe the work" inputmode="text"
