@@ -384,15 +384,15 @@ async function viewPhotoById(id) {
   }
 
   const path = row.photo_path || row.photoPath;
-  if (!path) {
+  if (!path && !row.photoDataUrl) {
     alert("No photo on this entry.");
     return;
   }
 
-  const url = await getCachedPhotoUrl(path);
-
-  // whatever modal you already use:
-  openPhotoModal(url, path);
+  // Route through the polished viewer (RO + date caption, loading/error
+  // states) instead of the legacy modal, which showed the raw storage
+  // path as its caption.
+  await openPhotoViewer(row);
 }
 
 function openPhotoModal(url, pathLabel) {
@@ -424,9 +424,11 @@ function openPhotoModal(url, pathLabel) {
 
 async function openPhoto(row) {
   const path = row?.photo_path || row?.photoPath;
-  if (!path) return toast("No photo saved.");
-  const url = await getCachedPhotoUrl(path);
-  openPhotoModal(url, path);
+  if (!path && !row?.photoDataUrl) return toast("No photo saved.");
+  // Route through the polished viewer (RO + date caption, loading/error
+  // states) instead of the legacy modal, which showed the raw storage
+  // path as its caption.
+  await openPhotoViewer(row);
 }
 
 function closePhotoModal(){
