@@ -541,11 +541,27 @@ function updateHeroSection(todayDollars, weekHours, flaggedHours, todayCount, da
   }
 
   // Goal celebration + milestone check
-  if (flaggedHours > 0) {
-    const pct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
-    checkGoalCelebration(pct);
+  // refreshUI() runs on boot with no user gesture, and __lastGoalPct /
+  // __lastTodayDollars start at 0 — so the very first render of the day's
+  // already-existing data (e.g. $199.50 already earned) looked like a
+  // brand-new crossing of every milestone below it, firing a bogus
+  // celebration toast + haptic?.("success") on every cold load. WebKit
+  // then blocked the vibrate call since no tap had happened yet — that's
+  // the "Blocked call to navigator.vibrate" console error found live.
+  // Prime the trackers silently on the first render instead of checking.
+  if (!__milestonesPrimed) {
+    __milestonesPrimed = true;
+    __lastTodayDollars = todayDollars;
+    if (flaggedHours > 0) {
+      __lastGoalPct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
+    }
+  } else {
+    if (flaggedHours > 0) {
+      const pct = Math.min(100, Math.round((weekHours / flaggedHours) * 100));
+      checkGoalCelebration(pct);
+    }
+    checkPayMilestone(todayDollars);
   }
-  checkPayMilestone(todayDollars);
   updateStreakBadge(computeStreak(allEntries || []));
   updateHeroRecords(allEntries || []);
   updateTechRankBadge(round1((filterEntriesByEmp(normalizeEntries(allEntries || []), getEmpId())).reduce((s, e) => s + (Number(e.hours) || 0), 0)));
@@ -1361,6 +1377,7 @@ function initVinSearch() {
 
 let __lastGoalPct = 0;
 let __lastTodayDollars = 0;
+let __milestonesPrimed = false;
 const PAY_MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
 
 /* ── Tech Rank system ─────────────────────────────────────────────────────────

@@ -105,6 +105,15 @@ async function bootAuth() {
         // full app relaunch. refreshUI() is cheap and DOM-safe off-screen.
         {
           await refreshUI(rows);
+          // Same off-screen-repaint issue as refreshUI above, for the More
+          // page's "All Entries" list: renderBulkEntryList() only ever ran
+          // on an explicit History-tab click or after a bulk delete — never
+          // on data actually finishing loading. If History happened to
+          // already be the remembered active tab on boot (it's saved to
+          // localStorage), its one render fired here at page-init time,
+          // before entries had loaded, and nothing ever told it to try
+          // again — "No entries yet." forever despite entries existing.
+          window.renderBulkEntryList?.();
           // Flush any entries queued while offline — boot is the right moment
           // since the online event only fires on transitions, not on fresh loads.
           if (getPendingQueue().length > 0) {
