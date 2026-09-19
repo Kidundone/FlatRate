@@ -2371,8 +2371,9 @@ async function renderHistory() {
 // a thumbnail that already loaded a photo makes the full-size view (or a
 // manager's job-detail drawer, which has its own copy of this pattern in
 // team.html) come back instantly instead of re-fetching.
-const _photoUrlCache = new Map(); // path -> { url, fetchedAt }
+const _photoUrlCache = new Map(); // path -> { url, fetchedAt, failed? }
 const _PHOTO_CACHE_TTL_MS = 25 * 60 * 1000; // signed URLs last 30 min server-side
+const _PHOTO_CACHE_FAIL_TTL_MS = 2 * 60 * 1000; // don't re-hammer a missing photo for 2 min
 const _PHOTO_CACHE_MAX = 60; // cap blob: URL accumulation on a long native session
 // In-flight de-dupe: prewarmPhotoUrls() now fires for everything in the
 // visible list, so a tap on "View Photo" often lands WHILE that background
@@ -2384,12 +2385,27 @@ const _photoUrlInFlight = new Map(); // path -> Promise<url>
 async function getCachedPhotoUrl(path) {
   if (!path) return null;
   const cached = _photoUrlCache.get(path);
-  if (cached && (Date.now() - cached.fetchedAt < _PHOTO_CACHE_TTL_MS)) {
-    return cached.url;
+  if (cached) {
+    const ttl = cached.failed ? _PHOTO_CACHE_FAIL_TTL_MS : _PHOTO_CACHE_TTL_MS;
+    if (Date.now() - cached.fetchedAt < ttl) return cached.url; // url is null for a cached failure
   }
   if (_photoUrlInFlight.has(path)) return _photoUrlInFlight.get(path);
 
-  const promise = getPhotoUrl(path).finally(() => _photoUrlInFlight.delete(path));
+  // .catch() here (not a sync try/catch around the call) matters: prewarmPhotoUrls()
+  // below fires this without awaiting it, so a plain try/catch around the call site
+  // never sees a rejection that happens after the microtask turn -- it was reaching
+  // the console as an unhandled promise rejection instead. A path whose photo is
+  // missing from storage (deleted, or never uploaded) throws a StorageApiError every
+  // single time; caching the failure for a couple minutes stops every list re-render
+  // from re-requesting the same broken photo, which is what was piling up enough
+  // requests to trip Supabase's rate limit for everyone's photos, not just this one.
+  const promise = getPhotoUrl(path)
+    .catch((err) => {
+      console.warn("[photo] signed URL failed for", path, err?.message || err);
+      _photoUrlCache.set(path, { url: null, fetchedAt: Date.now(), failed: true });
+      return null;
+    })
+    .finally(() => _photoUrlInFlight.delete(path));
   _photoUrlInFlight.set(path, promise);
   const url = await promise;
   if (url) {

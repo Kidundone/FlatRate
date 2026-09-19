@@ -662,12 +662,16 @@ async function entryPhotoForPdf(entry, maxDim = 1400, quality = 0.8) {
 
 /**
  * Warm the signed-URL cache for jobs the tech is likely to open next.
- * Fire-and-forget: failures are irrelevant, the tap path handles them.
+ * Fire-and-forget: getCachedPhotoUrl() now catches and negative-caches its
+ * own failures (missing/deleted photos), so there's nothing left for this
+ * call site to handle -- the try/catch that used to be here only guarded
+ * against a synchronous throw and did nothing for the async rejection,
+ * which was actually surfacing as an unhandled promise rejection instead.
  */
 function prewarmPhotoUrls(entries) {
   for (const e of entries || []) {
     const p = e?.photo_path || e?.photoPath;
-    if (p) { try { getCachedPhotoUrl(p); } catch {} }
+    if (p) getCachedPhotoUrl(p);
   }
 }
 
