@@ -1292,8 +1292,24 @@ a.btn {
   margin-top: -1px;
 }
 
+/* Outer hosts the fade so it overlays the row instead of scrolling away with
+   it -- same split as .statsChipsOuter/.recentTypeChipsOuter/.mnthBarsScrollOuter.
+   Fades to --surface since this row sits directly on the fr26 card's own
+   background, same context as .recentTypeChips below it. */
+.fr26QuickHoursOuter {
+  position: relative;
+}
+.fr26QuickHoursOuter::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 4px;
+  width: 36px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--surface));
+}
 .fr26QuickHours {
   display: flex;
+  flex-wrap: nowrap;
   overflow-x: auto;
   gap: 6px;
   padding: 2px 0 4px;
@@ -1302,6 +1318,12 @@ a.btn {
   -webkit-overflow-scrolling: touch;
 }
 .fr26QuickHours::-webkit-scrollbar { display: none; }
+/* Without this, #smartHourChips (a plain div, no layout of its own) becomes
+   a single flex item that wraps its own <button> children internally --
+   that's what was producing the "2-row grid" look instead of one real
+   scrolling row. display:contents makes its buttons direct flex items of
+   .fr26QuickHours instead, same as #customHourChips already does below. */
+#smartHourChips { display: contents; }
 
 /* Label shown when chips are tuned to a specific job type */
 .fr26ChipHint {
