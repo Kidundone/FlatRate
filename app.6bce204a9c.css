@@ -2455,6 +2455,13 @@ a.btn {
 }
 
 .moreInputNarrow { width: auto; min-width: 90px; max-width: 140px; text-align: right; }
+/* Native time inputs (Payroll Cutoff Time, Reminder Time, Payday Time)
+   need more room than the 90px default -- at that width the browser's
+   own clock-icon + AM/PM text gets clipped to something like "12:(",
+   found during a UI pass. Widening just the time inputs, not every
+   .moreInputNarrow, since the plain number ones (Standard Day, Weekly
+   Goal) already fit fine at 90px and shouldn't grow unnecessarily. */
+input[type="time"].moreInputNarrow { min-width: 118px; max-width: 130px; text-align: left; }
 
 .moreInputGroup {
   display: flex;
