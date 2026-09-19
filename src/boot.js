@@ -96,7 +96,33 @@ const FEATURE_FREEZE = Object.freeze({
 const ACTIVE_DATA_PATH = FEATURE_FREEZE.entriesDataPath;
 
 if ("serviceWorker" in navigator && !window.Capacitor?.isNativePlatform?.()) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+  // updateViaCache: "none" — belt-and-suspenders alongside the _headers file's
+  // Cache-Control on /sw.js. This is a spec-level instruction telling the
+  // browser itself to never satisfy a sw.js fetch from its own HTTP cache,
+  // regardless of what headers the server does or doesn't send — iOS Safari
+  // has historically been inconsistent about honoring Cache-Control for the
+  // service worker script specifically, which is exactly the kind of gap
+  // that let "Check for update" report "up to date" while running stale code.
+  navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" }).then((reg) => {
+    // Previously this whole update flow was 100% manual — a "Check" button in
+    // More that the person had to remember to find and tap. Nothing ever ran
+    // on its own, which is exactly why the PWA could sit on a stale build
+    // indefinitely: iOS is unreliable about running the browser's own
+    // periodic SW update checks for a home-screen PWA that gets resumed from
+    // the background instead of freshly relaunched, so without an explicit
+    // check nothing ever notices a new version shipped.
+    //
+    // Now: check once right after registration (covers a fresh launch), and
+    // again every time the app is brought back to the foreground (covers the
+    // far more common case of resuming a backgrounded PWA, which is the
+    // actual scenario that left it stuck on an old build). Both are silent —
+    // they only surface anything if a real update is found, via the same
+    // tap-to-reload banner as the manual Check button.
+    checkForAppUpdate(reg, true).catch(() => {});
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkForAppUpdate(reg, true).catch(() => {});
+    });
+  }).catch(() => {});
   // When a new SW takes control show a persistent banner — never auto-reload,
   // as that can interrupt an active sign-in or form submission.
   let _swUpdated = false;
@@ -108,13 +134,13 @@ if ("serviceWorker" in navigator && !window.Capacitor?.isNativePlatform?.()) {
   });
 }
 
-async function checkForAppUpdate() {
-  const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
-  if (!reg) { toast?.("No update available"); return; }
+async function checkForAppUpdate(existingReg, silent = false) {
+  const reg = existingReg || await navigator.serviceWorker.getRegistration().catch(() => null);
+  if (!reg) { if (!silent) toast?.("No update available"); return; }
 
   const btn = document.getElementById("checkUpdateBtn");
   const original = btn?.textContent;
-  if (btn) { btn.textContent = "Checking…"; btn.disabled = true; }
+  if (!silent && btn) { btn.textContent = "Checking…"; btn.disabled = true; }
 
   await reg.update().catch(() => {});
 
@@ -127,7 +153,7 @@ async function checkForAppUpdate() {
     reg.installing.addEventListener("statechange", function () {
       if (this.state === "installed" && reg.waiting) activate(reg.waiting);
     });
-  } else {
+  } else if (!silent) {
     toast?.("Already on the latest version");
     if (btn) { btn.textContent = original; btn.disabled = false; }
   }

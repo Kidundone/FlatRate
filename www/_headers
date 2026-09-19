@@ -1,0 +1,33 @@
+# Cloudflare Pages custom headers.
+#
+# Root cause of the "Check for update" button saying "Already on the latest
+# version" while the app was actually running an old build: sw.js had no
+# explicit Cache-Control, so Cloudflare's edge (and/or the phone's own HTTP
+# cache) was free to serve a stale copy of it. reg.update() only compares
+# byte-for-byte against whatever sw.js it actually fetched — if that fetch
+# itself came back stale, the browser correctly (from its own point of view)
+# concludes there's nothing new, even though a newer sw.js is sitting on the
+# origin. The service worker script must always be revalidated for the
+# update check to mean anything at all.
+#
+# HTML gets the same treatment for the same reason — sw.js's own fetch
+# handler is already network-first for navigations, but that only helps once
+# the SW is running; a page load that skips the SW entirely (or an edge
+# cache serving a stale HTML response) shouldn't be able to hand out an old
+# index.html referencing old hashed asset filenames.
+#
+# Hashed JS/CSS (app.<hash>.js, app.<hash>.css) intentionally get NO entry
+# here — they're immutable by filename (a content change always means a new
+# hash), so long-lived caching for those is correct and desired.
+
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+/
+  Cache-Control: no-cache, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
