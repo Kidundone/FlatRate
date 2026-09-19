@@ -296,12 +296,18 @@
           <input id="hours" name="hours" type="number" step="0.1" min="0"
                  inputmode="decimal" placeholder="0.0" required class="fr26Input"
                  enterkeyhint="next" />
+          <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
+               of its own) broke out of the flex row -- see display:contents
+               fix in app.css. Now a real single-row horizontal scroll with
+               the same fade-affordance pattern as the other chip rows. -->
+          <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
             <button type="button" id="typeHoursChip" class="fr26HourBtn fr26HourBtnType" style="display:none;" title="Stored hours for this job"></button>
             <div id="smartHourChips"></div>
             <div id="customHourChips"></div>
             <button type="button" id="addCustomHourChip" class="fr26HourBtn fr26HourBtnAdd" aria-label="Add custom hour chip">+</button>
           </div>
+          </div><!-- /.fr26QuickHoursOuter -->
         </div>
 
         <div class="fr26Row">
