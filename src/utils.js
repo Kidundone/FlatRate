@@ -167,6 +167,7 @@ function haptic(kind = "light") {
       return;
     }
     // Web fallback
+    console.error("[haptic-debug]", kind, new Error().stack); // TEMP — tracing boot-time vibrate source
     navigator.vibrate?.(_VIBE[kind] ?? _VIBE.light);
   } catch { /* haptics are best-effort */ }
 }
