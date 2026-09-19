@@ -1677,6 +1677,23 @@ a.btn {
   padding-top: 2px;
 }
 
+/* Outer holds the border/background and stays put; the ::after fade lives
+   here (not on the scrolling element itself) so it overlays the content
+   instead of scrolling away with it — same split as .statsChipsOuter /
+   .statsChipsWrap below. */
+.fr26QuickToolsOuter {
+  position: relative;
+  border-top: 1px solid var(--stroke);
+  background: var(--surface2);
+}
+.fr26QuickToolsOuter::after {
+  content: "";
+  position: absolute;
+  top: 1px; right: 0; bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--surface2));
+}
 .fr26QuickTools {
   display: flex;
   flex-wrap: nowrap;
@@ -1685,8 +1702,6 @@ a.btn {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding: 14px 16px;
-  border-top: 1px solid var(--stroke);
-  background: var(--surface2);
 }
 .fr26QuickTools::-webkit-scrollbar { display: none; }
 .fr26QuickTools > * { flex: 0 0 auto; }
@@ -4781,6 +4796,22 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 }
 
 /* ── Recent Job Type Quick-Tap Chips ────────────────────────────── */
+/* Outer has no height/padding of its own — it only exists to host the fade
+   ::after without the fade scrolling away with the row. When the inner row
+   is empty (.recentTypeChips:empty collapses to display:none) this wrapper
+   has nothing left inside it and collapses to zero height too, so the fade
+   naturally disappears with no :has() needed. */
+.recentTypeChipsOuter {
+  position: relative;
+}
+.recentTypeChipsOuter::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 8px;
+  width: 40px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--surface));
+}
 .recentTypeChips {
   display: flex;
   gap: 6px;
