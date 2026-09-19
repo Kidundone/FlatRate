@@ -7,7 +7,7 @@ const PAGES_CACHE  = "fr-pages-v1";
 
 // Hashed asset URLs for this build
 const HASHED_ASSETS = [
-  "./app.a6a9e34f75.js",
+  "./app.0c963536c2.js",
   "./app.828e323b1e.css",
 ];
 
