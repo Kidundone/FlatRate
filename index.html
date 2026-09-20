@@ -1391,9 +1391,16 @@
     </div>
   </div>
 
-  <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true -->
+  <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true.
+       modalContent here needs the "card" class same as photoViewer/entryDetailModal's
+       nested .card div -- without it this wrapper has no background at all, so the
+       page underneath (hero ring, Scan Repair banner, hour chips) showed through at
+       full brightness behind the modal's own text. photoViewer/entryDetailModal avoid
+       this because THEY nest an actual .card div inside .modalContent; this modal's
+       markup skips straight to the content divs, so .modalContent itself needs to be
+       the card. Found live via showUpgradeModal(). -->
   <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Flatrate Buddy Pro">
-    <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
+    <div class="modalContent card" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
 
       <!-- Beta content -->
       <div id="upgradeBetaContent">
