@@ -2482,8 +2482,11 @@ a.btn {
    own clock-icon + AM/PM text gets clipped to something like "12:(",
    found during a UI pass. Widening just the time inputs, not every
    .moreInputNarrow, since the plain number ones (Standard Day, Weekly
-   Goal) already fit fine at 90px and shouldn't grow unnecessarily. */
-input[type="time"].moreInputNarrow { min-width: 118px; max-width: 130px; text-align: left; }
+   Goal) already fit fine at 90px and shouldn't grow unnecessarily.
+   118px (the first attempt) was still short by a hair -- a 12-hour value
+   like "12:00 AM" rendered as "12:00 A" with the M clipped behind the
+   clock icon. Found on a later pass; 150px clears it with room to spare. */
+input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-align: left; }
 
 .moreInputGroup {
   display: flex;
