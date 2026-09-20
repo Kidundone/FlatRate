@@ -603,12 +603,34 @@ main {
   margin: 0 auto;
 }
 
+/* Uniform content centering — every top-level full-bleed section (page
+   headers, the More page's tab strip and team banner, the Stats page's
+   content wrapper) caps at the same 680px and centers, matching `main`
+   above. This is unconditional, not gated behind a min-width media query:
+   max-width is simply a no-op below 680px, so phones are unaffected.
+   Before this, only `main` (and .heroSection/.fr26Wrap, styled the same
+   way elsewhere) centered at every width -- header/.tabBar only centered
+   above 961px, and .statsPageInner/.moreTabBar/.teamEntryBanner never did.
+   That left tablets and any desktop window between ~681-960px wide with
+   a centered content column but an edge-to-edge header and tab bar: the
+   lopsided, "not centered" layout reported during a UI pass. */
+header.top,
+.statsPageInner,
+.moreTabBar,
+.teamEntryBanner {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Bottom tab bar ──────────────────────────────── */
 .tabBar {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 680px;
   z-index: 200;
   display: flex;
   background: rgba(17,17,19,.96);
@@ -3729,10 +3751,15 @@ body.compact .list    { gap: 1px; }
   .moreSaveBtn { min-width: 0; }
 }
 
-/* Wide desktop (> 960px) */
+/* Wide desktop (> 960px) — decorative only now; header/.top/.tabBar/.wrap
+   already center at every width via the unconditional rules above (see
+   "Uniform content centering" near the main{} rule). This block just adds
+   the card-like framing (rounded corners, shadow, breathing room off the
+   browser chrome) once there's enough width for it to read as a floating
+   panel rather than a pasted-on border. */
 @media (min-width: 961px) {
-  header { max-width: 680px; margin: 0 auto; border-radius: 0 0 var(--r-lg) var(--r-lg); }
-  .top   { max-width: 680px; margin: 0 auto; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  header { border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .top   { border-radius: 0 0 var(--r-lg) var(--r-lg); }
   body   { background: var(--surface2); }
   main, .wrap {
     background: var(--bg);
@@ -3741,7 +3768,7 @@ body.compact .list    { gap: 1px; }
     margin-bottom: 24px;
     box-shadow: 0 8px 40px rgba(0,0,0,.4);
   }
-  .tabBar { max-width: 680px; left: 50%; transform: translateX(-50%); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .tabBar { border-radius: var(--r-xl) var(--r-xl) 0 0; }
   .historySheet { max-width: 640px; margin: 0 auto; border-radius: var(--r-xl); align-self: center; }
   .historyOverlay { align-items: center; }
 }
