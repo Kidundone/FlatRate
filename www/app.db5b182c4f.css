@@ -1317,9 +1317,19 @@ a.btn {
 /* Outer hosts the fade so it overlays the row instead of scrolling away with
    it -- same split as .statsChipsOuter/.recentTypeChipsOuter/.mnthBarsScrollOuter.
    Fades to --surface since this row sits directly on the fr26 card's own
-   background, same context as .recentTypeChips below it. */
+   background, same context as .recentTypeChips below it.
+   min-width:0 matters here specifically because .fr26Row (the parent) is a
+   CSS grid: grid items default to min-width:auto, sizing to their content's
+   intrinsic width instead of shrinking to the track. With 8 hour chips plus
+   the "+" button this row's natural width (516px) blew right past the grid
+   track (~340px on a phone), silently pushing #smartHourChips' later chips
+   (4.5, 6.5) off past the card's overflow:hidden edge -- untappable, no
+   scrollbar, no visual sign anything was missing. min-width:0 lets the grid
+   item shrink to the track so .fr26QuickHours' own overflow-x:auto actually
+   gets to do its job. Found live at 375px with a full 8-chip set. */
 .fr26QuickHoursOuter {
   position: relative;
+  min-width: 0;
 }
 .fr26QuickHoursOuter::after {
   content: "";
@@ -4885,6 +4895,13 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
    naturally disappears with no :has() needed. */
 .recentTypeChipsOuter {
   position: relative;
+  /* Same latent grid-blowout risk as .fr26QuickHoursOuter above -- this is
+     also a direct child of the .fr26Row grid, so without min-width:0 it'll
+     inherit min-width:auto and refuse to shrink below its chips' full
+     content width once someone racks up enough recent job types to
+     overflow. Doesn't visibly misbehave with today's short chip set, but
+     fixing it now rather than waiting for a bug report once it does. */
+  min-width: 0;
 }
 .recentTypeChipsOuter::after {
   content: "";
