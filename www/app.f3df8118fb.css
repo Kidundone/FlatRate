@@ -4824,6 +4824,33 @@ body.compact .list    { gap: 1px; }
 .whatsNewList li { display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--text1); line-height:1.4; }
 .whatsNewList li::before { content:"✓"; color:var(--primary); font-weight:800; flex-shrink:0; margin-top:1px; }
 
+/* ── What's New: past-versions log (collapsed by default) ────── */
+.whatsNewHistory { border-top: 1px solid var(--stroke); padding-top: 12px; }
+.whatsNewHistory summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.whatsNewHistory summary::-webkit-details-marker { display: none; }
+.whatsNewHistory summary::after {
+  content: "›";
+  font-size: 16px;
+  color: var(--muted2);
+  transition: transform 200ms var(--ease);
+  line-height: 1;
+}
+.whatsNewHistory[open] summary::after { transform: rotate(90deg); }
+.whatsNewHistGroup { padding-top: 14px; }
+.whatsNewHistGroup + .whatsNewHistGroup { margin-top: 14px; border-top: 1px dashed var(--stroke); padding-top: 14px; }
+.whatsNewHistVer { font-size: 12px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+.whatsNewHistGroup .whatsNewList li { font-size: 13px; color: var(--muted); }
+
 /* ── UX Polish fixes ────────────────────────────────────────── */
 
 /* Fix #1: Save button — always looks actionable */
