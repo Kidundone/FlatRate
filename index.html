@@ -1270,7 +1270,17 @@
     <!-- Job Scorecard — which job types actually pay best -->
     <div id="jobScorecard" class="jobScorecard"></div>
 
-    <!-- Per-type rows -->
+    <!-- Per-type rows — drills into the actual jobs behind each donut slice
+         (tap a row, or tap the donut/legend above, to expand it). A distinct
+         feature from Job Scorecard above (which ranks by $/job), but with no
+         heading of its own it read as a second, redundant copy of the same
+         type list. Static heading here, not emitted by the JS render (which
+         replaces #breakdownList's innerHTML wholesale on every refresh) so
+         it isn't wiped out each time. -->
+    <div class="jsHeader">
+      <span class="jsTitle">📋 All Jobs by Type</span>
+      <span class="jsSubtitle">tap to see individual jobs</span>
+    </div>
     <div id="breakdownList" class="breakdownList"></div>
 
   </div>
