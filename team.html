@@ -1270,6 +1270,25 @@
     spotlight._trackCleanup = null;
   }
 
+  // Same fix as the app's main/more tours (src/main-page.js). `scrollIntoView({
+  // block: "center" })` centers a target against the FULL viewport height, but
+  // .tourTooltip is a fixed, bottom-anchored panel whose height varies with
+  // each step's body text -- a long body (tall tooltip) or a target already
+  // low on the page can end up centered right behind the tooltip: technically
+  // spotlighted, invisible to the person looking at it. Center against the
+  // space ABOVE the tooltip instead.
+  function scrollTargetIntoTourView(target) {
+    const tooltip = $("tourTooltip");
+    const tooltipRect = tooltip ? tooltip.getBoundingClientRect() : null;
+    const visibleBottom = (tooltipRect && tooltipRect.top > 40) ? tooltipRect.top - 12 : window.innerHeight;
+    const rect = target.getBoundingClientRect();
+    const targetCenter = rect.top + rect.height / 2;
+    const delta = targetCenter - visibleBottom / 2;
+    if (Math.abs(delta) > 4) {
+      window.scrollBy({ top: delta, behavior: "smooth" });
+    }
+  }
+
   function trackSpotlight(spotlight, target) {
     const pad = 8;
     const draw = () => {
@@ -1339,7 +1358,7 @@
       }
       overlay.style.background = "transparent";
       overlay.classList.add("tour-has-target");
-      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      scrollTargetIntoTourView(target);
       trackSpotlight(spotlight, target);
     }
 

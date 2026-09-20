@@ -4684,6 +4684,34 @@ function stopSpotlightTracking(spotlight) {
   spotlight._trackCleanup = null;
 }
 
+// Shared by both this file's tour and more-page.js's tour. `scrollIntoView({
+// block: "center" })` centers a target against the FULL viewport height, but
+// .tourTooltip is a fixed, bottom-anchored panel whose height varies with
+// each step's body text -- for a step with a long body (tall tooltip) or a
+// target that already sits low on the page, "centered on the full viewport"
+// lands the target directly under/behind the tooltip. The spotlight box then
+// draws in the technically-correct spot, but it's invisible: hidden behind
+// the tooltip card. Found live on the More tour's "Set Your Hourly Rate"
+// step -- its long body text makes the tooltip tall enough to cover the
+// Default Rate field, which sits in the lower half of the Settings page.
+// Center the target in the space ABOVE the tooltip instead of the whole
+// viewport, so it stays clear no matter how tall that step's tooltip is.
+function scrollTargetIntoTourView(target) {
+  const tooltip = document.getElementById("tourTooltip");
+  const tooltipRect = tooltip ? tooltip.getBoundingClientRect() : null;
+  // By the time this runs the caller has already switched the overlay into
+  // has-target mode, so a sane tooltipRect.top here reflects this step's
+  // real bottom-anchored height. Guard against a not-yet-laid-out or
+  // still-centered (no-target) tooltip reporting a useless top.
+  const visibleBottom = (tooltipRect && tooltipRect.top > 40) ? tooltipRect.top - 12 : window.innerHeight;
+  const rect = target.getBoundingClientRect();
+  const targetCenter = rect.top + rect.height / 2;
+  const delta = targetCenter - visibleBottom / 2;
+  if (Math.abs(delta) > 4) {
+    window.scrollBy({ top: delta, behavior: "smooth" });
+  }
+}
+
 function trackSpotlight(spotlight, target) {
   const pad = 8;
   const draw = () => {
@@ -4760,7 +4788,7 @@ function startTour(force = false) {
     }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollTargetIntoTourView(target);
     trackSpotlight(spotlight, target);
   }
 

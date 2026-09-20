@@ -4199,7 +4199,7 @@ function startMoreTour() {
     }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollTargetIntoTourView(target);
     trackSpotlight(spotlight, target);
   }
 
