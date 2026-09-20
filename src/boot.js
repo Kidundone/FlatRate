@@ -1266,10 +1266,22 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 })();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.8";
+// IMPORTANT — keep this up to date: any time a user-facing change ships
+// (a fix, a new feature, a copy change someone would notice), bump
+// APP_VERSION and add a new entry here describing it in plain language.
+// This object IS the permanent log — old versions are never deleted, only
+// added above. showWhatsNew() below renders the current version up top and
+// every older version underneath in a collapsed "Past updates" section, so
+// the full history stays browsable from the app itself, not just here.
+const APP_VERSION = "1.9";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.9": [
+    "Fixed the Pro upgrade screen showing page content bleeding through behind its own text",
+    "Fixed the guided tour's highlight landing in the wrong spot (or hidden behind the card) on a few steps",
+    "Tour wording no longer assumes you're a dealership detailer — same app, any flat-rate trade",
+  ],
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
@@ -1326,15 +1338,39 @@ const CHANGELOG = {
   ],
 };
 
+function _whatsNewVerLabel(version) {
+  return version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
+}
+
 function showWhatsNew(version) {
-  const modal  = document.getElementById("whatsNewModal");
-  const list   = document.getElementById("whatsNewList");
-  const verLbl = document.getElementById("whatsNewVersionLabel");
+  const modal    = document.getElementById("whatsNewModal");
+  const list     = document.getElementById("whatsNewList");
+  const verLbl   = document.getElementById("whatsNewVersionLabel");
+  const history  = document.getElementById("whatsNewHistory");
+  const histList = document.getElementById("whatsNewHistoryList");
   if (!modal || !list) return;
   const items = CHANGELOG[version] || [];
   if (!items.length) return;
   list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
-  if (verLbl) verLbl.textContent = version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
+  if (verLbl) verLbl.textContent = _whatsNewVerLabel(version);
+
+  // Every earlier version stays in the log, tucked under a collapsed
+  // "Past updates" toggle so the current version stays the focus but the
+  // full history is still one tap away, in-app, forever.
+  if (history && histList) {
+    const older = Object.keys(CHANGELOG).filter(v => v !== version);
+    if (older.length) {
+      histList.innerHTML = older.map(v => `
+        <div class="whatsNewHistGroup">
+          <div class="whatsNewHistVer">${_whatsNewVerLabel(v)}</div>
+          <ul class="whatsNewList">${(CHANGELOG[v] || []).map(t => `<li>${t}</li>`).join("")}</ul>
+        </div>
+      `).join("");
+      history.style.display = "";
+    } else {
+      history.style.display = "none";
+    }
+  }
   openModalShell(modal);
 }
 
