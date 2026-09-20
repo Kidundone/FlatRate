@@ -1022,6 +1022,25 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(37,99,235,.18);
 }
 
+/* Payroll report scan buttons -- was inline flex:1 side-by-side with .btn's
+   white-space:nowrap and default min-width:auto, so neither button could
+   ever shrink below its own text width (Take Photo + Choose from Library
+   together don't fit in a ~310px card on a real phone) -- the second
+   button's label ran flush into the card's edge with zero margin. Stack
+   instead of fighting for shrink room; still side-by-side once there's
+   real width to spare. */
+.payrollScanBtnRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.payrollScanBtnRow .btn { width: 100%; }
+@media (min-width: 480px) {
+  .payrollScanBtnRow { flex-direction: row; }
+  .payrollScanBtnRow .btn { flex: 1; width: auto; }
+}
+
 /* ── Buttons ─────────────────────────────────────── */
 .btn,
 button.btn,
@@ -3976,10 +3995,22 @@ body.compact .list    { gap: 1px; }
 }
 
 /* Range tabs row */
+/* Day/Week/Month/Year + the date-nav group (label + 2 arrow buttons, pushed
+   right via margin-left:auto on .hcNavGroup) add up to ~363px of content in
+   ~317px of available width on a 375px phone (the width .hcTab actually
+   ships at) -- heroChartInner's overflow:hidden then silently ate whatever
+   didn't fit, usually the nav arrows, with no visual sign anything was
+   missing. flex-wrap lets .hcNavGroup drop to its own row (still right-
+   aligned there, since margin-left:auto applies per flex-line) instead of
+   being clipped. Found auditing for elements that don't fit on a real phone
+   width -- every row like this in the app needs to either scroll or wrap,
+   never just get chopped off. */
 .hcRangeTabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
+  row-gap: 4px;
   padding: 10px 12px 8px;
 }
 .hcTab {
