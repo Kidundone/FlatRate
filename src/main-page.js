@@ -855,7 +855,15 @@ function renderHeroChart(entries, weekStart) {
     // Default: highlight most recent month with data
     let lastIdx = -1;
     buckets.forEach((b, i) => { if (b.dollars > 0) lastIdx = i; });
-    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.click();
+    // rect.click() -- SVGElement has no .click() method in WebKit (the engine
+    // behind both the iOS app and Safari), so this threw "click is not a
+    // function" on every single load whenever the hero chart was left on
+    // Year mode. The ?. only guards a missing element, not a missing method,
+    // so it threw anyway -- and since this runs inside renderLogs, which
+    // loadEntries awaits, the whole entries load aborted into its offline/
+    // cached-data fallback path even though the real fetch had succeeded.
+    // Dispatching a synthetic click event works on every element type.
+    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     return;
   }
 
@@ -942,8 +950,9 @@ function renderHeroChart(entries, weekStart) {
       });
     });
     // Default: highlight current week
+    // Same SVGElement.click()-doesn't-exist-in-WebKit fix as year mode above.
     const curIdx = wkBuckets.findIndex(b => b.isCurrent);
-    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.click();
+    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     return;
   }
 
