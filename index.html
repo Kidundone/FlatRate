@@ -1213,108 +1213,6 @@
 
   </main>
 
-  <!-- Photo viewer modal (more page only — different from main photoModal) -->
-  <div id="photoViewer" class="modalShell" style="display:none;">
-    <div class="modalContent" style="max-width:560px;margin:20px auto;padding:0 12px;">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div class="muted small" id="photoViewerMeta"></div>
-          <button class="btn" id="closePhotoViewerBtn" type="button">Close</button>
-        </div>
-        <div class="photoZoomWrap" id="photoFullZoomWrap" style="margin-top:12px;">
-          <img id="photoFull" />
-        </div>
-        <div class="muted small photoZoomHint">Pinch or double-tap to zoom</div>
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <a class="btn" id="downloadPhotoBtn" download="proof.jpg">Download</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Job detail sheet — tapping a job in the Log tab list shows this (read-only)
-       instead of dropping straight into the edit form. Edit/Delete/Photo are
-       one tap further from here, not the default outcome of a tap. -->
-  <div id="entryDetailModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Job Detail">
-    <div class="modalContent" style="max-width:420px;margin:14vh auto 0;padding:0 12px;">
-      <div class="card" style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-          <div>
-            <div id="edType" style="font-size:17px;font-weight:700;"></div>
-            <div id="edSub" class="muted small" style="margin-top:2px;"></div>
-          </div>
-          <button class="modalCloseBtn" id="entryDetailCloseBtn" type="button" aria-label="Close">✕</button>
-        </div>
-        <button class="btn" id="edPhotoBtn" type="button" style="display:none;width:100%;">📷 View Photo</button>
-        <div class="insightGrid" style="margin:0;">
-          <div class="insightCell"><div class="insightLabel">Hours</div><div class="insightValue" id="edHours"></div></div>
-          <div class="insightCell"><div class="insightLabel">Pay</div><div class="insightValue" id="edPay"></div></div>
-        </div>
-        <div id="edNotesWrap" style="display:none;">
-          <div class="muted small">Notes</div>
-          <div id="edNotes" style="margin-top:2px;"></div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn" id="edEditBtn" type="button" style="flex:1;">Edit</button>
-          <button class="btn" id="edDeleteBtn" type="button" style="flex:1;color:var(--danger,#ef4444);">Delete</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true -->
-  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Flatrate Buddy Pro">
-    <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
-
-      <!-- Beta content -->
-      <div id="upgradeBetaContent">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <span style="font-size:26px;">🧪</span>
-          <div>
-            <h2 style="margin:0;font-size:22px;font-weight:800;">You're in Beta</h2>
-            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:var(--primary-ghost,rgba(34,197,94,.12));padding:2px 8px;border-radius:99px;">Free Access</span>
-          </div>
-        </div>
-        <p style="margin:12px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;">Flatrate Buddy is currently in beta. <strong>All features are completely free</strong> while we're testing and improving the app with real techs like you.</p>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> — free during beta</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> — free during beta</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Weekly PDF reports</strong> — free during beta</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job breakdown &amp; stats</strong> — free during beta</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export &amp; photo storage</strong> — free during beta</span></div>
-        </div>
-        <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;">Paid plans are coming soon. Beta users will get early access and a discount. 🙌</p>
-        <button id="upgradeCloseBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;">Got it — let's go!</button>
-      </div>
-
-      <!-- Pricing content (shown when __BILLING__.live is true) -->
-      <div id="upgradePricingContent" style="display:none;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <span style="font-size:26px;">⚡</span>
-          <div>
-            <h2 style="margin:0;font-size:22px;font-weight:800;">Flatrate Buddy Pro</h2>
-            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:rgba(37,99,235,.12);padding:2px 8px;border-radius:99px;">Get It Back</span>
-          </div>
-        </div>
-        <p style="margin:12px 0 16px;color:var(--muted);font-size:14px;line-height:1.5;">Spotting a short pay is free. Pro gives you the proof to get it back — and shows you what the shop's downtime is costing you.</p>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Dispute-ready PDF reports</strong> — walk in with evidence</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Lost Time reports</strong> — what parts delays really cost you</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job Scorecard</strong> — which jobs actually pay best</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export</strong> &amp; cloud backup</span></div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Photo proof storage</strong> for every RO</span></div>
-        </div>
-        <p style="margin:-8px 0 16px;color:var(--muted2,var(--muted));font-size:12px;line-height:1.5;">One recovered short pay usually covers a year.</p>
-        <button id="upgradeMonthlyBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:8px;"></button>
-        <button id="upgradeYearlyBtn" class="btn" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:12px;"></button>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;">Cancel anytime. Secure checkout via Stripe.</p>
-        <button id="upgradeDismissBtn" class="btn" type="button" style="width:100%;font-size:14px;padding:12px;">Not now</button>
-        <p style="font-size:11px;color:var(--muted2);text-align:center;margin-top:10px;"><a href="./terms.html" style="color:var(--muted);text-decoration:underline;" target="_blank">Terms</a> · <a href="./privacy.html" style="color:var(--muted);text-decoration:underline;" target="_blank">Privacy</a></p>
-      </div>
-
-    </div>
-  </div>
-
 </div><!-- /#spa-more -->
 
 
@@ -1427,6 +1325,114 @@
     </div>
   </div>
 </div>
+
+  <!-- Photo viewer modal (used from Log, Stats, and More — different from the
+       legacy main photoModal below). Lives as a direct child of <body>, not
+       inside any #spa-* page container: those pages are hidden via
+       transform:translateX() when inactive, which creates a new containing
+       block for position:fixed descendants and silently renders this whole
+       modal off-screen if it's nested inside one. Learned that the hard way —
+       keep this (and entryDetailModal/upgradeModal below) top-level. -->
+  <div id="photoViewer" class="modalShell" style="display:none;">
+    <div class="modalContent" style="max-width:560px;margin:20px auto;padding:0 12px;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div class="muted small" id="photoViewerMeta"></div>
+          <button class="btn" id="closePhotoViewerBtn" type="button">Close</button>
+        </div>
+        <div class="photoZoomWrap" id="photoFullZoomWrap" style="margin-top:12px;">
+          <img id="photoFull" />
+        </div>
+        <div class="muted small photoZoomHint">Pinch or double-tap to zoom</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <a class="btn" id="downloadPhotoBtn" download="proof.jpg">Download</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job detail sheet — tapping a job in the Log tab list shows this (read-only)
+       instead of dropping straight into the edit form. Edit/Delete/Photo are
+       one tap further from here, not the default outcome of a tap. -->
+  <div id="entryDetailModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Job Detail">
+    <div class="modalContent" style="max-width:420px;margin:14vh auto 0;padding:0 12px;">
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+          <div>
+            <div id="edType" style="font-size:17px;font-weight:700;"></div>
+            <div id="edSub" class="muted small" style="margin-top:2px;"></div>
+          </div>
+          <button class="modalCloseBtn" id="entryDetailCloseBtn" type="button" aria-label="Close">✕</button>
+        </div>
+        <button class="btn" id="edPhotoBtn" type="button" style="display:none;width:100%;">📷 View Photo</button>
+        <div class="insightGrid" style="margin:0;">
+          <div class="insightCell"><div class="insightLabel">Hours</div><div class="insightValue" id="edHours"></div></div>
+          <div class="insightCell"><div class="insightLabel">Pay</div><div class="insightValue" id="edPay"></div></div>
+        </div>
+        <div id="edNotesWrap" style="display:none;">
+          <div class="muted small">Notes</div>
+          <div id="edNotes" style="margin-top:2px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" id="edEditBtn" type="button" style="flex:1;">Edit</button>
+          <button class="btn" id="edDeleteBtn" type="button" style="flex:1;color:var(--danger,#ef4444);">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade modal — beta content while __BILLING__.live is false, pricing when true -->
+  <div id="upgradeModal" class="modalShell" style="display:none;" role="dialog" aria-modal="true" aria-label="Flatrate Buddy Pro">
+    <div class="modalContent" style="max-width:420px;margin:48px auto;padding:28px 22px;border-radius:20px;border-top:3px solid var(--primary);">
+
+      <!-- Beta content -->
+      <div id="upgradeBetaContent">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:26px;">🧪</span>
+          <div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;">You're in Beta</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:var(--primary-ghost,rgba(34,197,94,.12));padding:2px 8px;border-radius:99px;">Free Access</span>
+          </div>
+        </div>
+        <p style="margin:12px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;">Flatrate Buddy is currently in beta. <strong>All features are completely free</strong> while we're testing and improving the app with real techs like you.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Short-pay detection</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Cloud sync</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Weekly PDF reports</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job breakdown &amp; stats</strong> — free during beta</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export &amp; photo storage</strong> — free during beta</span></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;">Paid plans are coming soon. Beta users will get early access and a discount. 🙌</p>
+        <button id="upgradeCloseBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;">Got it — let's go!</button>
+      </div>
+
+      <!-- Pricing content (shown when __BILLING__.live is true) -->
+      <div id="upgradePricingContent" style="display:none;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:26px;">⚡</span>
+          <div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;">Flatrate Buddy Pro</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:rgba(37,99,235,.12);padding:2px 8px;border-radius:99px;">Get It Back</span>
+          </div>
+        </div>
+        <p style="margin:12px 0 16px;color:var(--muted);font-size:14px;line-height:1.5;">Spotting a short pay is free. Pro gives you the proof to get it back — and shows you what the shop's downtime is costing you.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Dispute-ready PDF reports</strong> — walk in with evidence</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Lost Time reports</strong> — what parts delays really cost you</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Job Scorecard</strong> — which jobs actually pay best</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>CSV export</strong> &amp; cloud backup</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;"><span style="color:var(--primary);font-size:16px;">✓</span><span><strong>Photo proof storage</strong> for every RO</span></div>
+        </div>
+        <p style="margin:-8px 0 16px;color:var(--muted2,var(--muted));font-size:12px;line-height:1.5;">One recovered short pay usually covers a year.</p>
+        <button id="upgradeMonthlyBtn" class="btn primary" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:8px;"></button>
+        <button id="upgradeYearlyBtn" class="btn" type="button" style="width:100%;font-size:15px;padding:14px;margin-bottom:12px;"></button>
+        <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;">Cancel anytime. Secure checkout via Stripe.</p>
+        <button id="upgradeDismissBtn" class="btn" type="button" style="width:100%;font-size:14px;padding:12px;">Not now</button>
+        <p style="font-size:11px;color:var(--muted2);text-align:center;margin-top:10px;"><a href="./terms.html" style="color:var(--muted);text-decoration:underline;" target="_blank">Terms</a> · <a href="./privacy.html" style="color:var(--muted);text-decoration:underline;" target="_blank">Privacy</a></p>
+      </div>
+
+    </div>
+  </div>
 
 <!-- Shared photo modal (main page proof viewer) -->
 <div id="photoModal" class="modalShell">
