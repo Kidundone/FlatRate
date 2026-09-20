@@ -1292,7 +1292,16 @@ document.getElementById("entryDetailModal")?.addEventListener("click", (ev) => {
   if (ev.target?.id === "entryDetailModal") closeEntryDetail();
 });
 document.getElementById("edPhotoBtn")?.addEventListener("click", () => {
-  if (_entryDetailCurrent) openPhoto(_entryDetailCurrent);
+  // Edit/Delete below both close this modal before acting; View Photo was
+  // the one left calling openPhoto() straight away, so the photo viewer
+  // opened stacked on top of the still-open entry detail card instead of
+  // replacing it -- both modals visible at once, overlapping, since they
+  // share the same z-index and neither is a fully opaque full-bleed layer
+  // on its own. Found live at mobile width: half of each modal bled
+  // through the other. Close first, same as Edit/Delete.
+  const entry = _entryDetailCurrent;
+  closeEntryDetail();
+  if (entry) openPhoto(entry);
 });
 document.getElementById("edEditBtn")?.addEventListener("click", () => {
   const entry = _entryDetailCurrent;
