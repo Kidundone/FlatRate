@@ -4707,9 +4707,26 @@ function scrollTargetIntoTourView(target) {
   const rect = target.getBoundingClientRect();
   const targetCenter = rect.top + rect.height / 2;
   const delta = targetCenter - visibleBottom / 2;
-  if (Math.abs(delta) > 4) {
-    window.scrollBy({ top: delta, behavior: "smooth" });
+  if (Math.abs(delta) <= 4) return;
+  // #spa-more and #spa-stats are `position:fixed; inset:0; overflow-y:auto`
+  // panels that scroll independently of the document (kept off-DOM-hidden
+  // pattern -- see the comment above #spa-more in app.css). window.scrollBy()
+  // does nothing to a target inside one of those: the fixed panel's own
+  // scroll position is what actually moves it. Walk up from the target to
+  // find whichever ancestor is really the scrolling container, and scroll
+  // that instead. On the plain Log page (#spa-main has no overflow of its
+  // own) this walk finds nothing and we fall back to window, same as before.
+  let node = target.parentElement;
+  let scroller = null;
+  while (node && node !== document.body) {
+    const style = getComputedStyle(node);
+    if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1) {
+      scroller = node;
+      break;
+    }
+    node = node.parentElement;
   }
+  (scroller || window).scrollBy({ top: delta, behavior: "smooth" });
 }
 
 function trackSpotlight(spotlight, target) {

@@ -1284,9 +1284,20 @@
     const rect = target.getBoundingClientRect();
     const targetCenter = rect.top + rect.height / 2;
     const delta = targetCenter - visibleBottom / 2;
-    if (Math.abs(delta) > 4) {
-      window.scrollBy({ top: delta, behavior: "smooth" });
+    if (Math.abs(delta) <= 4) return;
+    // Same fix as main-page.js: a fixed, self-scrolling ancestor panel won't
+    // move when you scroll the window. Walk up to find the real scroller.
+    let node = target.parentElement;
+    let scroller = null;
+    while (node && node !== document.body) {
+      const style = getComputedStyle(node);
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1) {
+        scroller = node;
+        break;
+      }
+      node = node.parentElement;
     }
+    (scroller || window).scrollBy({ top: delta, behavior: "smooth" });
   }
 
   function trackSpotlight(spotlight, target) {
