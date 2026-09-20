@@ -1386,9 +1386,15 @@ document.getElementById("whatsNewModal")?.addEventListener("click", (e) => {
 });
 document.getElementById("whatsNewBtn")?.addEventListener("click", () => showWhatsNew(APP_VERSION));
 
-// Show automatically once per version (after a short delay so the app settles)
+// Show automatically once per version (after a short delay so the app settles).
+// Skipped entirely for anyone who hasn't finished the guided tour yet -- a
+// brand-new user has nothing to compare "what's new" against, and maybeStartTour()
+// runs on this same boot, so without this check the tour overlay and this modal
+// would pop up on top of each other. A returning user who already finished the
+// tour still sees it right on schedule; a mid-tour user just sees it next boot,
+// once fr_tour_done is set.
 const _seenVer = localStorage.getItem(LS_SEEN_VER);
-if (_seenVer !== APP_VERSION) {
+if (_seenVer !== APP_VERSION && localStorage.getItem("fr_tour_done")) {
   setTimeout(() => showWhatsNew(APP_VERSION), 1800);
 }
 
