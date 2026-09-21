@@ -748,7 +748,12 @@
         fetchLogs(ids, pFrom, pTo).catch(() => []),
       ]);
     } catch (e) {
-      $("memberRows").innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message || "Failed to load")}</td></tr>`;
+      // Show a friendly message here, not the raw DB/network error — a
+      // shop manager has no context for a Postgres error code. (Found
+      // live: a schema mismatch surfaced literally as "column
+      // work_logs.is_comeback does not exist" in this table.)
+      console.error("[team] fetchLogs failed:", e);
+      $("memberRows").innerHTML = `<tr><td colspan="6" class="empty">Couldn't load team data — try refreshing.</td></tr>`;
       return;
     }
 
