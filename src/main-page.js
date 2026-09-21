@@ -3508,7 +3508,7 @@ async function bulkEditRate() {
   for (const e of selected) {
     try {
       const newEarnings = round2(Number(e.hours) * rateVal);
-      await saveEditedLog(e.id, { cash_amount: newEarnings, hourly_rate: rateVal });
+      await saveEditedLog(e.id, { cash_amount: newEarnings });
       const idx = (window.CURRENT_ENTRIES || []).findIndex(x => String(x.id) === String(e.id));
       if (idx >= 0) {
         window.CURRENT_ENTRIES[idx] = { ...window.CURRENT_ENTRIES[idx], rate: rateVal, earnings: newEarnings, selected: false };

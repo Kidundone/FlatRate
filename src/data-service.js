@@ -571,7 +571,6 @@ async function apiUpdateLog(id, payload) {
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
-    hourly_rate: Number(payload.hourly_rate || 0),
     location: payload.location || null,
     vin8: payload.vin8 || null,
     updated_at: new Date().toISOString(),
