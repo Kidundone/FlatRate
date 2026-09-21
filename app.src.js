@@ -820,6 +820,7 @@ async function apiCreateLog(payload, sourceEntry = null) {
     vin8: payload.vin8 || null,
     is_deleted: false,
     photo_path: null,
+    is_comeback: !!payload.is_comeback,
   };
 
   // 1) Create row first (no photo_path yet)
@@ -860,7 +861,6 @@ async function apiUpdateLog(id, payload) {
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
-    hourly_rate: Number(payload.hourly_rate || 0),
     location: payload.location || null,
     vin8: payload.vin8 || null,
     updated_at: new Date().toISOString(),
@@ -1009,6 +1009,12 @@ function normalizeEntryForApi(entry) {
     location: entry.location || null,
     vin8: entry.vin8 || null,
     photo_path: entry.photo_path || entry.photoPath || null,
+    // Comeback checkbox on the create form was captured into the local
+    // entry object but never made it into the server payload — found live:
+    // checking "Comeback" on a NEW entry silently did nothing server-side,
+    // even after the is_comeback column fix, because it was dropped here
+    // before the network call ever happened.
+    is_comeback: !!(entry.isComeback ?? entry.is_comeback ?? false),
   };
 }
 
@@ -1380,9 +1386,17 @@ function updatePendingBadge() {
 
 /* ── Settings ────────────────────────────────────────────────────────────── */
 const SETTINGS_KEY = "fr_settings";
+// accentColor was still "#0095f6" (the pre-rebrand Instagram blue) here even
+// after task #88 moved the app's brand color to #2563EB -- applySettings()
+// below runs on every boot and does document.documentElement.style
+// .setProperty("--primary", s.accentColor || DEFAULT), which forcibly
+// overwrote app.css's `--primary: #2563EB` with the stale default via an
+// inline style for literally every user who never opened Settings and
+// manually touched the accent-color picker (i.e. nearly everyone). Found
+// live on this account: --primary was computing to #0095f6 app-wide.
 const SETTINGS_DEFAULTS = Object.freeze({
   defaultRate: 15,
-  accentColor: "#0095f6",
+  accentColor: "#2563EB",
   compactList: false,
   darkMode: "auto",
 });
@@ -1395,6 +1409,19 @@ function getSettings() {
     _settingsCache = stored ? { ...SETTINGS_DEFAULTS, ...JSON.parse(stored) } : { ...SETTINGS_DEFAULTS };
   } catch {
     _settingsCache = { ...SETTINGS_DEFAULTS };
+  }
+  // One-time silent migration: every install saved before this fix has
+  // "#0095f6" baked into localStorage as an explicit value (saveSettings
+  // persists the whole merged object, not just the changed key), so
+  // correcting SETTINGS_DEFAULTS above only helps brand-new installs --
+  // existing devices would stay on the old pre-rebrand blue forever.
+  // accentColor comes from a free native color-well (no swatch list), so
+  // a user could in theory have dialed in this exact hex on purpose, but
+  // that's a vanishingly unlikely coincidence next to "every install ever
+  // defaulted to this value silently" -- treat it as the stale default.
+  if (_settingsCache.accentColor === "#0095f6") {
+    _settingsCache.accentColor = SETTINGS_DEFAULTS.accentColor;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(_settingsCache)); } catch {}
   }
   return _settingsCache;
 }
@@ -3478,15 +3505,15 @@ async function viewPhotoById(id) {
   }
 
   const path = row.photo_path || row.photoPath;
-  if (!path) {
+  if (!path && !row.photoDataUrl) {
     alert("No photo on this entry.");
     return;
   }
 
-  const url = await getCachedPhotoUrl(path);
-
-  // whatever modal you already use:
-  openPhotoModal(url, path);
+  // Route through the polished viewer (RO + date caption, loading/error
+  // states) instead of the legacy modal, which showed the raw storage
+  // path as its caption.
+  await openPhotoViewer(row);
 }
 
 function openPhotoModal(url, pathLabel) {
@@ -3518,9 +3545,11 @@ function openPhotoModal(url, pathLabel) {
 
 async function openPhoto(row) {
   const path = row?.photo_path || row?.photoPath;
-  if (!path) return toast("No photo saved.");
-  const url = await getCachedPhotoUrl(path);
-  openPhotoModal(url, path);
+  if (!path && !row?.photoDataUrl) return toast("No photo saved.");
+  // Route through the polished viewer (RO + date caption, loading/error
+  // states) instead of the legacy modal, which showed the raw storage
+  // path as its caption.
+  await openPhotoViewer(row);
 }
 
 function closePhotoModal(){
@@ -3756,12 +3785,16 @@ async function entryPhotoForPdf(entry, maxDim = 1400, quality = 0.8) {
 
 /**
  * Warm the signed-URL cache for jobs the tech is likely to open next.
- * Fire-and-forget: failures are irrelevant, the tap path handles them.
+ * Fire-and-forget: getCachedPhotoUrl() now catches and negative-caches its
+ * own failures (missing/deleted photos), so there's nothing left for this
+ * call site to handle -- the try/catch that used to be here only guarded
+ * against a synchronous throw and did nothing for the async rejection,
+ * which was actually surfacing as an unhandled promise rejection instead.
  */
 function prewarmPhotoUrls(entries) {
   for (const e of entries || []) {
     const p = e?.photo_path || e?.photoPath;
-    if (p) { try { getCachedPhotoUrl(p); } catch {} }
+    if (p) getCachedPhotoUrl(p);
   }
 }
 
@@ -3846,7 +3879,10 @@ function prewarmScanToken() {
 // the old 18000ms budget was shorter than that, so the client could abort
 // and hand the tech a false "timed out" right as a later retry was about to
 // come back with a good read.
-async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 32000) {
+// scan-ro's server-side worst case (all 3 attempts hit their own ceiling) is
+// now ~21.6s (6500 + 700 + 6500 + 1400 + 6500) — this just needs enough
+// margin above that for the request/response round trip itself.
+async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 26000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
 
@@ -4193,7 +4229,17 @@ async function autoScanPhotoAndPatch(file, entryId, currentRef, currentVin8) {
     const sbInstance = window.__FR?.sb;
     const uid = window.CURRENT_UID;
     if (sbInstance && entryId && uid) {
-      await sbInstance.from("work_logs").update(patch).eq("id", entryId).eq("user_id", uid);
+      // Supabase resolves with { error } on failure, it doesn't throw — this
+      // used to go unchecked, so a failed write here still showed the
+      // "Photo scanned" success toast and updated the in-memory entry, then
+      // silently reverted on next reload with nothing to explain why. Bail
+      // out before the optimistic UI update if the save didn't actually land.
+      const { error: saveErr } = await sbInstance
+        .from("work_logs").update(patch).eq("id", entryId).eq("user_id", uid);
+      if (saveErr) {
+        console.error("[OCR] failed to save auto-filled fields:", saveErr);
+        return;
+      }
     }
 
     if (Array.isArray(window.CURRENT_ENTRIES)) {
@@ -4235,16 +4281,18 @@ let _draftTimer = null;
 
 function saveDraft() {
   if (EDITING_ID) return;
+  // Deliberately does NOT save ref (RO#) or vin8 — those are unique to a
+  // specific job (RO numbers are generated fresh every time here), so
+  // restoring one into a new ticket is never correct, only ever stale. Found
+  // live: restoreDraft() was bringing back the previous job's RO/VIN/notes/
+  // rate into a brand-new ticket any time the app reloaded between jobs
+  // (backgrounding, tab switching, low memory — common on a phone on a shop
+  // floor), which is most of the time in practice. It read as "Keep last
+  // work keeps everything except the photo."
   const draft = {
     hours: document.getElementById("hours")?.value || "",
     typeText: document.getElementById("typeText")?.value || "",
-    ref: document.getElementById("ref")?.value || "",
-    vin8: document.getElementById("vin8")?.value || "",
-    rate: document.querySelector('input[name="rate"]')?.value || "",
-    notes: document.querySelector('#notesInline, textarea[name="notes"]')?.value || "",
     isComeback: !!(document.getElementById("isComeback")?.checked),
-    refType: currentRefType,
-    detailsOpen: document.getElementById("detailsPanel")?.style.display !== "none",
     savedAt: Date.now(),
   };
   if (!draft.hours && !draft.typeText) { localStorage.removeItem(LS_DRAFT); return; }
@@ -4264,10 +4312,14 @@ function restoreDraft() {
     const draft = JSON.parse(raw);
     if (!draft || (!draft.hours && !draft.typeText)) return;
 
-    // Only restore transient fields (hours, type) within a 15-min window.
-    // After that, the user has moved on — starting fresh is less surprising.
+    // Only restore within a short window — this exists purely to survive an
+    // accidental reload mid-keystroke, not to carry a ticket's info forward
+    // into the next one. Shrunk from 15 minutes: that window comfortably
+    // spans the gap between two real jobs (app backgrounding, tab
+    // switching), which made a fresh ticket look like it still had the
+    // previous one's info in it.
     const ageMs = Date.now() - (draft.savedAt || 0);
-    const fresh = ageMs < 15 * 60 * 1000;
+    const fresh = ageMs < 2 * 60 * 1000;
     if (!fresh) {
       localStorage.removeItem(LS_DRAFT);
       return;
@@ -4275,28 +4327,11 @@ function restoreDraft() {
 
     const hoursEl = document.getElementById("hours");
     const typeEl  = document.getElementById("typeText");
-    const refEl   = document.getElementById("ref");
-    const vinEl   = document.getElementById("vin8");
-    const rateEl  = document.querySelector('input[name="rate"]');
-    const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
     const cbEl    = document.getElementById("isComeback");
 
     if (draft.hours   && hoursEl) { hoursEl.value = draft.hours; hoursEl.dataset.touched = "1"; }
     if (draft.typeText && typeEl) typeEl.value = draft.typeText;
-    if (draft.rate    && rateEl)  { rateEl.value = draft.rate; rateEl.dataset.touched = "1"; }
-    if (draft.notes   && notesEl) notesEl.value = draft.notes;
     if (cbEl) cbEl.checked = !!draft.isComeback;
-    if (draft.refType) setRefType(draft.refType);
-
-    const hasDetails = draft.ref || draft.vin8 || draft.detailsOpen;
-    if (hasDetails) {
-      if (draft.ref && refEl) refEl.value = draft.ref;
-      if (draft.vin8 && vinEl) vinEl.value = draft.vin8;
-      const dp  = document.getElementById("detailsPanel");
-      const dbt = document.getElementById("toggleDetailsBtn");
-      if (dp)  dp.style.display  = "block";
-      if (dbt) dbt.textContent   = "Less";
-    }
 
     // Seed date picker to today if not already set
     const datePickerEl2 = document.getElementById("entryDate");
@@ -4315,41 +4350,12 @@ function clearDraft() {
   clearTimeout(_draftTimer);
   localStorage.removeItem(LS_DRAFT);
 }
-const LS_KEEP_LAST_WORK = "fr_keep_last_work";
-const LS_LAST_WORK_TYPE = "fr_last_work_type";
-
-function shouldKeepLastWork() {
-  return localStorage.getItem(LS_KEEP_LAST_WORK) !== "0";
-}
-
-function setKeepLastWork(enabled) {
-  localStorage.setItem(LS_KEEP_LAST_WORK, enabled ? "1" : "0");
-}
-
-function syncKeepLastWorkInput() {
-  const keepLastWorkEl = document.getElementById("keepLastWork");
-  if (keepLastWorkEl) keepLastWorkEl.checked = shouldKeepLastWork();
-}
-
-function getLastWorkType() {
-  return String(localStorage.getItem(LS_LAST_WORK_TYPE) || "").trim();
-}
-
-function rememberLastWorkType(typeName) {
-  const next = String(typeName || "").trim();
-  if (!next) return;
-  localStorage.setItem(LS_LAST_WORK_TYPE, next);
-}
-
-function restoreLastWorkType({ force = false } = {}) {
-  if (!shouldKeepLastWork() || EDITING_ID) return;
-  const typeEl = document.getElementById("typeText");
-  if (!typeEl) return;
-  if (!force && String(typeEl.value || "").trim()) return;
-  const lastType = getLastWorkType();
-  if (!lastType) return;
-  typeEl.value = lastType;
-}
+// "Keep last work" (auto-carrying the previous job's type into a new one)
+// was removed — the primary way type gets filled is OCR reading it straight
+// off the scanned RO, with "Repeat Last" as the one deliberate, opt-in way
+// to reuse it manually. An always-on auto-carry on top of that just meant a
+// type from a different, unrelated job could still be sitting in the field
+// when a new ticket started.
 
 function setQuickHoursValue(value) {
   const hoursEl = document.getElementById("hours");
@@ -4495,7 +4501,7 @@ function handleClear(ev, options = {}) {
   if (ev) ev.preventDefault();
   clearDraft();
   const preserveType = !!options.preserveType;
-  const preservedType = preserveType ? String(options.typeValue || getLastWorkType()).trim() : "";
+  const preservedType = preserveType ? String(options.typeValue || "").trim() : "";
   setEditingEntry(null);
   const empInputEl = document.getElementById("empId");
   const refEl = document.getElementById("ref");
@@ -4905,7 +4911,6 @@ function renderRecentTypeChips(entries) {
         setQuickHoursValue(String(storedHours));
       }
       updateEarningsPreview?.();
-      restoreLastWorkType?.();
 
       // Tap animation
       chip.classList.remove("tapped");
@@ -4998,7 +5003,6 @@ function renderSmartHourChips(entries, forType) {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       setQuickHoursValue?.(String(val));
-      restoreLastWorkType?.();
       updateEarningsPreview?.();
     });
     container.appendChild(btn);
@@ -5079,7 +5083,15 @@ function renderHeroChart(entries, weekStart) {
     // Default: highlight most recent month with data
     let lastIdx = -1;
     buckets.forEach((b, i) => { if (b.dollars > 0) lastIdx = i; });
-    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.click();
+    // rect.click() -- SVGElement has no .click() method in WebKit (the engine
+    // behind both the iOS app and Safari), so this threw "click is not a
+    // function" on every single load whenever the hero chart was left on
+    // Year mode. The ?. only guards a missing element, not a missing method,
+    // so it threw anyway -- and since this runs inside renderLogs, which
+    // loadEntries awaits, the whole entries load aborted into its offline/
+    // cached-data fallback path even though the real fetch had succeeded.
+    // Dispatching a synthetic click event works on every element type.
+    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     return;
   }
 
@@ -5166,8 +5178,9 @@ function renderHeroChart(entries, weekStart) {
       });
     });
     // Default: highlight current week
+    // Same SVGElement.click()-doesn't-exist-in-WebKit fix as year mode above.
     const curIdx = wkBuckets.findIndex(b => b.isCurrent);
-    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.click();
+    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     return;
   }
 
@@ -5507,7 +5520,16 @@ document.getElementById("entryDetailModal")?.addEventListener("click", (ev) => {
   if (ev.target?.id === "entryDetailModal") closeEntryDetail();
 });
 document.getElementById("edPhotoBtn")?.addEventListener("click", () => {
-  if (_entryDetailCurrent) openPhoto(_entryDetailCurrent);
+  // Edit/Delete below both close this modal before acting; View Photo was
+  // the one left calling openPhoto() straight away, so the photo viewer
+  // opened stacked on top of the still-open entry detail card instead of
+  // replacing it -- both modals visible at once, overlapping, since they
+  // share the same z-index and neither is a fully opaque full-bleed layer
+  // on its own. Found live at mobile width: half of each modal bled
+  // through the other. Close first, same as Edit/Delete.
+  const entry = _entryDetailCurrent;
+  closeEntryDetail();
+  if (entry) openPhoto(entry);
 });
 document.getElementById("edEditBtn")?.addEventListener("click", () => {
   const entry = _entryDetailCurrent;
@@ -6161,7 +6183,6 @@ async function handleSave(ev) {
     const hoursVal = num(hoursEl?.value);
     const rateVal = num(rateEl?.value) || getDefaultRate();
     const notes = (notesEl?.value || "").trim();
-    const keepLastWork = shouldKeepLastWork() && !isEditing;
 
     if (!typeName) { shakeEl(typeEl); toast("Add a job type ↑"); return; }
     if (!hoursVal || hoursVal <= 0) { shakeEl(hoursEl); shakeHourChips(); toast("Pick or enter hours ↑"); return; }
@@ -6275,10 +6296,9 @@ async function handleSave(ev) {
     };
 
     await upsertTypeDefaults?.(typeName, hoursVal, rateVal);
-    if (keepLastWork) rememberLastWorkType(typeName);
     const savedEntry = await saveEntry(entry, {
-      preserveType: keepLastWork,
-      preservedType: keepLastWork ? typeName : "",
+      preserveType: false,
+      preservedType: "",
       __isEdit: isEditing,
     });
     haptic("success");
@@ -6315,8 +6335,8 @@ async function handleSave(ev) {
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
     document.getElementById("photoCamera") && (document.getElementById("photoCamera").value = "");
     document.getElementById("photoFile") && (document.getElementById("photoFile").value = "");
-    // Auto-focus the next field so back-to-back jobs flow without tapping:
-    // type was preserved (keepLastWork) → go to hours; type cleared → go to type.
+    // Auto-focus the next field so back-to-back jobs flow without tapping —
+    // type always clears now, so this always lands on the type field.
     // Skipped on edits, where we scroll to the list instead and focusing the
     // form would fight that scroll.
     if (!isEditing) {
@@ -6595,8 +6615,9 @@ async function renderHistory() {
 // a thumbnail that already loaded a photo makes the full-size view (or a
 // manager's job-detail drawer, which has its own copy of this pattern in
 // team.html) come back instantly instead of re-fetching.
-const _photoUrlCache = new Map(); // path -> { url, fetchedAt }
+const _photoUrlCache = new Map(); // path -> { url, fetchedAt, failed? }
 const _PHOTO_CACHE_TTL_MS = 25 * 60 * 1000; // signed URLs last 30 min server-side
+const _PHOTO_CACHE_FAIL_TTL_MS = 2 * 60 * 1000; // don't re-hammer a missing photo for 2 min
 const _PHOTO_CACHE_MAX = 60; // cap blob: URL accumulation on a long native session
 // In-flight de-dupe: prewarmPhotoUrls() now fires for everything in the
 // visible list, so a tap on "View Photo" often lands WHILE that background
@@ -6608,12 +6629,27 @@ const _photoUrlInFlight = new Map(); // path -> Promise<url>
 async function getCachedPhotoUrl(path) {
   if (!path) return null;
   const cached = _photoUrlCache.get(path);
-  if (cached && (Date.now() - cached.fetchedAt < _PHOTO_CACHE_TTL_MS)) {
-    return cached.url;
+  if (cached) {
+    const ttl = cached.failed ? _PHOTO_CACHE_FAIL_TTL_MS : _PHOTO_CACHE_TTL_MS;
+    if (Date.now() - cached.fetchedAt < ttl) return cached.url; // url is null for a cached failure
   }
   if (_photoUrlInFlight.has(path)) return _photoUrlInFlight.get(path);
 
-  const promise = getPhotoUrl(path).finally(() => _photoUrlInFlight.delete(path));
+  // .catch() here (not a sync try/catch around the call) matters: prewarmPhotoUrls()
+  // below fires this without awaiting it, so a plain try/catch around the call site
+  // never sees a rejection that happens after the microtask turn -- it was reaching
+  // the console as an unhandled promise rejection instead. A path whose photo is
+  // missing from storage (deleted, or never uploaded) throws a StorageApiError every
+  // single time; caching the failure for a couple minutes stops every list re-render
+  // from re-requesting the same broken photo, which is what was piling up enough
+  // requests to trip Supabase's rate limit for everyone's photos, not just this one.
+  const promise = getPhotoUrl(path)
+    .catch((err) => {
+      console.warn("[photo] signed URL failed for", path, err?.message || err);
+      _photoUrlCache.set(path, { url: null, fetchedAt: Date.now(), failed: true });
+      return null;
+    })
+    .finally(() => _photoUrlInFlight.delete(path));
   _photoUrlInFlight.set(path, promise);
   const url = await promise;
   if (url) {
@@ -6839,11 +6875,11 @@ function renderWeekChart(thisWeekDollars, lastWeekDollars) {
   el.innerHTML = `
     <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
       <rect x="18" y="${90 - lastH}" width="44" height="${lastH}" rx="5" fill="#1e2f4a"/>
-      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#0095f6"/>
+      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#2563EB"/>
       <text x="40" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">Last Week</text>
       <text x="120" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">This Week</text>
       <text x="40" y="${86 - lastH}" text-anchor="middle" font-size="8" fill="#7a8baa">${formatMoney(lastWeekDollars)}</text>
-      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#0095f6">${formatMoney(thisWeekDollars)}</text>
+      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#2563EB">${formatMoney(thisWeekDollars)}</text>
       <text x="80" y="112" text-anchor="middle" font-size="9" fill="${diffColor}">${sign}${formatMoney(diff)} vs last week</text>
     </svg>`;
 }
@@ -7698,7 +7734,7 @@ async function bulkEditRate() {
   for (const e of selected) {
     try {
       const newEarnings = round2(Number(e.hours) * rateVal);
-      await saveEditedLog(e.id, { cash_amount: newEarnings, hourly_rate: rateVal });
+      await saveEditedLog(e.id, { cash_amount: newEarnings });
       const idx = (window.CURRENT_ENTRIES || []).findIndex(x => String(x.id) === String(e.id));
       if (idx >= 0) {
         window.CURRENT_ENTRIES[idx] = { ...window.CURRENT_ENTRIES[idx], rate: rateVal, earnings: newEarnings, selected: false };
@@ -8380,7 +8416,7 @@ const TOUR_STEPS = [
   {
     el: '.tabItem[data-spa-page="stats"]',
     title: "Stats → Your Breakdown",
-    body: "Tap Stats to see exactly how your hours and pay split across every job type — PDI, Pre-Owned, Sold, Re-Clean, and more. Filter by today, this week, pay period, or any custom range. Scroll down to the Job Scorecard to see which job types actually pay best.",
+    body: "Tap Stats to see exactly how your hours and pay split across every job type you log — whatever those look like for your shop. Filter by today, this week, pay period, or any custom range. Scroll down to the Job Scorecard to see which job types actually pay best.",
   },
   {
     el: '.tabItem[data-spa-page="more"]',
@@ -8874,6 +8910,51 @@ function stopSpotlightTracking(spotlight) {
   spotlight._trackCleanup = null;
 }
 
+// Shared by both this file's tour and more-page.js's tour. `scrollIntoView({
+// block: "center" })` centers a target against the FULL viewport height, but
+// .tourTooltip is a fixed, bottom-anchored panel whose height varies with
+// each step's body text -- for a step with a long body (tall tooltip) or a
+// target that already sits low on the page, "centered on the full viewport"
+// lands the target directly under/behind the tooltip. The spotlight box then
+// draws in the technically-correct spot, but it's invisible: hidden behind
+// the tooltip card. Found live on the More tour's "Set Your Hourly Rate"
+// step -- its long body text makes the tooltip tall enough to cover the
+// Default Rate field, which sits in the lower half of the Settings page.
+// Center the target in the space ABOVE the tooltip instead of the whole
+// viewport, so it stays clear no matter how tall that step's tooltip is.
+function scrollTargetIntoTourView(target) {
+  const tooltip = document.getElementById("tourTooltip");
+  const tooltipRect = tooltip ? tooltip.getBoundingClientRect() : null;
+  // By the time this runs the caller has already switched the overlay into
+  // has-target mode, so a sane tooltipRect.top here reflects this step's
+  // real bottom-anchored height. Guard against a not-yet-laid-out or
+  // still-centered (no-target) tooltip reporting a useless top.
+  const visibleBottom = (tooltipRect && tooltipRect.top > 40) ? tooltipRect.top - 12 : window.innerHeight;
+  const rect = target.getBoundingClientRect();
+  const targetCenter = rect.top + rect.height / 2;
+  const delta = targetCenter - visibleBottom / 2;
+  if (Math.abs(delta) <= 4) return;
+  // #spa-more and #spa-stats are `position:fixed; inset:0; overflow-y:auto`
+  // panels that scroll independently of the document (kept off-DOM-hidden
+  // pattern -- see the comment above #spa-more in app.css). window.scrollBy()
+  // does nothing to a target inside one of those: the fixed panel's own
+  // scroll position is what actually moves it. Walk up from the target to
+  // find whichever ancestor is really the scrolling container, and scroll
+  // that instead. On the plain Log page (#spa-main has no overflow of its
+  // own) this walk finds nothing and we fall back to window, same as before.
+  let node = target.parentElement;
+  let scroller = null;
+  while (node && node !== document.body) {
+    const style = getComputedStyle(node);
+    if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1) {
+      scroller = node;
+      break;
+    }
+    node = node.parentElement;
+  }
+  (scroller || window).scrollBy({ top: delta, behavior: "smooth" });
+}
+
 function trackSpotlight(spotlight, target) {
   const pad = 8;
   const draw = () => {
@@ -8950,7 +9031,7 @@ function startTour(force = false) {
     }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollTargetIntoTourView(target);
     trackSpotlight(spotlight, target);
   }
 
@@ -9532,6 +9613,36 @@ const JOB_TYPE_ALIASES = [
   ["Delivery",      /\bdelivery\b/i],
   // ── Misc ─────────────────────────────────────────────────────
   ["Misc",          /\bmisc\b/i],
+
+  // ── Mechanical / general repair ───────────────────────────────
+  // Added alongside PDI/Sold/etc. so techs and other non-detailer flat-rate
+  // trades get the same auto-merge convenience instead of every spelling of
+  // "brake job" showing up as its own separate, unmerged job type.
+  ["Brakes",        /\bbrakes?\b/i,        /brake[\s-]*job/i,
+                    /brake[\s-]*(pads?|rotors?|shoes?)/i],
+  ["Oil Change",    /oil[\s-]*(&|and)?[\s-]*(change|filter)/i, /\blof\b/i],
+  ["Timing Belt",   /timing[\s-]*belt/i,   /timing[\s-]*chain/i],
+  ["Alignment",     /\balignment\b/i,      /wheel[\s-]*align/i],
+  ["Diagnostic",    /\bdiag(nostic)?\b/i,  /check[\s-]*engine/i,
+                    /\bcel\b/i],
+  ["Tune-Up",       /tune[\s-]*up/i],
+  ["AC Service",    /\ba\/?c\b[\s-]*(service|repair|recharge)?/i,
+                    /air[\s-]*condition/i],
+  ["Transmission",  /transmission/i,       /\btrans\b[\s-]*(service|repair|flush)/i],
+  ["Suspension",    /suspension/i,         /\bstruts?\b/i,        /\bshocks?\b/i],
+  ["Tires",         /\btires?\b/i,         /tire[\s-]*rotation/i],
+  ["Exhaust",       /\bexhaust\b/i,        /\bmuffler\b/i],
+  ["Battery",       /\bbattery\b/i],
+
+  // ── Bodyshop / collision ─────────────────────────────────────────
+  ["Paint & Blend", /paint[\s-]*(&|and)?[\s-]*blend/i, /blend[\s-]*panel/i],
+  ["Panel Repair",  /panel[\s-]*repair/i,  /panel[\s-]*replace/i],
+  ["PDR",           /\bpdr\b/i,            /paintless[\s-]*dent/i],
+  ["Bumper",        /bumper[\s-]*(repair|replace)/i],
+  ["Frame Repair",  /frame[\s-]*(repair|straighten|pull)/i],
+  ["Refinish",      /\brefinish\b/i,       /color[\s-]*match/i],
+  ["Glass",         /windshield/i,         /\bglass[\s-]*(replace|repair)/i],
+  ["Collision Repair", /collision[\s-]*repair/i],
 ];
 
 // A few canonicals are known by a short code that isn't just their label with
@@ -9658,7 +9769,7 @@ function renderDonutSVG(types, total) {
   return `<svg viewBox="0 0 100 100" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
     ${arcs}
-    <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
+    <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--text)">${total}</text>
     <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">${total === 1 ? "job" : "jobs"}</text>
   </svg>`;
 }
@@ -9773,9 +9884,15 @@ function _renderMonthlyTrendHtml(entries) {
       <div class="mnthBarLabel">${b.label}</div>
     </div>`;
   }).join("");
+  // .mnthBarsScrollOuter hosts the right-edge fade (same pattern as
+  // .statsChipsOuter/.recentTypeChipsOuter) — without it this row has no
+  // visible scroll affordance on iOS, where the native scrollbar is an
+  // overlay that's invisible until actively dragged.
   return `<div class="mnthTrend">
     <div class="mnthTrendTitle">Monthly Earnings</div>
+    <div class="mnthBarsScrollOuter">
     <div class="mnthBarsScroll"><div class="mnthBarsWrap">${bars}</div></div>
+    </div>
   </div>`;
 }
 
@@ -12710,8 +12827,8 @@ function initSettingsUI() {
   if (compactToggle) compactToggle.checked = !!s.compactList;
   // Haptic defaults ON; only off if explicitly saved as false
   if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
-  if (colorPicker) colorPicker.value      = s.accentColor || "#0095f6";
-  if (colorPreview) colorPreview.style.background = s.accentColor || "#0095f6";
+  if (colorPicker) colorPicker.value      = s.accentColor || "#2563EB";
+  if (colorPreview) colorPreview.style.background = s.accentColor || "#2563EB";
 
   const syncDmBtns = () => {
     ["dmAuto", "dmLight", "dmDark"].forEach(id => {
@@ -14414,7 +14531,7 @@ function startMoreTour() {
     }
     overlay.style.background = "transparent";
     overlay.classList.add("tour-has-target");
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollTargetIntoTourView(target);
     trackSpotlight(spotlight, target);
   }
 
@@ -15677,7 +15794,6 @@ async function runOnce() {
     if (hoursInput) {
       hoursInput.addEventListener("input", () => {
         hoursInput.dataset.touched = "1";
-        if (num(hoursInput.value) > 0) restoreLastWorkType?.();
         // Keep chip selected state in sync with whatever is typed
         const raw = hoursInput.value.trim();
         document.querySelectorAll("[data-hours-quick]").forEach(b =>
@@ -15685,13 +15801,11 @@ async function runOnce() {
       });
       hoursInput.addEventListener("blur", () => {
         const v = round1(num(hoursInput.value));
-        if (Number.isFinite(v) && v > 0) { hoursInput.value = String(v); restoreLastWorkType?.(); }
+        if (Number.isFinite(v) && v > 0) hoursInput.value = String(v);
         else if (hoursInput.value) hoursInput.value = "";
       });
     }
     if (rateInput) rateInput.addEventListener("input", () => rateInput.dataset.touched = "1");
-
-    syncKeepLastWorkInput?.();
 
     document.getElementById("closePhotoBtn")?.addEventListener("click", closePhotoModal);
     document.getElementById("photoModal")?.addEventListener("click", (e) => {
@@ -15892,13 +16006,6 @@ async function runOnce() {
     syncClearTypeBtn();
     updateSaveEnabled();
 
-    const keepLastWorkEl = document.getElementById("keepLastWork");
-    keepLastWorkEl?.addEventListener("change", () => {
-      setKeepLastWork?.(!!keepLastWorkEl.checked);
-      if (keepLastWorkEl.checked) restoreLastWorkType?.({ force: false });
-      updateSaveEnabled();
-    });
-
     // Smart hour chips are rendered dynamically by renderSmartHourChips() in main-page.js
     // with inline click handlers — no static wiring needed here.
     // Render fallback chips immediately so the row isn't blank before entries load.
@@ -15935,7 +16042,6 @@ async function runOnce() {
         btn.addEventListener("click", (e) => {
           e.preventDefault();
           setQuickHoursValue?.(String(val));
-          restoreLastWorkType?.();
           updateEarningsPreview?.();
         });
         container.appendChild(btn);
@@ -16292,10 +16398,22 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 })();
 
 /* ── What's New changelog ───────────────────────── */
-const APP_VERSION = "1.8";
+// IMPORTANT — keep this up to date: any time a user-facing change ships
+// (a fix, a new feature, a copy change someone would notice), bump
+// APP_VERSION and add a new entry here describing it in plain language.
+// This object IS the permanent log — old versions are never deleted, only
+// added above. showWhatsNew() below renders the current version up top and
+// every older version underneath in a collapsed "Past updates" section, so
+// the full history stays browsable from the app itself, not just here.
+const APP_VERSION = "1.9";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.9": [
+    "Fixed the Pro upgrade screen showing page content bleeding through behind its own text",
+    "Fixed the guided tour's highlight landing in the wrong spot (or hidden behind the card) on a few steps",
+    "Tour wording no longer assumes you're a dealership detailer — same app, any flat-rate trade",
+  ],
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
     "🗓 Set your shop's pay week and payroll cutoff so app totals match your check",
@@ -16352,15 +16470,39 @@ const CHANGELOG = {
   ],
 };
 
+function _whatsNewVerLabel(version) {
+  return version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
+}
+
 function showWhatsNew(version) {
-  const modal  = document.getElementById("whatsNewModal");
-  const list   = document.getElementById("whatsNewList");
-  const verLbl = document.getElementById("whatsNewVersionLabel");
+  const modal    = document.getElementById("whatsNewModal");
+  const list     = document.getElementById("whatsNewList");
+  const verLbl   = document.getElementById("whatsNewVersionLabel");
+  const history  = document.getElementById("whatsNewHistory");
+  const histList = document.getElementById("whatsNewHistoryList");
   if (!modal || !list) return;
   const items = CHANGELOG[version] || [];
   if (!items.length) return;
   list.innerHTML = items.map(t => `<li>${t}</li>`).join("");
-  if (verLbl) verLbl.textContent = version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
+  if (verLbl) verLbl.textContent = _whatsNewVerLabel(version);
+
+  // Every earlier version stays in the log, tucked under a collapsed
+  // "Past updates" toggle so the current version stays the focus but the
+  // full history is still one tap away, in-app, forever.
+  if (history && histList) {
+    const older = Object.keys(CHANGELOG).filter(v => v !== version);
+    if (older.length) {
+      histList.innerHTML = older.map(v => `
+        <div class="whatsNewHistGroup">
+          <div class="whatsNewHistVer">${_whatsNewVerLabel(v)}</div>
+          <ul class="whatsNewList">${(CHANGELOG[v] || []).map(t => `<li>${t}</li>`).join("")}</ul>
+        </div>
+      `).join("");
+      history.style.display = "";
+    } else {
+      history.style.display = "none";
+    }
+  }
   openModalShell(modal);
 }
 
@@ -16376,9 +16518,15 @@ document.getElementById("whatsNewModal")?.addEventListener("click", (e) => {
 });
 document.getElementById("whatsNewBtn")?.addEventListener("click", () => showWhatsNew(APP_VERSION));
 
-// Show automatically once per version (after a short delay so the app settles)
+// Show automatically once per version (after a short delay so the app settles).
+// Skipped entirely for anyone who hasn't finished the guided tour yet -- a
+// brand-new user has nothing to compare "what's new" against, and maybeStartTour()
+// runs on this same boot, so without this check the tour overlay and this modal
+// would pop up on top of each other. A returning user who already finished the
+// tour still sees it right on schedule; a mid-tour user just sees it next boot,
+// once fr_tour_done is set.
 const _seenVer = localStorage.getItem(LS_SEEN_VER);
-if (_seenVer !== APP_VERSION) {
+if (_seenVer !== APP_VERSION && localStorage.getItem("fr_tour_done")) {
   setTimeout(() => showWhatsNew(APP_VERSION), 1800);
 }
 
