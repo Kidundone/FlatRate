@@ -5387,6 +5387,36 @@ const JOB_TYPE_ALIASES = [
   ["Delivery",      /\bdelivery\b/i],
   // ── Misc ─────────────────────────────────────────────────────
   ["Misc",          /\bmisc\b/i],
+
+  // ── Mechanical / general repair ───────────────────────────────
+  // Added alongside PDI/Sold/etc. so techs and other non-detailer flat-rate
+  // trades get the same auto-merge convenience instead of every spelling of
+  // "brake job" showing up as its own separate, unmerged job type.
+  ["Brakes",        /\bbrakes?\b/i,        /brake[\s-]*job/i,
+                    /brake[\s-]*(pads?|rotors?|shoes?)/i],
+  ["Oil Change",    /oil[\s-]*(&|and)?[\s-]*(change|filter)/i, /\blof\b/i],
+  ["Timing Belt",   /timing[\s-]*belt/i,   /timing[\s-]*chain/i],
+  ["Alignment",     /\balignment\b/i,      /wheel[\s-]*align/i],
+  ["Diagnostic",    /\bdiag(nostic)?\b/i,  /check[\s-]*engine/i,
+                    /\bcel\b/i],
+  ["Tune-Up",       /tune[\s-]*up/i],
+  ["AC Service",    /\ba\/?c\b[\s-]*(service|repair|recharge)?/i,
+                    /air[\s-]*condition/i],
+  ["Transmission",  /transmission/i,       /\btrans\b[\s-]*(service|repair|flush)/i],
+  ["Suspension",    /suspension/i,         /\bstruts?\b/i,        /\bshocks?\b/i],
+  ["Tires",         /\btires?\b/i,         /tire[\s-]*rotation/i],
+  ["Exhaust",       /\bexhaust\b/i,        /\bmuffler\b/i],
+  ["Battery",       /\bbattery\b/i],
+
+  // ── Bodyshop / collision ─────────────────────────────────────────
+  ["Paint & Blend", /paint[\s-]*(&|and)?[\s-]*blend/i, /blend[\s-]*panel/i],
+  ["Panel Repair",  /panel[\s-]*repair/i,  /panel[\s-]*replace/i],
+  ["PDR",           /\bpdr\b/i,            /paintless[\s-]*dent/i],
+  ["Bumper",        /bumper[\s-]*(repair|replace)/i],
+  ["Frame Repair",  /frame[\s-]*(repair|straighten|pull)/i],
+  ["Refinish",      /\brefinish\b/i,       /color[\s-]*match/i],
+  ["Glass",         /windshield/i,         /\bglass[\s-]*(replace|repair)/i],
+  ["Collision Repair", /collision[\s-]*repair/i],
 ];
 
 // A few canonicals are known by a short code that isn't just their label with
@@ -5513,7 +5543,7 @@ function renderDonutSVG(types, total) {
   return `<svg viewBox="0 0 100 100" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface2,#1e2d42)" stroke-width="14"/>
     ${arcs}
-    <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--fg,#e8eaf0)">${total}</text>
+    <text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="var(--text)">${total}</text>
     <text x="50" y="58" text-anchor="middle" font-size="9" fill="var(--muted,#6b7280)">${total === 1 ? "job" : "jobs"}</text>
   </svg>`;
 }
