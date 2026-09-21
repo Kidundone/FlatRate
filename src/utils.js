@@ -13,6 +13,13 @@ const SETTINGS_DEFAULTS = Object.freeze({
   accentColor: "#2563EB",
   compactList: false,
   darkMode: "auto",
+  // Color theme — a full-app palette swap on top of accentColor/darkMode.
+  // "classic" is today's exact look (respects accentColor + darkMode below);
+  // the preset themes (sunset/carnival/tropic/neon) are fixed palettes with
+  // their own --primary/--accent, so accentColor is inert while one is active.
+  // Sunset is the shipped default for new and existing installs alike —
+  // anyone who prefers today's app picks "classic" from the Theme row.
+  colorTheme: "sunset",
 });
 
 let _settingsCache = null;
@@ -81,9 +88,23 @@ function textSafeAccent(hex, isDark) {
 function applySettings(s = getSettings()) {
   const color = s.accentColor || SETTINGS_DEFAULTS.accentColor;
   const isDark = resolveDarkMode(s.darkMode);
-  document.documentElement.style.setProperty("--primary", color);
-  document.documentElement.style.setProperty("--accent", color);
-  document.documentElement.style.setProperty("--primary-text", textSafeAccent(color, isDark));
+  const colorTheme = s.colorTheme || SETTINGS_DEFAULTS.colorTheme;
+  document.documentElement.setAttribute("data-color-theme", colorTheme);
+  if (colorTheme === "classic") {
+    // Classic is the customizable one: user's accent color picker + dark/
+    // light choice both apply, exactly as before this feature existed.
+    document.documentElement.style.setProperty("--primary", color);
+    document.documentElement.style.setProperty("--accent", color);
+    document.documentElement.style.setProperty("--primary-text", textSafeAccent(color, isDark));
+  } else {
+    // A preset theme (sunset/carnival/tropic/neon) carries its own
+    // --primary/--accent in app.css under [data-color-theme="…"]. Clear any
+    // inline override left over from a prior Classic session so the CSS
+    // cascade wins instead of a stale inline style pinned to the old accent.
+    document.documentElement.style.removeProperty("--primary");
+    document.documentElement.style.removeProperty("--accent");
+    document.documentElement.style.removeProperty("--primary-text");
+  }
   document.body.classList.toggle("compact", !!s.compactList);
   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
 

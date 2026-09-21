@@ -12,10 +12,22 @@
   --text1: #fff;
   --text2: rgba(255,255,255,.72);
   --muted: #7a7a9a;
-  --muted2: rgba(255,255,255,.32);
+  /* Was .32 -- contrast against surface3 was only 2.89:1, well under WCAG's
+     4.5:1 minimum for normal-size text. Bumped so every dark surface clears
+     4.5:1 (worst case surface3 lands at ~4.68:1). */
+  --muted2: rgba(255,255,255,.47);
 
   --primary: #2563EB;
   --primary-dark: #1d4ed8;
+  /* --primary at full saturation reads great as a button background (white
+     text on it is a clean 5.17:1), but used directly AS text on a dark
+     surface it was only 3.2-3.9:1 -- under the 4.5:1 minimum for normal
+     text, and this brand blue is used as text/link color in ~80 places
+     (active tabs, "Repeat Last" style labels, underlined links, the pace
+     line in the hero). --primary-text is a lightened variant for exactly
+     those text-on-dark-background usages; --primary itself is untouched so
+     buttons/borders/backgrounds keep their original color. */
+  --primary-text: #6692f1;
   --accent: #2563EB;
   --danger: #ef4444;
 
@@ -46,7 +58,12 @@
     --text1: #000000;
     --text2: rgba(0,0,0,.60);
     --muted: #3c3c43;
-    --muted2: rgba(60,60,67,.60);
+    /* Was .60 -- contrast against surface3 was only 2.90:1. Bumped so every
+       light surface clears 4.5:1 (worst case ~4.73:1). */
+    --muted2: rgba(60,60,67,.82);
+    /* Darkened variant of --primary for text-on-light-background usages --
+       see the --primary-text comment in the dark :root block above. */
+    --primary-text: #1d4db7;
     --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
     --shadow-md: 0 4px 16px rgba(0,0,0,.12);
     --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
@@ -65,11 +82,115 @@
   --text1: #fff;
   --text2: rgba(255,255,255,.72);
   --muted: #7a7a9a;
-  --muted2: rgba(255,255,255,.32);
+  --muted2: rgba(255,255,255,.47);
+  --primary-text: #6692f1;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
   --shadow-md: 0 4px 16px rgba(0,0,0,.5);
   --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
 }
+
+/* ── Color themes ─────────────────────────────────────────────────────────
+   A full-app palette swap on top of the tokens above, picked from the
+   Theme row in More ▸ Display and applied as [data-color-theme] on <html>.
+   "classic" (the default attribute value when unset) needs no block here —
+   it's exactly the :root/[data-theme] tokens already defined. Each preset
+   below covers the full token set used across the app (surfaces, text,
+   primary/accent) so nothing partially inherits a mismatched color from
+   whichever dark/light block happened to run first. Selectors use
+   :root[data-color-theme="…"] (not the bare attribute) to tie the
+   specificity of the light-mode media block's :root:not([data-theme="dark"])
+   rule — these come later in the file, so the tie is broken in their favor. */
+:root[data-color-theme="sunset"] {
+  --bg: #FFF9F2;
+  --surface: #FFFFFF;
+  --surface2: #F3EDE1;
+  --surface3: #EDE6DA;
+  --stroke: rgba(43,33,64,.08);
+  --stroke2: rgba(43,33,64,.14);
+  --text: #2B2140;
+  --text1: #2B2140;
+  --text2: rgba(43,33,64,.72);
+  --muted: #8A7EA8;
+  --muted2: rgba(43,33,64,.55);
+  --primary: #FF6F61;
+  --primary-dark: #E85C4E;
+  --primary-text: #E14A3B;
+  --accent: #4CC9F0;
+}
+:root[data-color-theme="carnival"] {
+  --bg: #FFFFFF;
+  --surface: #F7F3FF;
+  --surface2: #EDE6FB;
+  --surface3: #E0D6F7;
+  --stroke: rgba(36,24,84,.08);
+  --stroke2: rgba(36,24,84,.14);
+  --text: #241854;
+  --text1: #241854;
+  --text2: rgba(36,24,84,.72);
+  --muted: #8A7EB8;
+  --muted2: rgba(36,24,84,.55);
+  --primary: #FF2D78;
+  --primary-dark: #E0245F;
+  --primary-text: #D81B60;
+  --accent: #7B2FF7;
+}
+:root[data-color-theme="tropic"] {
+  --bg: #FFFDF4;
+  --surface: #FFFFFF;
+  --surface2: #EAF9F1;
+  --surface3: #DFF3E9;
+  --stroke: rgba(14,59,46,.08);
+  --stroke2: rgba(14,59,46,.14);
+  --text: #0E3B2E;
+  --text1: #0E3B2E;
+  --text2: rgba(14,59,46,.72);
+  --muted: #6FA593;
+  --muted2: rgba(14,59,46,.55);
+  --primary: #E8590C;
+  --primary-dark: #C94A08;
+  --primary-text: #C94A08;
+  --accent: #00C853;
+}
+:root[data-color-theme="neon"] {
+  --bg: #120E22;
+  --surface: #1B1533;
+  --surface2: #241D40;
+  --surface3: #2E2650;
+  --stroke: rgba(255,255,255,.08);
+  --stroke2: rgba(255,255,255,.14);
+  --text: #F2F0FF;
+  --text1: #F2F0FF;
+  --text2: rgba(242,240,255,.72);
+  --muted: #A99CE0;
+  --muted2: rgba(242,240,255,.5);
+  --primary: #FF2FD0;
+  --primary-dark: #D620AD;
+  --primary-text: #FF6FE0;
+  --accent: #00F0FF;
+}
+
+/* Theme picker swatches — More ▸ Display */
+.moreRow--stack { flex-direction: column; align-items: stretch; }
+.themeSwatchRow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.themeSwatch {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 50px; background: none; border: none; padding: 0; cursor: pointer;
+}
+.themeSwatchDot {
+  display: block; width: 40px; height: 40px; border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--stroke2);
+  transition: box-shadow .15s var(--ease);
+}
+.themeSwatch[aria-pressed="true"] .themeSwatchDot {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--primary);
+}
+.themeSwatchName { font-size: 10.5px; font-weight: 700; color: var(--muted); text-align: center; }
+.themeSwatch[aria-pressed="true"] .themeSwatchName { color: var(--text); }
+.themeSwatchDot--sunset   { background: linear-gradient(135deg, #FF6F61 50%, #4CC9F0 50%); }
+.themeSwatchDot--classic  { background: linear-gradient(135deg, #07070f 50%, #2563EB 50%); }
+.themeSwatchDot--carnival { background: linear-gradient(135deg, #7B2FF7 50%, #FF2D78 50%); }
+.themeSwatchDot--tropic   { background: linear-gradient(135deg, #00C853 50%, #00B7C3 50%); }
+.themeSwatchDot--neon     { background: linear-gradient(135deg, #120E22 40%, #00F0FF 70%, #FF2FD0 100%); }
 
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
@@ -201,6 +322,12 @@ body[data-page="stats"] #spa-stats {
      the browser we own horizontal here, so the anti-bounce handler stays out. */
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
+  /* The page-level bounce fix (html/body overscroll-behavior-x: none) only
+     stops the WHOLE PAGE from rubber-banding — it does nothing for a child
+     element's own overflow box, which defaults to overscroll-behavior: auto
+     and happily bounces (and can chain into a page-level bounce) when
+     dragged past its own edge. This is the row that was still wobbling. */
+  overscroll-behavior-x: contain;
 }
 /* Chip buttons inherit manipulation from the global button rule, which stops
    a drag that starts ON a chip from panning the row. They're the whole row. */
@@ -328,7 +455,7 @@ body[data-page="stats"] #spa-stats {
 .brkSumVal {
   font-size: 18px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-text);
   line-height: 1.1;
 }
 .brkSumLabel {
@@ -450,7 +577,7 @@ body[data-page="stats"] #spa-stats {
 .brkRowEarnings {
   font-weight: 700;
   font-size: 15px;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .brkRowHours {
   font-size: 12px;
@@ -492,6 +619,10 @@ body[data-page="stats"] #spa-stats {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  /* Contain this row's own scroll bounce so dragging past its edge doesn't
+     rubber-band (and potentially chain into the page) — see the longer note
+     on .statsChipsWrap above. */
+  overscroll-behavior-x: contain;
 }
 .mnthBarsWrap {
   display: flex;
@@ -662,7 +793,7 @@ header.top,
 }
 
 .tabItem--active {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .tabItem svg { transition: transform 150ms var(--ease-bounce); }
@@ -702,7 +833,7 @@ header.top,
 }
 
 .stripValue--accent { color: var(--accent); }
-.stripValue--primary { color: var(--primary); }
+.stripValue--primary { color: var(--primary-text); }
 
 /* ── Cards ───────────────────────────────────────── */
 .card {
@@ -728,7 +859,7 @@ header.top,
 
 .muted  { color: var(--muted); font-size: 13px; }
 .small  { font-size: 12px; color: var(--muted); }
-.linkBtn { background: none; border: none; padding: 0; color: var(--primary); font-size: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; touch-action: manipulation; }
+.linkBtn { background: none; border: none; padding: 0; color: var(--primary-text); font-size: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; touch-action: manipulation; }
 .mono   { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 /* ── Layout helpers ──────────────────────────────── */
@@ -930,7 +1061,7 @@ header.top,
 }
 .iBtn:active { background: var(--surface3); transform: scale(.94); }
 .iBtn--danger { color: var(--danger); border-color: rgba(237,73,86,.25); background: rgba(237,73,86,.06); }
-.iBtn--sameRO { color: var(--primary); border-color: rgba(37,99,235,.3); background: rgba(37,99,235,.08); font-weight: 600; }
+.iBtn--sameRO { color: var(--primary-text); border-color: rgba(37,99,235,.3); background: rgba(37,99,235,.08); font-weight: 600; }
 
 /* ── Week group header ───────────────────────────── */
 .weekGroupHdr {
@@ -945,7 +1076,7 @@ header.top,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .5px;
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 .weekGroupTotals {
@@ -1367,6 +1498,7 @@ a.btn {
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .fr26QuickHours::-webkit-scrollbar { display: none; }
 /* Without this, #smartHourChips (a plain div, no layout of its own) becomes
@@ -1382,7 +1514,7 @@ a.btn {
   align-self: center;
   font-size: 10px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   letter-spacing: .03em;
   opacity: .75;
   white-space: nowrap;
@@ -1402,7 +1534,7 @@ a.btn {
   border: 1.5px solid rgba(37,99,235,.35);
   border-radius: 12px;
   background: rgba(37,99,235,.08);
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -1415,7 +1547,7 @@ a.btn {
   background: rgba(37, 99, 235, .18);
   border-color: var(--primary);
   border-width: 2px;
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 700;
 }
 
@@ -1424,14 +1556,14 @@ a.btn {
 .fr26HourBtnCustom {
   background: rgba(37,99,235,.08);
   border-color: rgba(37,99,235,.35);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 /* + button */
 /* Job-type hours chip — appears first when a known job type is selected */
 .fr26HourBtnType {
   background: rgba(37,99,235,.18);
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 700;
   order: -1;
   position: relative;
@@ -1449,7 +1581,7 @@ a.btn {
   margin-top: 8px;
   width: 100%;
   background: rgba(37,99,235,.1);
-  color: var(--primary);
+  color: var(--primary-text);
   border: 1.5px solid rgba(37,99,235,.4);
   border-radius: var(--r-md);
   padding: 9px 14px;
@@ -1459,7 +1591,7 @@ a.btn {
 }
 .fr26HourBtnAdd {
   min-width: 42px;
-  color: var(--primary);
+  color: var(--primary-text);
   border-color: rgba(37,99,235,.4);
   background: transparent;
   font-size: 20px;
@@ -1595,7 +1727,7 @@ a.btn {
 
 .fr26OptionalSummary::after {
   content: "+";
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 20px;
   font-weight: 300;
   line-height: 1;
@@ -1711,7 +1843,7 @@ a.btn {
   flex: 1;
   padding: 10px 0;
   background: rgba(37,99,235,.10);
-  color: var(--primary);
+  color: var(--primary-text);
   border: none;
   border-top: 1px solid rgba(37,99,235,.18);
   border-radius: 0 0 var(--r-lg) var(--r-lg);
@@ -1733,7 +1865,7 @@ a.btn {
   padding: 0 16px 10px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   min-height: 20px;
   transition: opacity 0.3s;
 }
@@ -1755,7 +1887,7 @@ a.btn {
   border: 1px solid rgba(37,99,235,.5);
   border-radius: var(--r-pill);
   background: transparent;
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1803,6 +1935,7 @@ a.btn {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding: 14px 16px;
+  overscroll-behavior-x: contain;
 }
 .fr26QuickTools::-webkit-scrollbar { display: none; }
 .fr26QuickTools > * { flex: 0 0 auto; }
@@ -1815,6 +1948,7 @@ a.btn {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  overscroll-behavior-x: contain;
 }
 .pillRow::-webkit-scrollbar { display: none; }
 
@@ -2279,7 +2413,7 @@ a.btn {
 
 /* Tappable ref when entry has a photo */
 .histEntryRefNum--photo {
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -2289,7 +2423,7 @@ a.btn {
 }
 .histEntryRefNum--photo:active { opacity: .7; }
 .histEntryRefPhotoIcon { font-size: 13px; line-height: 1; }
-[data-theme="light"] .histEntryRefNum--photo { color: var(--primary); }
+[data-theme="light"] .histEntryRefNum--photo { color: var(--primary-text); }
 
 .histPhotoTag {
   font-size: 14px;
@@ -2480,7 +2614,7 @@ a.btn {
 .teamEntryBody { flex: 1; min-width: 0; }
 .teamEntryTitle { display: block; font-size: 14.5px; font-weight: 700; color: var(--text); }
 .teamEntrySub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-.teamEntryGo { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+.teamEntryGo { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--primary-text); white-space: nowrap; }
 
 .moreCard { padding: 0; overflow: hidden; }
 
@@ -2709,7 +2843,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .5px;
-  color: var(--primary);
+  color: var(--primary-text);
   background: rgba(0,149,246,.12);
   padding: 6px 10px;
   border-radius: var(--r-md);
@@ -2917,6 +3051,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   gap: 8px;
   margin-top: 10px;
   padding-bottom: 2px;
+  overscroll-behavior-x: contain;
 }
 .entryActions::-webkit-scrollbar { display: none; }
 .entryActions .btn {
@@ -2991,7 +3126,8 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   --text1: #000000;
   --text2: rgba(0,0,0,.60);
   --muted: #3c3c43;
-  --muted2: rgba(60,60,67,.60);
+  --muted2: rgba(60,60,67,.82);
+  --primary-text: #1d4db7;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
   --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
@@ -3031,7 +3167,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 [data-theme="light"] .heroAmt { color: var(--text); }
 [data-theme="light"] .heroEyebrow { color: var(--muted); }
 [data-theme="light"] .heroSubLine { color: var(--text2); }
-[data-theme="light"] .heroPaceLine { color: var(--primary); }
+[data-theme="light"] .heroPaceLine { color: var(--primary-text); }
 [data-theme="light"] .hcTab { color: var(--muted); }
 [data-theme="light"] .hcStat { border-right-color: var(--stroke2); }
 [data-theme="light"] .hcStatsRow { border-top-color: var(--stroke2); }
@@ -3054,7 +3190,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 [data-theme="light"] .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 [data-theme="light"] .pill { background: var(--surface2); color: var(--text); }
 [data-theme="light"] .tabItem { color: var(--muted); }
-[data-theme="light"] .tabItem--active { color: var(--primary); }
+[data-theme="light"] .tabItem--active { color: var(--primary-text); }
 [data-theme="light"] .goalBar { background: var(--surface3); }
 [data-theme="light"] .entryListHeader { color: var(--text); }
 [data-theme="light"] select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
@@ -3064,7 +3200,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 [data-theme="light"] .moreRowSub { color: var(--muted2); }
 [data-theme="light"] .moreCardHeader { color: var(--text); }
 [data-theme="light"] .moreTab { color: var(--muted); }
-[data-theme="light"] .moreTab.active { color: var(--primary); border-bottom-color: var(--primary); }
+[data-theme="light"] .moreTab.active { color: var(--primary-text); border-bottom-color: var(--primary); }
 /* Type chips light mode */
 [data-theme="light"] .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
 [data-theme="light"] .typeSuggestChip:active { background: var(--surface2); }
@@ -3194,7 +3330,7 @@ body.compact .list    { gap: 1px; }
 /* ── iBtn active state (comeback toggle) ─────────── */
 .iBtn--active {
   background: rgba(0,149,246,.18);
-  color: var(--primary);
+  color: var(--primary-text);
   border-color: rgba(0,149,246,.5);
 }
 
@@ -3360,7 +3496,7 @@ body.compact .list    { gap: 1px; }
   -webkit-tap-highlight-color: transparent;
 }
 
-.moreTab.active { color: var(--primary); }
+.moreTab.active { color: var(--primary-text); }
 
 .moreTab.active::after {
   content: '';
@@ -3482,7 +3618,7 @@ body.compact .list    { gap: 1px; }
 }
 .histWeekLabel { color: var(--muted); font-weight: 600; flex-shrink: 0; }
 .histWeekStat  { color: var(--text2); }
-.histWeekPay   { color: var(--primary); font-weight: 700; margin-left: auto; }
+.histWeekPay   { color: var(--primary-text); font-weight: 700; margin-left: auto; }
 
 /* ── Short-pay badge on More button ──────────────── */
 .headerMoreBtn { position: relative; }
@@ -3645,7 +3781,7 @@ body.compact .list    { gap: 1px; }
   font-weight: 700;
   letter-spacing: .6px;
   text-transform: uppercase;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .tourSkip {
@@ -3767,7 +3903,7 @@ body.compact .list    { gap: 1px; }
 .tourMascotName {
   font-size: 13px;
   font-weight: 800;
-  color: var(--primary);
+  color: var(--primary-text);
   letter-spacing: .03em;
 }
 
@@ -3899,7 +4035,7 @@ body.compact .list    { gap: 1px; }
 .heroPaceLine {
   font-size: 11px;
   font-weight: 500;
-  color: var(--primary);
+  color: var(--primary-text);
   margin-top: 3px;
   min-height: 14px;
 }
@@ -3945,7 +4081,7 @@ body.compact .list    { gap: 1px; }
 }
 .clockInBtn--active {
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--primary-text);
   background: rgba(37,99,235,.08);
 }
 .clockInBtn:active { transform: scale(.95); }
@@ -3967,7 +4103,7 @@ body.compact .list    { gap: 1px; }
   transition: background .12s, border-color .12s;
 }
 .repeatChip:active, .comboSuggestChip:active { background: var(--surface3); }
-.comboSuggestChip { border-style: dashed; border-color: rgba(37,99,235,.4); color: var(--primary); }
+.comboSuggestChip { border-style: dashed; border-color: rgba(37,99,235,.4); color: var(--primary-text); }
 
 /* ── Owe Me tracker ───────────────────────────────── */
 .oweMeTotalBadge {
@@ -4093,7 +4229,7 @@ body.compact .list    { gap: 1px; }
   text-align: center;
   flex: 1;
 }
-.heroChartLabel--now { color: var(--primary); font-weight: 700; }
+.heroChartLabel--now { color: var(--primary-text); font-weight: 700; }
 
 /* Stats row */
 .hcStatsRow {
@@ -4116,7 +4252,7 @@ body.compact .list    { gap: 1px; }
   letter-spacing: -.5px;
   line-height: 1;
 }
-.hcStat--pay .hcStatVal { color: var(--primary); }
+.hcStat--pay .hcStatVal { color: var(--primary-text); }
 .hcStatLbl {
   font-size: 10px;
   color: var(--muted2);
@@ -4295,7 +4431,7 @@ body.compact .list    { gap: 1px; }
   padding: 2px 8px 2px 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -4331,7 +4467,7 @@ body.compact .list    { gap: 1px; }
 .hcEntryPay {
   font-size: 15px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .hcEntryHrs {
   font-size: 11px;
@@ -4361,6 +4497,7 @@ body.compact .list    { gap: 1px; }
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   border-top: 1px solid var(--stroke);
+  overscroll-behavior-x: contain;
 }
 .hcActionRow::-webkit-scrollbar { display: none; }
 .hcActionRow .btn {
@@ -4645,7 +4782,7 @@ body.compact .list    { gap: 1px; }
 .techRankBadge {
   font-size: 11px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   margin-top: 5px;
   letter-spacing: .1px;
   opacity: .9;
@@ -4682,7 +4819,7 @@ body.compact .list    { gap: 1px; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: var(--primary);
+  color: var(--primary-text);
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -4770,7 +4907,7 @@ body.compact .list    { gap: 1px; }
   overflow: hidden;
 }
 .eightWkLabel--now {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 700;
 }
 .eightWkEmptyState {
@@ -4821,7 +4958,7 @@ body.compact .list    { gap: 1px; }
 }
 .cbGood {
   font-size: 12px;
-  color: var(--primary);
+  color: var(--primary-text);
   background: rgba(37,99,235,.08);
   border: 1px solid rgba(37,99,235,.18);
   border-radius: var(--r-md);
@@ -4890,7 +5027,7 @@ body.compact .list    { gap: 1px; }
 .whatsNewHistory[open] summary::after { transform: rotate(90deg); }
 .whatsNewHistGroup { padding-top: 14px; }
 .whatsNewHistGroup + .whatsNewHistGroup { margin-top: 14px; border-top: 1px dashed var(--stroke); padding-top: 14px; }
-.whatsNewHistVer { font-size: 12px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+.whatsNewHistVer { font-size: 12px; font-weight: 800; color: var(--primary-text); margin-bottom: 8px; }
 .whatsNewHistGroup .whatsNewList li { font-size: 13px; color: var(--muted); }
 
 /* ── UX Polish fixes ────────────────────────────────────────── */
@@ -4936,7 +5073,7 @@ body.compact .list    { gap: 1px; }
 
 /* Fix #15: Accordion rows in History — add descriptive sub-text color */
 .moreSectionSummary { cursor: pointer; }
-.moreSectionSummary::marker { color: var(--primary); }
+.moreSectionSummary::marker { color: var(--primary-text); }
 
 /* Fix #16: Auth form — add a hint label so fields don't look broken */
 .authHint {
@@ -4988,6 +5125,7 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
   scrollbar-width: none;
   margin-bottom: 8px;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .recentTypeChips:empty { display: none; }
 .recentTypeChips::-webkit-scrollbar { display: none; }
@@ -5010,7 +5148,7 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 .recentTypeChipName {
   font-size: 12px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5126,7 +5264,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .heroChartLabelAmt {
   font-size: 8px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-text);
   min-height: 10px;
   line-height: 1;
   white-space: nowrap;
@@ -5213,7 +5351,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 
 .reqSt { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; letter-spacing: .02em; }
 .reqSt--open      { background: rgba(245,158,11,.16); color: #f59e0b; }
-.reqSt--ack       { background: rgba(37,99,235,.15);  color: var(--primary); }
+.reqSt--ack       { background: rgba(37,99,235,.15);  color: var(--primary-text); }
 .reqSt--done      { background: rgba(74,222,128,.16); color: #4ade80; }
 .reqSt--declined  { background: rgba(239,68,68,.14);  color: var(--danger); }
 
@@ -5249,7 +5387,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reqDetailsHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; }
 .reqDraftBtn {
   display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
-  color: var(--primary); background: rgba(37,99,235,.12); border: 1px solid rgba(37,99,235,.3);
+  color: var(--primary-text); background: rgba(37,99,235,.12); border: 1px solid rgba(37,99,235,.3);
   border-radius: 999px; padding: 5px 10px; cursor: pointer; touch-action: manipulation;
   transition: transform 130ms cubic-bezier(.34,1.56,.64,1), opacity 120ms;
 }
@@ -5258,7 +5396,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reqDraftErr { font-size: 11.5px; color: var(--danger); margin-top: 6px; line-height: 1.5; }
 
 .reqMeta { margin-bottom: 12px; }
-.reqMetaRow { font-size: 11.5px; color: var(--primary); font-weight: 600; margin-bottom: 5px; }
+.reqMetaRow { font-size: 11.5px; color: var(--primary-text); font-weight: 600; margin-bottom: 5px; }
 .reqMetaDetails { font-size: 12.5px; color: var(--text2); line-height: 1.55; white-space: pre-wrap; }
 .reqMetaNote {
   font-size: 12px; color: var(--text2); line-height: 1.55; margin-top: 9px;
@@ -5392,7 +5530,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .mwLeft  { flex: 1; min-width: 0; }
 .mwRight { text-align: right; flex-shrink: 0; }
 .mwType  { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.3; }
-.mwRef   { font-size: 12.5px; font-weight: 600; color: var(--primary); margin-top: 3px; }
+.mwRef   { font-size: 12.5px; font-weight: 600; color: var(--primary-text); margin-top: 3px; }
 .mwMeta  { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 .mwNotes { font-size: 12px; color: var(--text2); font-style: italic; margin-top: 5px; line-height: 1.4; }
 .mwPay   { font-size: 17px; font-weight: 800; color: var(--accent); letter-spacing: -.4px; }
@@ -5406,7 +5544,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .mwActions .mwPhotoBtn { flex: 1 1 auto; justify-content: center; font-weight: 700; }
 .mwCard--tappable { cursor: pointer; transition: transform 120ms var(--ease, ease), border-color 120ms; }
 .mwCard--tappable:active { transform: scale(.985); border-color: rgba(37,99,235,.5); }
-.mwPhotoBtn { color: var(--primary); border-color: rgba(37,99,235,.4); background: rgba(37,99,235,.09); }
+.mwPhotoBtn { color: var(--primary-text); border-color: rgba(37,99,235,.4); background: rgba(37,99,235,.09); }
 .mwNoPhoto  { font-size: 11.5px; color: var(--muted); font-style: italic; }
 
 /* ── Efficiency card ────────────────────────────────────────────────────────── */
@@ -5425,7 +5563,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .effPctWrap { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
 .effPct { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
 .eff--strong .effPct { color: #4ade80; }
-.eff--ok     .effPct { color: var(--primary); }
+.eff--ok     .effPct { color: var(--primary-text); }
 .eff--low    .effPct { color: #f59e0b; }
 .effPctLabel {
   font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
@@ -5542,7 +5680,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 }
 .ltRemainLabel { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .03em; }
 .ltRemainVal { font-size: 17px; font-weight: 700; color: #f59e0b; }
-.ltRemainVal--done { color: var(--primary); }
+.ltRemainVal--done { color: var(--primary-text); }
 
 .ltChips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
 .ltChip {
@@ -5555,7 +5693,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 }
 .ltChip:active { transform: scale(.9); }
 .ltChip--on {
-  background: rgba(37,99,235,.14); color: var(--primary);
+  background: rgba(37,99,235,.14); color: var(--primary-text);
   border-color: rgba(37,99,235,.5);
 }
 
@@ -5569,7 +5707,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .ltRowName { font-size: 13px; font-weight: 600; color: var(--text); }
 .ltStepper { display: inline-flex; align-items: center; gap: 10px; }
 .ltRowHrs {
-  font-size: 13px; font-weight: 700; color: var(--primary);
+  font-size: 13px; font-weight: 700; color: var(--primary-text);
   min-width: 42px; text-align: center;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -5664,7 +5802,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   transition: color 120ms, border-color 120ms, transform 130ms cubic-bezier(.34,1.56,.64,1);
 }
 .heroDetailsToggle:active { transform: scale(.93); }
-.heroDetailsToggle--open { color: var(--primary); border-color: rgba(37,99,235,.45); }
+.heroDetailsToggle--open { color: var(--primary-text); border-color: rgba(37,99,235,.45); }
 .heroDetailsChev {
   font-size: 12px; line-height: 1;
   transition: transform 200ms cubic-bezier(.4,0,.2,1);
@@ -5696,7 +5834,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   border-radius: var(--r-lg, 12px);
   padding: 9px 12px; margin-bottom: 10px;
 }
-.jsHeadline strong { color: var(--primary); font-weight: 700; }
+.jsHeadline strong { color: var(--primary-text); font-weight: 700; }
 .jsHeadline--muted {
   background: var(--surface2); border-color: var(--stroke);
   color: var(--muted);
@@ -5722,14 +5860,14 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .jsRowSub { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
 .jsRowRate { text-align: right; flex-shrink: 0; }
-.jsRateVal { font-size: 15px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+.jsRateVal { font-size: 15px; font-weight: 700; color: var(--primary-text); line-height: 1.1; }
 .jsRateLbl { font-size: 9.5px; color: var(--muted); letter-spacing: .03em; margin-top: 1px; }
 
 .jsBadge {
   font-size: 9px; font-weight: 700; letter-spacing: .04em;
   border-radius: 5px; padding: 2px 5px; white-space: nowrap;
 }
-.jsBadge--best { background: rgba(37,99,235,.18); color: var(--primary); }
+.jsBadge--best { background: rgba(37,99,235,.18); color: var(--primary-text); }
 .jsBadge--warn { background: rgba(245,158,11,.16); color: #f59e0b; }
 .jsBadge--thin { background: var(--surface3, var(--surface2)); color: var(--muted); font-weight: 600; }
 

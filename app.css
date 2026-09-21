@@ -89,6 +89,109 @@
   --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
 }
 
+/* ── Color themes ─────────────────────────────────────────────────────────
+   A full-app palette swap on top of the tokens above, picked from the
+   Theme row in More ▸ Display and applied as [data-color-theme] on <html>.
+   "classic" (the default attribute value when unset) needs no block here —
+   it's exactly the :root/[data-theme] tokens already defined. Each preset
+   below covers the full token set used across the app (surfaces, text,
+   primary/accent) so nothing partially inherits a mismatched color from
+   whichever dark/light block happened to run first. Selectors use
+   :root[data-color-theme="…"] (not the bare attribute) to tie the
+   specificity of the light-mode media block's :root:not([data-theme="dark"])
+   rule — these come later in the file, so the tie is broken in their favor. */
+:root[data-color-theme="sunset"] {
+  --bg: #FFF9F2;
+  --surface: #FFFFFF;
+  --surface2: #F3EDE1;
+  --surface3: #EDE6DA;
+  --stroke: rgba(43,33,64,.08);
+  --stroke2: rgba(43,33,64,.14);
+  --text: #2B2140;
+  --text1: #2B2140;
+  --text2: rgba(43,33,64,.72);
+  --muted: #8A7EA8;
+  --muted2: rgba(43,33,64,.55);
+  --primary: #FF6F61;
+  --primary-dark: #E85C4E;
+  --primary-text: #E14A3B;
+  --accent: #4CC9F0;
+}
+:root[data-color-theme="carnival"] {
+  --bg: #FFFFFF;
+  --surface: #F7F3FF;
+  --surface2: #EDE6FB;
+  --surface3: #E0D6F7;
+  --stroke: rgba(36,24,84,.08);
+  --stroke2: rgba(36,24,84,.14);
+  --text: #241854;
+  --text1: #241854;
+  --text2: rgba(36,24,84,.72);
+  --muted: #8A7EB8;
+  --muted2: rgba(36,24,84,.55);
+  --primary: #FF2D78;
+  --primary-dark: #E0245F;
+  --primary-text: #D81B60;
+  --accent: #7B2FF7;
+}
+:root[data-color-theme="tropic"] {
+  --bg: #FFFDF4;
+  --surface: #FFFFFF;
+  --surface2: #EAF9F1;
+  --surface3: #DFF3E9;
+  --stroke: rgba(14,59,46,.08);
+  --stroke2: rgba(14,59,46,.14);
+  --text: #0E3B2E;
+  --text1: #0E3B2E;
+  --text2: rgba(14,59,46,.72);
+  --muted: #6FA593;
+  --muted2: rgba(14,59,46,.55);
+  --primary: #E8590C;
+  --primary-dark: #C94A08;
+  --primary-text: #C94A08;
+  --accent: #00C853;
+}
+:root[data-color-theme="neon"] {
+  --bg: #120E22;
+  --surface: #1B1533;
+  --surface2: #241D40;
+  --surface3: #2E2650;
+  --stroke: rgba(255,255,255,.08);
+  --stroke2: rgba(255,255,255,.14);
+  --text: #F2F0FF;
+  --text1: #F2F0FF;
+  --text2: rgba(242,240,255,.72);
+  --muted: #A99CE0;
+  --muted2: rgba(242,240,255,.5);
+  --primary: #FF2FD0;
+  --primary-dark: #D620AD;
+  --primary-text: #FF6FE0;
+  --accent: #00F0FF;
+}
+
+/* Theme picker swatches — More ▸ Display */
+.moreRow--stack { flex-direction: column; align-items: stretch; }
+.themeSwatchRow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.themeSwatch {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 50px; background: none; border: none; padding: 0; cursor: pointer;
+}
+.themeSwatchDot {
+  display: block; width: 40px; height: 40px; border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--stroke2);
+  transition: box-shadow .15s var(--ease);
+}
+.themeSwatch[aria-pressed="true"] .themeSwatchDot {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--primary);
+}
+.themeSwatchName { font-size: 10.5px; font-weight: 700; color: var(--muted); text-align: center; }
+.themeSwatch[aria-pressed="true"] .themeSwatchName { color: var(--text); }
+.themeSwatchDot--sunset   { background: linear-gradient(135deg, #FF6F61 50%, #4CC9F0 50%); }
+.themeSwatchDot--classic  { background: linear-gradient(135deg, #07070f 50%, #2563EB 50%); }
+.themeSwatchDot--carnival { background: linear-gradient(135deg, #7B2FF7 50%, #FF2D78 50%); }
+.themeSwatchDot--tropic   { background: linear-gradient(135deg, #00C853 50%, #00B7C3 50%); }
+.themeSwatchDot--neon     { background: linear-gradient(135deg, #120E22 40%, #00F0FF 70%, #FF2FD0 100%); }
+
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html { height: 100%; overflow-x: hidden; overscroll-behavior-x: none; }

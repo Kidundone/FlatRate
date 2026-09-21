@@ -22,6 +22,10 @@
         ?window.matchMedia('(prefers-color-scheme: dark)').matches
         :(dm===true||dm==='dark');
       document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+      // Color theme (Sunset/Classic/Carnival/Tropic/Neon) — set before first
+      // paint too, same reasoning as data-theme above: avoids a flash of the
+      // wrong palette. Defaults to "sunset" for anyone who hasn't chosen yet.
+      document.documentElement.setAttribute('data-color-theme', s.colorTheme || 'sunset');
     })();
   </script>
   <meta name="apple-mobile-web-app-title" content="FR Buddy">
@@ -34,7 +38,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.714c55363e.css">
+  <link rel="stylesheet" href="./app.8b987b6790.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -230,7 +234,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.714c55363e.css. Now a real single-row horizontal scroll with
+               fix in app.8b987b6790.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -300,7 +304,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.714c55363e.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.8b987b6790.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -917,10 +921,39 @@
       <section class="card moreCard">
         <details class="moreSectionDetails">
           <summary class="moreCardHeader moreSectionSummary">Display</summary>
+          <div class="moreRow moreRow--stack">
+            <div>
+              <div class="moreRowLabel">Theme</div>
+              <div class="moreRowSub">Sunset is the default — Classic keeps today's exact look</div>
+            </div>
+            <div class="themeSwatchRow" id="themeSwatchRow" role="group" aria-label="Color theme">
+              <button type="button" class="themeSwatch" data-theme-value="sunset" aria-pressed="false">
+                <span class="themeSwatchDot themeSwatchDot--sunset" aria-hidden="true"></span>
+                <span class="themeSwatchName">Sunset</span>
+              </button>
+              <button type="button" class="themeSwatch" data-theme-value="classic" aria-pressed="false">
+                <span class="themeSwatchDot themeSwatchDot--classic" aria-hidden="true"></span>
+                <span class="themeSwatchName">Classic</span>
+              </button>
+              <button type="button" class="themeSwatch" data-theme-value="carnival" aria-pressed="false">
+                <span class="themeSwatchDot themeSwatchDot--carnival" aria-hidden="true"></span>
+                <span class="themeSwatchName">Carnival</span>
+              </button>
+              <button type="button" class="themeSwatch" data-theme-value="tropic" aria-pressed="false">
+                <span class="themeSwatchDot themeSwatchDot--tropic" aria-hidden="true"></span>
+                <span class="themeSwatchName">Tropic</span>
+              </button>
+              <button type="button" class="themeSwatch" data-theme-value="neon" aria-pressed="false">
+                <span class="themeSwatchDot themeSwatchDot--neon" aria-hidden="true"></span>
+                <span class="themeSwatchName">Neon</span>
+              </button>
+            </div>
+          </div>
+          <div class="moreDivider"></div>
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">Appearance</div>
-              <div class="moreRowSub">Auto follows system setting</div>
+              <div class="moreRowSub">Auto follows system setting &middot; Classic theme only</div>
             </div>
             <div class="seg">
               <button class="segBtn" id="dmAuto" type="button">Auto</button>
@@ -930,7 +963,10 @@
           </div>
           <div class="moreDivider"></div>
           <div class="moreRow">
-            <div class="moreRowLabel">Accent Color</div>
+            <div>
+              <div class="moreRowLabel">Accent Color</div>
+              <div class="moreRowSub">Classic theme only</div>
+            </div>
             <label class="accentPickerLabel" title="Choose accent color">
               <input type="color" id="accentColorInput" />
               <div id="accentColorPreview" class="accentColorPreview"></div>
@@ -1514,7 +1550,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.f86b3a3f4b.js" defer></script>
+<script src="./app.0c067fc283.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

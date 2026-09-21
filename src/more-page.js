@@ -2514,6 +2514,23 @@ function initSettingsUI() {
     });
   });
 
+  // ── Color theme (Sunset/Classic/Carnival/Tropic/Neon) ──
+  const themeButtons = Array.from(document.querySelectorAll("#themeSwatchRow .themeSwatch"));
+  const syncThemeBtns = () => {
+    const active = getSettings().colorTheme || "sunset";
+    themeButtons.forEach(btn => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.themeValue === active));
+    });
+  };
+  syncThemeBtns();
+  themeButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.getAttribute("aria-pressed") === "true") return;
+      saveSettings({ colorTheme: btn.dataset.themeValue }); // persist + apply immediately
+      syncThemeBtns();
+    });
+  });
+
   // Live color preview
   colorPicker?.addEventListener("input", (e) => {
     const c = e.target.value;
