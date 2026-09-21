@@ -3,15 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
   <title>Flatrate Buddy — Team</title>
+  <!-- Set theme BEFORE first paint — mirrors index.html's inline script.
+       team.html used to be permanently dark regardless of the user's
+       theme setting (no data-theme anywhere in this file) -- found while
+       auditing this page in light mode for the beta-exit polish pass. -->
+  <script>
+    (function(){
+      var s={};try{s=JSON.parse(localStorage.getItem('fr_settings')||'{}');}catch(e){}
+      var dm=s.darkMode;
+      var dark=(dm==='auto'||dm===undefined||dm===null)
+        ?window.matchMedia('(prefers-color-scheme: dark)').matches
+        :(dm===true||dm==='dark');
+      document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0f1117; --surface: #1c1c1e; --surface2: #242427; --surface3: #2c2c2f;
       --stroke: rgba(255,255,255,.09); --stroke2: rgba(255,255,255,.16);
       --text: #fff; --muted: #a8a8a8; --muted2: #6b6b6b;
-      --primary: #0095f6; --accent: #29d9a5; --danger: #ed4956;
+      --primary: #2563EB; --accent: #29d9a5; --danger: #ed4956;
       --r: 12px;
+    }
+    /* Light theme -- team.html had none of this; every color above was a
+       flat dark-mode literal with no override, so switching the app to
+       light theme did nothing here. Values mirror app.css's light tokens. */
+    [data-theme="light"] {
+      --bg: #f2f2f7; --surface: #ffffff; --surface2: #e5e5ea; --surface3: #d1d1d6;
+      --stroke: rgba(0,0,0,.12); --stroke2: rgba(0,0,0,.18);
+      --text: #000000; --muted: #3c3c43; --muted2: rgba(60,60,67,.60);
     }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
     a { color: var(--primary); text-decoration: none; }
@@ -58,7 +81,7 @@
     .cell-muted { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
     .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-    .badge-manager { background: rgba(0,149,246,.15); color: var(--primary); }
+    .badge-manager { background: rgba(37,99,235,.15); color: var(--primary); }
     .badge-tech    { background: rgba(41,217,165,.15); color: var(--accent); }
 
     .inviteRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
@@ -180,14 +203,14 @@
                   width 420ms cubic-bezier(.34,1.3,.64,1), height 420ms cubic-bezier(.34,1.3,.64,1);
     }
     @keyframes tourPulse {
-      0%,100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 rgba(0,149,246,.7), 0 0 0 0 rgba(0,149,246,.3); }
-      60%     { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 10px rgba(0,149,246,0), 0 0 0 20px rgba(0,149,246,0); }
+      0%,100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 rgba(37,99,235,.7), 0 0 0 0 rgba(37,99,235,.3); }
+      60%     { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 10px rgba(37,99,235,0), 0 0 0 20px rgba(37,99,235,0); }
     }
     #tourSpotlight.pulse { animation: tourPulse 1.8s cubic-bezier(.4,0,.6,1) infinite; }
     .tourTooltip {
       position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
-      background: var(--surface); border: 1px solid rgba(0,149,246,.25); border-radius: 18px;
-      padding: 20px 18px 16px; box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(0,149,246,.1);
+      background: var(--surface); border: 1px solid rgba(37,99,235,.25); border-radius: 18px;
+      padding: 20px 18px 16px; box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(37,99,235,.1);
       z-index: 10001; max-width: 520px; margin: 0 auto;
       animation: tourTooltipIn 480ms cubic-bezier(.34,1.4,.64,1) both;
     }
@@ -196,12 +219,13 @@
     .tourTooltip.step-enter .tourTitle     { animation: tourContentIn 300ms cubic-bezier(.4,0,.2,1) 40ms both; }
     .tourTooltip.step-enter .tourBody      { animation: tourContentIn 300ms cubic-bezier(.4,0,.2,1) 90ms both; }
     @keyframes tourContentIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    .tourMascotBar { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .tourMascotBar { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--stroke); }
     .tourMascotAvatar {
       width: 46px; height: 46px; border-radius: 22%; background: #0b1220; border: 2px solid var(--primary);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;
       animation: mascotBob 2.8s ease-in-out infinite; box-shadow: 0 0 12px rgba(37,99,235,.25);
     }
+    [data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
     @keyframes mascotBob { 0%,100% { transform: translateY(0) rotate(-1deg); } 45% { transform: translateY(-5px) rotate(1.5deg); } 70% { transform: translateY(-2px) rotate(0deg); } }
     .tourMascotName { font-size: 13px; font-weight: 800; color: var(--primary); letter-spacing: .03em; }
     .tourMascotSub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
