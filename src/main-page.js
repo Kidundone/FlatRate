@@ -11,16 +11,18 @@ let _draftTimer = null;
 
 function saveDraft() {
   if (EDITING_ID) return;
+  // Deliberately does NOT save ref (RO#) or vin8 — those are unique to a
+  // specific job (RO numbers are generated fresh every time here), so
+  // restoring one into a new ticket is never correct, only ever stale. Found
+  // live: restoreDraft() was bringing back the previous job's RO/VIN/notes/
+  // rate into a brand-new ticket any time the app reloaded between jobs
+  // (backgrounding, tab switching, low memory — common on a phone on a shop
+  // floor), which is most of the time in practice. It read as "Keep last
+  // work keeps everything except the photo."
   const draft = {
     hours: document.getElementById("hours")?.value || "",
     typeText: document.getElementById("typeText")?.value || "",
-    ref: document.getElementById("ref")?.value || "",
-    vin8: document.getElementById("vin8")?.value || "",
-    rate: document.querySelector('input[name="rate"]')?.value || "",
-    notes: document.querySelector('#notesInline, textarea[name="notes"]')?.value || "",
     isComeback: !!(document.getElementById("isComeback")?.checked),
-    refType: currentRefType,
-    detailsOpen: document.getElementById("detailsPanel")?.style.display !== "none",
     savedAt: Date.now(),
   };
   if (!draft.hours && !draft.typeText) { localStorage.removeItem(LS_DRAFT); return; }
@@ -40,10 +42,14 @@ function restoreDraft() {
     const draft = JSON.parse(raw);
     if (!draft || (!draft.hours && !draft.typeText)) return;
 
-    // Only restore transient fields (hours, type) within a 15-min window.
-    // After that, the user has moved on — starting fresh is less surprising.
+    // Only restore within a short window — this exists purely to survive an
+    // accidental reload mid-keystroke, not to carry a ticket's info forward
+    // into the next one. Shrunk from 15 minutes: that window comfortably
+    // spans the gap between two real jobs (app backgrounding, tab
+    // switching), which made a fresh ticket look like it still had the
+    // previous one's info in it.
     const ageMs = Date.now() - (draft.savedAt || 0);
-    const fresh = ageMs < 15 * 60 * 1000;
+    const fresh = ageMs < 2 * 60 * 1000;
     if (!fresh) {
       localStorage.removeItem(LS_DRAFT);
       return;
@@ -51,28 +57,11 @@ function restoreDraft() {
 
     const hoursEl = document.getElementById("hours");
     const typeEl  = document.getElementById("typeText");
-    const refEl   = document.getElementById("ref");
-    const vinEl   = document.getElementById("vin8");
-    const rateEl  = document.querySelector('input[name="rate"]');
-    const notesEl = document.querySelector('#notesInline, textarea[name="notes"]');
     const cbEl    = document.getElementById("isComeback");
 
     if (draft.hours   && hoursEl) { hoursEl.value = draft.hours; hoursEl.dataset.touched = "1"; }
     if (draft.typeText && typeEl) typeEl.value = draft.typeText;
-    if (draft.rate    && rateEl)  { rateEl.value = draft.rate; rateEl.dataset.touched = "1"; }
-    if (draft.notes   && notesEl) notesEl.value = draft.notes;
     if (cbEl) cbEl.checked = !!draft.isComeback;
-    if (draft.refType) setRefType(draft.refType);
-
-    const hasDetails = draft.ref || draft.vin8 || draft.detailsOpen;
-    if (hasDetails) {
-      if (draft.ref && refEl) refEl.value = draft.ref;
-      if (draft.vin8 && vinEl) vinEl.value = draft.vin8;
-      const dp  = document.getElementById("detailsPanel");
-      const dbt = document.getElementById("toggleDetailsBtn");
-      if (dp)  dp.style.display  = "block";
-      if (dbt) dbt.textContent   = "Less";
-    }
 
     // Seed date picker to today if not already set
     const datePickerEl2 = document.getElementById("entryDate");
