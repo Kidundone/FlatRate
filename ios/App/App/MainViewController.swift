@@ -18,6 +18,34 @@ class MainViewController: CAPBridgeViewController {
         webView?.scrollView.bounces = true
         webView?.scrollView.showsHorizontalScrollIndicator = false
         disableNativeWebViewZoom()
+
+        // viewDidLoad/viewDidAppear only re-assert this ONCE, at startup —
+        // but capacitor.config.json's ios.contentInset:"automatic" hands the
+        // scroll view's contentInsetAdjustmentBehavior to iOS, and iOS
+        // re-touches (and silently re-enables) alwaysBounceHorizontal every
+        // time the keyboard's frame changes, not just once. That's why the
+        // side-to-side wobble came back specifically on tapping into a text
+        // field — a fresh keyboard show — even after the swipe/scroll-
+        // triggered version of the same bug was killed above. Re-assert on
+        // every keyboard show/hide instead of just at launch.
+        NotificationCenter.default.addObserver(self, selector: #selector(reassertNoHorizontalBounce), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reassertNoHorizontalBounce), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reassertNoHorizontalBounce), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func reassertNoHorizontalBounce() {
+        // Called synchronously off the keyboard notification, but iOS applies
+        // its own automatic content-inset adjustment asynchronously relative
+        // to that same notification — so this re-asserts once now and once
+        // more on the next runloop tick to land after iOS's own change.
+        webView?.scrollView.alwaysBounceHorizontal = false
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.scrollView.alwaysBounceHorizontal = false
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
