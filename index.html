@@ -140,74 +140,6 @@
   <button id="clockInBtn" class="clockInBtn" type="button" aria-label="Clock in / Clock out">Clock In</button>
 </div>
 
-<!-- New request to manager -->
-<div id="reqModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="reqModalTitle">
-  <div class="ltInner card">
-    <div class="ltHead">
-      <div class="ltTitle" id="reqModalTitle">Send to your manager</div>
-      <div class="ltSub">Goes straight to the shop with a timestamp. Keep it factual.</div>
-    </div>
-
-    <div class="reqKinds" id="reqKinds"></div>
-
-    <label class="reqLabel" for="reqSubject">Subject</label>
-    <input id="reqSubject" class="fr26Input" maxlength="140" placeholder="RO 40534 not on my paycheck" />
-
-    <div class="reqDetailsHead">
-      <label class="reqLabel" for="reqDetails" style="margin:0;">Details</label>
-      <button type="button" class="reqDraftBtn" id="reqDraftBtn">✍️ Draft for me</button>
-    </div>
-    <textarea id="reqDetails" class="fr26Input" rows="3" maxlength="4000" placeholder="What happened, and what you're asking for."></textarea>
-    <div class="reqDraftErr" id="reqDraftErr" style="display:none;"></div>
-
-    <div class="reqGrid">
-      <div>
-        <label class="reqLabel" for="reqRo">RO # <span class="reqOpt">optional</span></label>
-        <input id="reqRo" class="fr26Input" placeholder="40534" />
-      </div>
-      <div>
-        <label class="reqLabel" for="reqDate">Date <span class="reqOpt">optional</span></label>
-        <input id="reqDate" class="fr26Input" type="date" />
-      </div>
-      <div>
-        <label class="reqLabel" for="reqHours">Hours claimed <span class="reqOpt">optional</span></label>
-        <input id="reqHours" class="fr26Input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="2.5" />
-      </div>
-      <div>
-        <label class="reqLabel" for="reqAmount">Amount <span class="reqOpt">optional</span></label>
-        <input id="reqAmount" class="fr26Input" type="number" inputmode="decimal" step="0.01" min="0" placeholder="75.00" />
-      </div>
-    </div>
-
-    <div class="reqErr" id="reqErr" style="display:none;"></div>
-
-    <div class="ltActions" style="margin-top:14px;">
-      <button type="button" class="ltBtnGhost" id="reqCancelBtn">Cancel</button>
-      <button type="button" class="fr26BtnPrimary ltBtnSave" id="reqSubmitBtn">Send</button>
-    </div>
-  </div>
-</div>
-
-<!-- Request thread -->
-<div id="reqThreadModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="reqThreadTitle">
-  <div class="ltInner card">
-    <div class="ltHead">
-      <div class="ltTitle" id="reqThreadTitle">Request</div>
-      <div class="ltSub" id="reqThreadSub"></div>
-    </div>
-    <div id="reqThreadMeta" class="reqMeta"></div>
-    <div id="reqThreadMsgs" class="reqMsgs"></div>
-    <div class="reqReplyRow">
-      <input id="reqReplyInput" class="fr26Input" maxlength="4000" placeholder="Add a message…" />
-      <button type="button" class="fr26BtnPrimary" id="reqReplyBtn" style="flex:0 0 auto;padding:12px 16px;">Send</button>
-    </div>
-    <div class="ltActions" style="margin-top:12px;">
-      <button type="button" class="ltBtnGhost" id="reqWithdrawBtn" style="display:none;">Withdraw</button>
-      <button type="button" class="fr26BtnPrimary ltBtnSave" id="reqThreadCloseBtn">Done</button>
-    </div>
-  </div>
-</div>
-
 <!-- Lost Time capture (shown on clock out when there's an unpaid gap) -->
 <div id="lostTimeModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="ltTitle">
   <div class="ltInner card">
@@ -647,6 +579,84 @@
 
 </div><!-- /#spa-main -->
 
+<!-- New request to manager. Lives at body level, NOT inside #spa-main —
+     its only two triggers (the "+ New request" button and a job's 🚩
+     dispute-flag button) are both on the More page, but #spa-main gets
+     display:none'd by showSpaPage() whenever any other tab is active
+     (see boot.js). A display:none ancestor collapses this modal to
+     nothing even though its own inline style correctly flips to
+     display:flex — found live: tapping "+ New request" set every bit
+     of state right (isInShop() true, DOM updated, style="display:flex")
+     but rendered a 0×0, opacity:0 box, because it was hidden inside
+     #spa-main this whole time. Moved here to match entryDetailModal /
+     whatsNewModal, which already live at body level for this exact
+     reason. -->
+<div id="reqModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="reqModalTitle">
+  <div class="ltInner card">
+    <div class="ltHead">
+      <div class="ltTitle" id="reqModalTitle">Send to your manager</div>
+      <div class="ltSub">Goes straight to the shop with a timestamp. Keep it factual.</div>
+    </div>
+
+    <div class="reqKinds" id="reqKinds"></div>
+
+    <label class="reqLabel" for="reqSubject">Subject</label>
+    <input id="reqSubject" class="fr26Input" maxlength="140" placeholder="RO 40534 not on my paycheck" />
+
+    <div class="reqDetailsHead">
+      <label class="reqLabel" for="reqDetails" style="margin:0;">Details</label>
+      <button type="button" class="reqDraftBtn" id="reqDraftBtn">✍️ Draft for me</button>
+    </div>
+    <textarea id="reqDetails" class="fr26Input" rows="3" maxlength="4000" placeholder="What happened, and what you're asking for."></textarea>
+    <div class="reqDraftErr" id="reqDraftErr" style="display:none;"></div>
+
+    <div class="reqGrid">
+      <div>
+        <label class="reqLabel" for="reqRo">RO # <span class="reqOpt">optional</span></label>
+        <input id="reqRo" class="fr26Input" placeholder="40534" />
+      </div>
+      <div>
+        <label class="reqLabel" for="reqDate">Date <span class="reqOpt">optional</span></label>
+        <input id="reqDate" class="fr26Input" type="date" />
+      </div>
+      <div>
+        <label class="reqLabel" for="reqHours">Hours claimed <span class="reqOpt">optional</span></label>
+        <input id="reqHours" class="fr26Input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="2.5" />
+      </div>
+      <div>
+        <label class="reqLabel" for="reqAmount">Amount <span class="reqOpt">optional</span></label>
+        <input id="reqAmount" class="fr26Input" type="number" inputmode="decimal" step="0.01" min="0" placeholder="75.00" />
+      </div>
+    </div>
+
+    <div class="reqErr" id="reqErr" style="display:none;"></div>
+
+    <div class="ltActions" style="margin-top:14px;">
+      <button type="button" class="ltBtnGhost" id="reqCancelBtn">Cancel</button>
+      <button type="button" class="fr26BtnPrimary ltBtnSave" id="reqSubmitBtn">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Request thread -->
+<div id="reqThreadModal" class="ltModal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="reqThreadTitle">
+  <div class="ltInner card">
+    <div class="ltHead">
+      <div class="ltTitle" id="reqThreadTitle">Request</div>
+      <div class="ltSub" id="reqThreadSub"></div>
+    </div>
+    <div id="reqThreadMeta" class="reqMeta"></div>
+    <div id="reqThreadMsgs" class="reqMsgs"></div>
+    <div class="reqReplyRow">
+      <input id="reqReplyInput" class="fr26Input" maxlength="4000" placeholder="Add a message…" />
+      <button type="button" class="fr26BtnPrimary" id="reqReplyBtn" style="flex:0 0 auto;padding:12px 16px;">Send</button>
+    </div>
+    <div class="ltActions" style="margin-top:12px;">
+      <button type="button" class="ltBtnGhost" id="reqWithdrawBtn" style="display:none;">Withdraw</button>
+      <button type="button" class="fr26BtnPrimary ltBtnSave" id="reqThreadCloseBtn">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════
      MORE PAGE SECTION
