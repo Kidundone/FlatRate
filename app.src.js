@@ -3033,6 +3033,7 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageBottom = doc.internal.pageSize.getHeight() - 20;
   const rowHeight = 8;
+  const lineHeight = 4; // extra mm per wrapped line beyond the first
   const headerHeight = 9;
   let y = startY;
 
@@ -3045,6 +3046,19 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   function cellX(ci) {
     const align = columns[ci].align || "left";
     return align === "right" ? colX[ci] + colWidths[ci] - 3 : colX[ci] + 3;
+  }
+
+  // A long "Type" value (a full job description, not just a short code)
+  // used to get cut off by the fixed 8mm row height and silently overlap
+  // the row below it — unreadable, and the exact thing a report handed to
+  // someone else can't afford. Rows now measure their own wrapped height
+  // per cell (via jsPDF's own line-splitter, so it matches what actually
+  // gets drawn) and grow to fit whichever cell wraps the most.
+  function wrappedLines(cell, ci) {
+    const text = String(cell ?? "");
+    if (!text) return [""];
+    doc.setFontSize(9);
+    return doc.splitTextToSize(text, colWidths[ci] - 4);
   }
 
   function drawHeaderRow() {
@@ -3066,24 +3080,34 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   drawHeaderRow();
 
   rows.forEach((row, i) => {
-    if (y + rowHeight > pageBottom) {
+    const cellLines = row.map((cell, ci) => wrappedLines(cell, ci));
+    const maxLines = Math.max(1, ...cellLines.map((l) => l.length));
+    const thisRowHeight = rowHeight + lineHeight * (maxLines - 1);
+
+    if (y + thisRowHeight > pageBottom) {
       doc.addPage();
       y = 20;
       drawHeaderRow();
     }
     if (i % 2 === 1) {
       doc.setFillColor(246, 248, 252);
-      doc.rect(left, y, usableWidth, rowHeight, "F");
+      doc.rect(left, y, usableWidth, thisRowHeight, "F");
     }
     doc.setFontSize(9);
     doc.setTextColor(30, 30, 30);
     row.forEach((cell, ci) => {
-      doc.text(String(cell ?? ""), cellX(ci), y + rowHeight - 2.5, {
+      // Single-line cells keep the old bottom-anchored baseline (matches
+      // every other row exactly as before); wrapped cells start a touch
+      // lower than the row top so a 1-line neighbor in the same row still
+      // lines up with a multi-line cell's first line, not its last.
+      const lines = cellLines[ci];
+      const baseY = lines.length > 1 ? y + 5 : y + thisRowHeight - 2.5;
+      doc.text(lines, cellX(ci), baseY, {
         align: columns[ci].align || "left",
         maxWidth: colWidths[ci] - 4,
       });
     });
-    y += rowHeight;
+    y += thisRowHeight;
   });
 
   doc.setDrawColor(196, 206, 230);
@@ -6979,6 +7003,29 @@ function renderWeekChart(thisWeekDollars, lastWeekDollars) {
 // Pulled out of what used to be shareWeekPDF() so both go through the same,
 // already-proven share-sheet-first/download-fallback path instead of two
 // copies of the same PDF-building code drifting apart over time.
+// Buckets a free-text job "type" into a handful of report-friendly groups.
+// Techs type these by hand at the point of sale, so the raw values are all
+// over the place ("Sold+Fpf" vs "SOLD +Fpf" vs "sold", "PDI" vs "PDI LOT
+// CLEAN", full sentences for custom detail jobs, etc.) — this exists so a
+// report can roll 500+ one-off strings up into something a reader can scan
+// in ten seconds, without trying to make every tech standardize their typing.
+function categorizeJobType(type) {
+  const u = String(type || "").toUpperCase();
+  if (u.includes("PDI") && u.includes("LOT")) return "PDI Lot Clean";
+  if (u.includes("PDI")) return "PDI";
+  if (u.includes("FULL DETAIL") && u.includes("PRE")) return "Full Detail — Preowned";
+  if (u.includes("PREOWNED") || u.includes("PRE-OWNED") || u.includes("PRE OWNED")) return "Preowned Prep";
+  if (u.includes("CUSTOMER") && (u.includes("FULL") || u.includes("MINI") || u.includes("PAY"))) return "Customer-Pay Detail";
+  if (u.includes("RE-CLEAN") || u.includes("RECLEAN") || u.includes("RE CLEAN")) return "Re-clean / Delivery";
+  if (u.includes("DEALER TRADE")) return "Dealer Trade";
+  if (u.includes("SHOWROOM")) return "Showroom";
+  if (u.includes("SOLD")) return "Sold / Finance Add-ons";
+  if (u.trim() === "DT" || u.trim() === "FPF" || u.includes("DETAIL WITHOUT FPF") || u.includes("DETAIL NO FPF") || u.includes("DETAIL WITH FPF")) return "FPF / DT Add-on";
+  return "Other / Misc";
+}
+window.__FR = window.__FR || {};
+window.__FR.categorizeJobType = categorizeJobType;
+
 async function shareRangePDF(entries, label, filenameSlug) {
   const empId = getEmpId();
   if (!empId) { toast("Employee # required"); return; }
@@ -6995,9 +7042,22 @@ async function shareRangePDF(entries, label, filenameSlug) {
 
   const doc = new jsPDF();
   const left = 14;
+  const pageHeight = doc.internal.pageSize.getHeight();
   let y = pdfHeader(doc, "Flatrate Buddy — Report", `Employee: ${empId}   ${label || ""}`);
 
+  // Every entry already carries a real timestamp (dayKey/createdAt) — it
+  // just never made it into this report, so a reader had no way to tell
+  // "All Time" apart from "the last two weeks" without opening the app.
+  const fmtDate = (e) => {
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt) || "";
+    if (!dk) return "—";
+    const d = new Date(dk + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+  };
+
   let totalHours = 0, totalPay = 0;
+  const catStats = new Map(); // category -> { jobs, hours, pay }
   const tableRows = sorted.map((e) => {
     const ro = String(e.ref || e.ro || e.ro_number || "—");
     const type = String(e.type || e.typeText || "—");
@@ -7005,14 +7065,21 @@ async function shareRangePDF(entries, label, filenameSlug) {
     const pay = round2(Number(e.earnings || e.cash_amount || 0));
     totalHours += hrs;
     totalPay += pay;
-    return [ro, type, String(hrs), formatMoney(pay)];
+
+    const cat = categorizeJobType(type);
+    const s = catStats.get(cat) || { jobs: 0, hours: 0, pay: 0 };
+    s.jobs += 1; s.hours += hrs; s.pay += pay;
+    catStats.set(cat, s);
+
+    return [fmtDate(e), ro, type, String(hrs), formatMoney(pay)];
   });
 
   y = drawPdfTable(doc, {
     startY: y,
     columns: [
-      { label: "RO / STK", width: 2 },
-      { label: "Type", width: 3 },
+      { label: "Date", width: 1.4 },
+      { label: "RO / STK", width: 1.8 },
+      { label: "Type", width: 2.8 },
       { label: "Hrs", width: 1, align: "right" },
       { label: "Pay", width: 1.2, align: "right" },
     ],
@@ -7023,6 +7090,41 @@ async function shareRangePDF(entries, label, filenameSlug) {
   doc.setFontSize(11);
   doc.text(`Total: ${round1(totalHours)} hrs   ${formatMoney(round2(totalPay))}`, left, y + 6);
   doc.setFont(undefined, "normal");
+  y += 12;
+
+  // Summary by job type — the "which kind of work actually makes up this
+  // total" view a raw row-by-row table can't answer at a glance. Gets its
+  // own page if there isn't clean room left on this one.
+  if (catStats.size > 1) {
+    if (y + 40 > pageHeight - 20) { doc.addPage(); y = 20; }
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(12);
+    doc.text("Summary by Job Type", left, y);
+    doc.setFont(undefined, "normal");
+    y += 6;
+
+    const catRows = Array.from(catStats.entries())
+      .sort((a, b) => b[1].pay - a[1].pay)
+      .map(([cat, s]) => [
+        cat,
+        String(s.jobs),
+        String(round1(s.hours)),
+        formatMoney(round2(s.pay)),
+        formatMoney(s.hours > 0 ? round2(s.pay / s.hours) : 0) + "/hr",
+      ]);
+
+    y = drawPdfTable(doc, {
+      startY: y,
+      columns: [
+        { label: "Job Type", width: 2.6 },
+        { label: "Jobs", width: 1, align: "right" },
+        { label: "Hrs", width: 1, align: "right" },
+        { label: "Pay", width: 1.2, align: "right" },
+        { label: "Rate", width: 1, align: "right" },
+      ],
+      rows: catRows,
+    });
+  }
 
   pdfFooter(doc);
 

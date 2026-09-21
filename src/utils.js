@@ -1647,6 +1647,7 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageBottom = doc.internal.pageSize.getHeight() - 20;
   const rowHeight = 8;
+  const lineHeight = 4; // extra mm per wrapped line beyond the first
   const headerHeight = 9;
   let y = startY;
 
@@ -1659,6 +1660,19 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   function cellX(ci) {
     const align = columns[ci].align || "left";
     return align === "right" ? colX[ci] + colWidths[ci] - 3 : colX[ci] + 3;
+  }
+
+  // A long "Type" value (a full job description, not just a short code)
+  // used to get cut off by the fixed 8mm row height and silently overlap
+  // the row below it — unreadable, and the exact thing a report handed to
+  // someone else can't afford. Rows now measure their own wrapped height
+  // per cell (via jsPDF's own line-splitter, so it matches what actually
+  // gets drawn) and grow to fit whichever cell wraps the most.
+  function wrappedLines(cell, ci) {
+    const text = String(cell ?? "");
+    if (!text) return [""];
+    doc.setFontSize(9);
+    return doc.splitTextToSize(text, colWidths[ci] - 4);
   }
 
   function drawHeaderRow() {
@@ -1680,24 +1694,34 @@ function drawPdfTable(doc, { columns, rows, startY }) {
   drawHeaderRow();
 
   rows.forEach((row, i) => {
-    if (y + rowHeight > pageBottom) {
+    const cellLines = row.map((cell, ci) => wrappedLines(cell, ci));
+    const maxLines = Math.max(1, ...cellLines.map((l) => l.length));
+    const thisRowHeight = rowHeight + lineHeight * (maxLines - 1);
+
+    if (y + thisRowHeight > pageBottom) {
       doc.addPage();
       y = 20;
       drawHeaderRow();
     }
     if (i % 2 === 1) {
       doc.setFillColor(246, 248, 252);
-      doc.rect(left, y, usableWidth, rowHeight, "F");
+      doc.rect(left, y, usableWidth, thisRowHeight, "F");
     }
     doc.setFontSize(9);
     doc.setTextColor(30, 30, 30);
     row.forEach((cell, ci) => {
-      doc.text(String(cell ?? ""), cellX(ci), y + rowHeight - 2.5, {
+      // Single-line cells keep the old bottom-anchored baseline (matches
+      // every other row exactly as before); wrapped cells start a touch
+      // lower than the row top so a 1-line neighbor in the same row still
+      // lines up with a multi-line cell's first line, not its last.
+      const lines = cellLines[ci];
+      const baseY = lines.length > 1 ? y + 5 : y + thisRowHeight - 2.5;
+      doc.text(lines, cellX(ci), baseY, {
         align: columns[ci].align || "left",
         maxWidth: colWidths[ci] - 4,
       });
     });
-    y += rowHeight;
+    y += thisRowHeight;
   });
 
   doc.setDrawColor(196, 206, 230);
