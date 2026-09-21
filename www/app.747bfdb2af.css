@@ -30,6 +30,11 @@
   --primary-text: #6692f1;
   --accent: #2563EB;
   --danger: #ef4444;
+  /* Text color for buttons/badges whose background IS --primary (.btn.primary,
+     .fr26BtnPrimary, etc). White on this blue is a clean 5.17:1, so it stays
+     the default here and for Classic. The preset themes below override it —
+     see the comment on those blocks. */
+  --on-primary: #fff;
 
   --r-sm: 8px;
   --r-md: 12px;
@@ -90,17 +95,21 @@
 }
 
 /* ── Color themes ─────────────────────────────────────────────────────────
-   A full-app palette swap on top of the tokens above, picked from the
-   Theme row in More ▸ Display and applied as [data-color-theme] on <html>.
-   "classic" (the default attribute value when unset) needs no block here —
-   it's exactly the :root/[data-theme] tokens already defined. Each preset
-   below covers the full token set used across the app (surfaces, text,
+   A full-app palette swap on top of the tokens above, picked from the Theme
+   row in More ▸ Display and applied as [data-color-theme] on <html>; "classic"
+   needs no block here, it's exactly the :root/[data-theme] tokens already
+   defined above. Every preset theme now has BOTH a light and a dark variant
+   — data-theme (Auto/Light/Dark) applies to every theme, not just Classic —
+   selected with a compound selector: :root[data-color-theme="…"][data-theme
+   ="light"|"dark"]. That compound is (0,3,0) specificity, which beats every
+   other rule in this file on its own (no source-order tie-breaking needed).
+   Each block covers the full token set used across the app (surfaces, text,
    primary/accent) so nothing partially inherits a mismatched color from
-   whichever dark/light block happened to run first. Selectors use
-   :root[data-color-theme="…"] (not the bare attribute) to tie the
-   specificity of the light-mode media block's :root:not([data-theme="dark"])
-   rule — these come later in the file, so the tie is broken in their favor. */
-:root[data-color-theme="sunset"] {
+   whichever rule happened to run first. All values below are chosen and
+   verified (via a WCAG contrast script, not eyeballing) to clear 4.5:1 for
+   text and 3:1 for large/UI elements — see the per-block comments for the
+   specific numbers. */
+:root[data-color-theme="sunset"][data-theme="light"] {
   --bg: #FFF9F2;
   --surface: #FFFFFF;
   --surface2: #F3EDE1;
@@ -110,14 +119,44 @@
   --text: #2B2140;
   --text1: #2B2140;
   --text2: rgba(43,33,64,.72);
-  --muted: #8A7EA8;
-  --muted2: rgba(43,33,64,.55);
+  /* --muted/--muted2 were #8A7EA8 / ink@.55 — only 3.6-3.7:1 against the
+     near-white surfaces, under WCAG's 4.5:1 minimum for normal text (real,
+     measured: "Auto follows system setting" and similar subtext was hard to
+     read). Darkened both so every light surface clears ~4.6:1+. */
+  --muted: #777185;
+  --muted2: rgba(43,33,64,.64);
   --primary: #FF6F61;
   --primary-dark: #E85C4E;
   --primary-text: #E14A3B;
   --accent: #4CC9F0;
+  /* White text on this coral primary was only 2.73:1 — fails contrast even
+     for large/UI text (3:1 min), let alone body text. Black clears 7.70:1. */
+  --on-primary: #000;
 }
-:root[data-color-theme="carnival"] {
+:root[data-color-theme="sunset"][data-theme="dark"] {
+  /* A dark, coral-tinted near-black ramp (same hue as --primary) rather than
+     a generic gray-black, so it still reads as "Sunset" after dark. */
+  --bg: #180d0c;
+  --surface: #241514;
+  --surface2: #311d1c;
+  --surface3: #3d2624;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
+  --text: #f5f0ef;
+  --text1: #f5f0ef;
+  --text2: rgba(245,240,239,.72);
+  --muted: #ab7773;
+  --muted2: rgba(245,240,239,.49);
+  --primary: #FF6F61;
+  --primary-dark: #E85C4E;
+  /* --primary itself already clears 6.46:1 as text on this surface, so no
+     separate lightened value is needed here (unlike the base dark theme's
+     --primary/--primary-text split). */
+  --primary-text: #FF6F61;
+  --accent: #4CC9F0;
+  --on-primary: #000;
+}
+:root[data-color-theme="carnival"][data-theme="light"] {
   --bg: #FFFFFF;
   --surface: #F7F3FF;
   --surface2: #EDE6FB;
@@ -127,14 +166,41 @@
   --text: #241854;
   --text1: #241854;
   --text2: rgba(36,24,84,.72);
-  --muted: #8A7EB8;
-  --muted2: rgba(36,24,84,.55);
+  /* See the Sunset block above for why these are darker than the original
+     #8A7EB8 / ink@.55 — same 3.3-3.6:1 contrast failure, same fix. Carnival's
+     surface (#F7F3FF) is slightly tinted rather than pure white, so this
+     needed a touch more than Sunset/Tropic to clear 4.5:1 against it. */
+  --muted: #6e678e;
+  --muted2: rgba(36,24,84,.66);
   --primary: #FF2D78;
   --primary-dark: #E0245F;
   --primary-text: #D81B60;
   --accent: #7B2FF7;
+  /* White on this hot pink was 3.56:1 — under the 4.5:1 text minimum. */
+  --on-primary: #000;
 }
-:root[data-color-theme="tropic"] {
+:root[data-color-theme="carnival"][data-theme="dark"] {
+  --bg: #180c10;
+  --surface: #24141a;
+  --surface2: #311c23;
+  --surface3: #3d242d;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
+  --text: #f5eff1;
+  --text1: #f5eff1;
+  --text2: rgba(245,239,241,.72);
+  --muted: #ab7386;
+  --muted2: rgba(245,239,241,.50);
+  --primary: #FF2D78;
+  --primary-dark: #E0245F;
+  --primary-text: #FF2D78;
+  /* The light theme's violet accent (#7B2FF7) only reaches 3.02:1 on this
+     dark surface — brightened it to #9a60f9 (4.55:1) for the dark variant
+     only; the light variant's --accent is unaffected. */
+  --accent: #9a60f9;
+  --on-primary: #000;
+}
+:root[data-color-theme="tropic"][data-theme="light"] {
   --bg: #FFFDF4;
   --surface: #FFFFFF;
   --surface2: #EAF9F1;
@@ -144,14 +210,36 @@
   --text: #0E3B2E;
   --text1: #0E3B2E;
   --text2: rgba(14,59,46,.72);
-  --muted: #6FA593;
-  --muted2: rgba(14,59,46,.55);
+  /* Was #6FA593 / ink@.55 — worst case (muted on surface) was 2.81:1, well
+     under 4.5:1. Same fix as Sunset/Carnival above. */
+  --muted: #5b7a71;
+  --muted2: rgba(14,59,46,.68);
   --primary: #E8590C;
   --primary-dark: #C94A08;
   --primary-text: #C94A08;
   --accent: #00C853;
+  /* White on this burnt orange was 3.58:1 — under the 4.5:1 text minimum. */
+  --on-primary: #000;
 }
-:root[data-color-theme="neon"] {
+:root[data-color-theme="tropic"][data-theme="dark"] {
+  --bg: #18100c;
+  --surface: #241a14;
+  --surface2: #31231c;
+  --surface3: #3d2d24;
+  --stroke: rgba(255,255,255,.07);
+  --stroke2: rgba(255,255,255,.13);
+  --text: #f5f1ef;
+  --text1: #f5f1ef;
+  --text2: rgba(245,241,239,.72);
+  --muted: #a57e69;
+  --muted2: rgba(245,241,239,.50);
+  --primary: #E8590C;
+  --primary-dark: #C94A08;
+  --primary-text: #E8590C;
+  --accent: #00C853;
+  --on-primary: #000;
+}
+:root[data-color-theme="neon"][data-theme="dark"] {
   --bg: #120E22;
   --surface: #1B1533;
   --surface2: #241D40;
@@ -167,6 +255,37 @@
   --primary-dark: #D620AD;
   --primary-text: #FF6FE0;
   --accent: #00F0FF;
+  /* White on this neon magenta was only 3.20:1. Counterintuitively black
+     reads far better here (6.57:1) — the color's bright enough that dark
+     text is the clearer choice even on a "neon" theme. */
+  --on-primary: #000;
+}
+:root[data-color-theme="neon"][data-theme="light"] {
+  /* A light version of "neon" trades the glow for a soft magenta/lavender
+     backdrop, keeping the same brand primary/on-primary so buttons match
+     the dark variant exactly — only the page around them changes. */
+  --bg: #fbf6fb;
+  --surface: #FFFFFF;
+  --surface2: #f5f0f8;
+  --surface3: #ede4f1;
+  --stroke: rgba(41,20,52,.08);
+  --stroke2: rgba(41,20,52,.14);
+  --text: #291434;
+  --text1: #291434;
+  --text2: rgba(41,20,52,.72);
+  --muted: #886699;
+  --muted2: rgba(41,20,52,.61);
+  --primary: #FF2FD0;
+  --primary-dark: #D620AD;
+  /* Full-brightness magenta is too light to use as text on this bg (would
+     fail contrast) — darkened for text use only, buttons keep --primary. */
+  --primary-text: #db00aa;
+  /* Neon's cyan accent is near-white — unreadable as-is on a light bg, so
+     it's darkened here to a legible teal. It's used as a decorative fill
+     (goal-bar completion), not as text, so the 3:1 UI-component minimum
+     applies rather than 4.5:1. */
+  --accent: #00a3ad;
+  --on-primary: #000;
 }
 
 /* Theme picker swatches — More ▸ Display */
@@ -1200,7 +1319,7 @@ a.btn {
 .btn.primary {
   background: var(--primary);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn.primary:active { background: var(--primary-dark); }
@@ -1689,7 +1808,7 @@ a.btn {
   min-height: 56px;
   border: none;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   letter-spacing: .2px;
   font-size: 17px;
   font-weight: 800;
@@ -2382,7 +2501,7 @@ a.btn {
   gap: 10px;
 }
 
-[data-theme="light"] .histEntryRow { background: var(--surface); }
+[data-color-theme="classic"][data-theme="light"] .histEntryRow { background: var(--surface); }
 
 .histEntryLeft { flex: 1; min-width: 0; }
 
@@ -2409,7 +2528,7 @@ a.btn {
   color: #fff;
 }
 
-[data-theme="light"] .histEntryRefNum { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .histEntryRefNum { color: var(--text); }
 
 /* Tappable ref when entry has a photo */
 .histEntryRefNum--photo {
@@ -2423,7 +2542,7 @@ a.btn {
 }
 .histEntryRefNum--photo:active { opacity: .7; }
 .histEntryRefPhotoIcon { font-size: 13px; line-height: 1; }
-[data-theme="light"] .histEntryRefNum--photo { color: var(--primary-text); }
+[data-color-theme="classic"][data-theme="light"] .histEntryRefNum--photo { color: var(--primary-text); }
 
 .histPhotoTag {
   font-size: 14px;
@@ -2451,7 +2570,7 @@ a.btn {
   letter-spacing: .4px;
 }
 
-[data-theme="light"] .histEntryVinVal { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .histEntryVinVal { color: var(--text); }
 
 .histEntryNotes {
   font-size: 12px;
@@ -3114,7 +3233,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 }
 
 /* ── Light theme — forced dark (app is always dark) ── */
-[data-theme="light"] {
+[data-color-theme="classic"][data-theme="light"] {
   /* iOS system light — standard, accessible, universal */
   --bg: #f2f2f7;
   --surface: #ffffff;
@@ -3133,116 +3252,116 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   --shadow-lg: 0 12px 40px rgba(0,0,0,.16);
 }
 
-[data-theme="light"] header {
+[data-color-theme="classic"][data-theme="light"] header {
   background: rgba(240,242,245,.94);
   border-bottom-color: rgba(0,0,0,.10);
 }
 
-[data-theme="light"] .tabBar {
+[data-color-theme="classic"][data-theme="light"] .tabBar {
   background: rgba(255,255,255,.97);
   border-top-color: rgba(0,0,0,.10);
 }
 
-[data-theme="light"] .card {
+[data-color-theme="classic"][data-theme="light"] .card {
   box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
 
-[data-theme="light"] .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+[data-color-theme="classic"][data-theme="light"] .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 
-[data-theme="light"] .moreTabBar {
+[data-color-theme="classic"][data-theme="light"] .moreTabBar {
   background: #ffffff;
   border-bottom-color: rgba(0,0,0,.08);
 }
 
-[data-theme="light"] .moreToggleTrack {
+[data-color-theme="classic"][data-theme="light"] .moreToggleTrack {
   background: var(--surface3);
   border-color: var(--stroke2);
 }
 
 /* Light theme — hero & chart fixes */
-[data-theme="light"] .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-[data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
-[data-theme="light"] .heroGoalPctText { color: var(--text); }
-[data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
-[data-theme="light"] .heroAmt { color: var(--text); }
-[data-theme="light"] .heroEyebrow { color: var(--muted); }
-[data-theme="light"] .heroSubLine { color: var(--text2); }
-[data-theme="light"] .heroPaceLine { color: var(--primary-text); }
-[data-theme="light"] .hcTab { color: var(--muted); }
-[data-theme="light"] .hcStat { border-right-color: var(--stroke2); }
-[data-theme="light"] .hcStatsRow { border-top-color: var(--stroke2); }
-[data-theme="light"] .hcGoalBarTrack { background: rgba(0,0,0,.12); }
-[data-theme="light"] .hcEntriesList { border-top-color: var(--stroke2); }
-[data-theme="light"] .hcEntryRow { border-bottom-color: var(--stroke2); }
-[data-theme="light"] .hcEntryMore { border-top-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
+[data-color-theme="classic"][data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
+[data-color-theme="classic"][data-theme="light"] .heroGoalPctText { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .heroAmt { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .heroEyebrow { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .heroSubLine { color: var(--text2); }
+[data-color-theme="classic"][data-theme="light"] .heroPaceLine { color: var(--primary-text); }
+[data-color-theme="classic"][data-theme="light"] .hcTab { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .hcStat { border-right-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .hcStatsRow { border-top-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .hcGoalBarTrack { background: rgba(0,0,0,.12); }
+[data-color-theme="classic"][data-theme="light"] .hcEntriesList { border-top-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .hcEntryRow { border-bottom-color: var(--stroke2); }
+[data-color-theme="classic"][data-theme="light"] .hcEntryMore { border-top-color: var(--stroke2); }
 
 /* Light theme — form & input visibility */
-[data-theme="light"] .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-[data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
-[data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-[data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8; }
-[data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
-[data-theme="light"] .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
-[data-theme="light"] .fr26HourBtn:hover { background: rgba(37,99,235,.14); }
-[data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
-[data-theme="light"] .fr26Check span { color: var(--text); }
-[data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
-[data-theme="light"] .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-[data-theme="light"] .pill { background: var(--surface2); color: var(--text); }
-[data-theme="light"] .tabItem { color: var(--muted); }
-[data-theme="light"] .tabItem--active { color: var(--primary-text); }
-[data-theme="light"] .goalBar { background: var(--surface3); }
-[data-theme="light"] .entryListHeader { color: var(--text); }
-[data-theme="light"] select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-color-theme="classic"][data-theme="light"] .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-color-theme="classic"][data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+[data-color-theme="classic"][data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-color-theme="classic"][data-theme="light"] input::placeholder, [data-color-theme="classic"][data-theme="light"] textarea::placeholder { color: #94a3b8; }
+[data-color-theme="classic"][data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
+[data-color-theme="classic"][data-theme="light"] .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
+[data-color-theme="classic"][data-theme="light"] .fr26HourBtn:hover { background: rgba(37,99,235,.14); }
+[data-color-theme="classic"][data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
+[data-color-theme="classic"][data-theme="light"] .fr26Check span { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
+[data-color-theme="classic"][data-theme="light"] .segBtn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+[data-color-theme="classic"][data-theme="light"] .pill { background: var(--surface2); color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .tabItem { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .tabItem--active { color: var(--primary-text); }
+[data-color-theme="classic"][data-theme="light"] .goalBar { background: var(--surface3); }
+[data-color-theme="classic"][data-theme="light"] .entryListHeader { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
 /* More page light mode */
-[data-theme="light"] .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-[data-theme="light"] .moreRowLabel { color: var(--text); font-weight: 600; }
-[data-theme="light"] .moreRowSub { color: var(--muted2); }
-[data-theme="light"] .moreCardHeader { color: var(--text); }
-[data-theme="light"] .moreTab { color: var(--muted); }
-[data-theme="light"] .moreTab.active { color: var(--primary-text); border-bottom-color: var(--primary); }
+[data-color-theme="classic"][data-theme="light"] .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+[data-color-theme="classic"][data-theme="light"] .moreRowLabel { color: var(--text); font-weight: 600; }
+[data-color-theme="classic"][data-theme="light"] .moreRowSub { color: var(--muted2); }
+[data-color-theme="classic"][data-theme="light"] .moreCardHeader { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .moreTab { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .moreTab.active { color: var(--primary-text); border-bottom-color: var(--primary); }
 /* Type chips light mode */
-[data-theme="light"] .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
-[data-theme="light"] .typeSuggestChip:active { background: var(--surface2); }
-[data-theme="light"] .tscMeta { color: var(--muted2); }
+[data-color-theme="classic"][data-theme="light"] .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .typeSuggestChip:active { background: var(--surface2); }
+[data-color-theme="classic"][data-theme="light"] .tscMeta { color: var(--muted2); }
 /* Bulk list light mode */
-[data-theme="light"] .bulkEntryRef { color: var(--text); }
-[data-theme="light"] .bulkEntryType { color: var(--muted); }
-[data-theme="light"] .bulkEntryMeta { color: var(--muted); }
-[data-theme="light"] .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
+[data-color-theme="classic"][data-theme="light"] .bulkEntryRef { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .bulkEntryType { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .bulkEntryMeta { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
 /* Entry items light mode */
-[data-theme="light"] .itemRef { color: var(--text); }
-[data-theme="light"] .itemType { color: var(--muted); }
-[data-theme="light"] .itemNotes { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .itemRef { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .itemType { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .itemNotes { color: var(--muted); }
 /* Misc */
-[data-theme="light"] .hcRangeLabel { color: var(--text); }
-[data-theme="light"] .hcStatVal { color: var(--text); }
-[data-theme="light"] .hcStatLabel { color: var(--muted); }
-[data-theme="light"] .k { color: var(--muted); }
-[data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
+[data-color-theme="classic"][data-theme="light"] .hcRangeLabel { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .hcStatVal { color: var(--text); }
+[data-color-theme="classic"][data-theme="light"] .hcStatLabel { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .k { color: var(--muted); }
+[data-color-theme="classic"][data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
 
 /* ── System light mode — same rules without needing JS to set data-theme ── */
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) header { background: rgba(240,242,245,.94); border-bottom-color: rgba(0,0,0,.10); }
-  :root:not([data-theme="dark"]) .tabBar { background: rgba(255,255,255,.97); border-top-color: rgba(0,0,0,.10); }
-  :root:not([data-theme="dark"]) .card { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-  :root:not([data-theme="dark"]) .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-  :root:not([data-theme="dark"]) .moreTabBar { background: #ffffff; border-bottom-color: rgba(0,0,0,.08); }
-  :root:not([data-theme="dark"]) .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-  :root:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
-  :root:not([data-theme="dark"]) .hcGoalBarTrack { background: rgba(0,0,0,.12); }
-  :root:not([data-theme="dark"]) .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
-  :root:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root:not([data-theme="dark"]) input::placeholder, :root:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
-  :root:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
-  :root:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
-  :root:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
-  :root:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-  :root:not([data-theme="dark"]) select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root:not([data-theme="dark"]) .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root:not([data-theme="dark"]) .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
-  :root:not([data-theme="dark"]) .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) header { background: rgba(240,242,245,.94); border-bottom-color: rgba(0,0,0,.10); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .tabBar { background: rgba(255,255,255,.97); border-top-color: rgba(0,0,0,.10); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .card { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .moreTabBar { background: #ffffff; border-bottom-color: rgba(0,0,0,.08); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .hcGoalBarTrack { background: rgba(0,0,0,.12); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) input::placeholder, :root[data-color-theme="classic"]:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) select { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .moreInput { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .typeSuggestChip { background: #fff; border-color: rgba(0,0,0,.20); color: var(--text); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .bulkDeleteBar { background: #fff; border-top-color: rgba(0,0,0,.14); }
 }
 
 /* ── Short-pay trend ─────────────────────────────── */
@@ -4046,7 +4165,7 @@ body.compact .list    { gap: 1px; }
   margin-top: 2px;
   letter-spacing: .01em;
 }
-[data-theme="light"] .heroPayPeriodLine { color: var(--muted2); }
+[data-color-theme="classic"][data-theme="light"] .heroPayPeriodLine { color: var(--muted2); }
 .heroPaceWarn {
   font-size: 11px;
   font-weight: 600;
@@ -4214,8 +4333,8 @@ body.compact .list    { gap: 1px; }
 .hcBarSkel--today {
   fill: rgba(37,99,235,.18);
 }
-[data-theme="light"] .hcBarSkel { fill: rgba(0,0,0,.07); }
-[data-theme="light"] .hcBarSkel--today { fill: rgba(37,99,235,.18); }
+[data-color-theme="classic"][data-theme="light"] .hcBarSkel { fill: rgba(0,0,0,.07); }
+[data-color-theme="classic"][data-theme="light"] .hcBarSkel--today { fill: rgba(37,99,235,.18); }
 
 .heroChartLabelsRow {
   display: flex;
@@ -4309,7 +4428,7 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
   transition: background 120ms, color 120ms;
 }
-.hcNavBtn:not(:disabled):active { background: var(--primary); color: #fff; }
+.hcNavBtn:not(:disabled):active { background: var(--primary); color: var(--on-primary); }
 .hcNavBtn:disabled { opacity: .3; cursor: default; }
 
 /* VIN search bar */
@@ -4596,9 +4715,9 @@ body.compact .list    { gap: 1px; }
 }
 .asCancel:active { opacity: .75; }
 
-[data-theme="light"] .asCard { background: #f2f2f7; }
-[data-theme="light"] .asConfirm { background: #fff; }
-[data-theme="light"] .asCancel { background: #fff; }
+[data-color-theme="classic"][data-theme="light"] .asCard { background: #f2f2f7; }
+[data-color-theme="classic"][data-theme="light"] .asConfirm { background: #fff; }
+[data-color-theme="classic"][data-theme="light"] .asCancel { background: #fff; }
 
 @keyframes itemSlideIn {
   from { opacity:0; transform:translateY(18px) scale(.96); }
@@ -4731,7 +4850,7 @@ body.compact .list    { gap: 1px; }
 }
 .fr26TimerBtn--running::before { content: "■"; font-size: 10px; }
 .fr26TimerBtn:active { transform: scale(.93); transition-duration: 60ms; }
-[data-theme="light"] .fr26TimerBtn { background: var(--surface2); border-color: var(--stroke); }
+[data-color-theme="classic"][data-theme="light"] .fr26TimerBtn { background: var(--surface2); border-color: var(--stroke); }
 
 /* ── Comeback chip active state ─────────────────── */
 .fr26ChipComeback--active {
@@ -4965,9 +5084,9 @@ body.compact .list    { gap: 1px; }
   padding: 8px 12px;
 }
 
-[data-theme="light"] .cbStat { background: var(--surface2); }
-[data-theme="light"] .cbStat--cost { background: rgba(239,68,68,.07); }
-[data-theme="light"] .shortPayAlert { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }
+[data-color-theme="classic"][data-theme="light"] .cbStat { background: var(--surface2); }
+[data-color-theme="classic"][data-theme="light"] .cbStat--cost { background: rgba(239,68,68,.07); }
+[data-color-theme="classic"][data-theme="light"] .shortPayAlert { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }
 
 /* ── What's New / Payday Summary modal sheet ────── */
 .whatsNewSheet {
@@ -5089,7 +5208,7 @@ body.compact .list    { gap: 1px; }
 header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 
 /* Light theme: stats chips fade */
-[data-theme="light"] .statsChipsOuter::after {
+[data-color-theme="classic"][data-theme="light"] .statsChipsOuter::after {
   background: linear-gradient(to right, transparent, var(--bg));
 }
 
@@ -5327,7 +5446,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* ── Requests to manager ───────────────────────────────────────────────────── */
 .reqBadge {
   display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 6px;
-  background: var(--primary); color: #fff; border-radius: 9px;
+  background: var(--primary); color: var(--on-primary); border-radius: 9px;
   font-size: 11px; font-weight: 700; text-align: center; vertical-align: middle;
 }
 .reqGate { padding: 6px 0; }

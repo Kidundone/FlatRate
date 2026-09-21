@@ -25,6 +25,9 @@
       // Color theme (Sunset/Classic/Carnival/Tropic/Neon) — set before first
       // paint too, same reasoning as data-theme above: avoids a flash of the
       // wrong palette. Defaults to "sunset" for anyone who hasn't chosen yet.
+      // Every theme now has its own light+dark variant (see the stylesheet's
+      // "Color themes" section), so data-theme applies to all of them, not
+      // just Classic — mirrors applySettings() in src/utils.js.
       document.documentElement.setAttribute('data-color-theme', s.colorTheme || 'sunset');
     })();
   </script>
@@ -38,7 +41,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.8b987b6790.css">
+  <link rel="stylesheet" href="./app.747bfdb2af.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -234,7 +237,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.8b987b6790.css. Now a real single-row horizontal scroll with
+               fix in app.747bfdb2af.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -304,7 +307,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.8b987b6790.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.747bfdb2af.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -953,7 +956,7 @@
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">Appearance</div>
-              <div class="moreRowSub">Auto follows system setting &middot; Classic theme only</div>
+              <div class="moreRowSub">Auto follows system setting</div>
             </div>
             <div class="seg">
               <button class="segBtn" id="dmAuto" type="button">Auto</button>

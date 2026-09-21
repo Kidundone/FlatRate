@@ -106,6 +106,14 @@ function applySettings(s = getSettings()) {
     document.documentElement.style.removeProperty("--primary-text");
   }
   document.body.classList.toggle("compact", !!s.compactList);
+  // Every preset theme now has its own light AND dark variant in app.css
+  // (:root[data-color-theme="…"][data-theme="light"|"dark"], each a complete
+  // token set), so Appearance applies to all 5 themes, not just Classic.
+  // The older [data-theme="light"] component rules (hardcoded input/border/
+  // shadow colors written back when "light" only ever meant Classic-light)
+  // are scoped to [data-color-theme="classic"] now too, so they can't leak
+  // onto a preset theme's own light variant — see app.css for both halves
+  // of that fix.
   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
 
   if (!window.__FR_DM_MQ_WIRED__) {
