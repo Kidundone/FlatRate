@@ -1,8 +1,16 @@
 /* ── Settings ────────────────────────────────────────────────────────────── */
 const SETTINGS_KEY = "fr_settings";
+// accentColor was still "#0095f6" (the pre-rebrand Instagram blue) here even
+// after task #88 moved the app's brand color to #2563EB -- applySettings()
+// below runs on every boot and does document.documentElement.style
+// .setProperty("--primary", s.accentColor || DEFAULT), which forcibly
+// overwrote app.css's `--primary: #2563EB` with the stale default via an
+// inline style for literally every user who never opened Settings and
+// manually touched the accent-color picker (i.e. nearly everyone). Found
+// live on this account: --primary was computing to #0095f6 app-wide.
 const SETTINGS_DEFAULTS = Object.freeze({
   defaultRate: 15,
-  accentColor: "#0095f6",
+  accentColor: "#2563EB",
   compactList: false,
   darkMode: "auto",
 });
@@ -15,6 +23,19 @@ function getSettings() {
     _settingsCache = stored ? { ...SETTINGS_DEFAULTS, ...JSON.parse(stored) } : { ...SETTINGS_DEFAULTS };
   } catch {
     _settingsCache = { ...SETTINGS_DEFAULTS };
+  }
+  // One-time silent migration: every install saved before this fix has
+  // "#0095f6" baked into localStorage as an explicit value (saveSettings
+  // persists the whole merged object, not just the changed key), so
+  // correcting SETTINGS_DEFAULTS above only helps brand-new installs --
+  // existing devices would stay on the old pre-rebrand blue forever.
+  // accentColor comes from a free native color-well (no swatch list), so
+  // a user could in theory have dialed in this exact hex on purpose, but
+  // that's a vanishingly unlikely coincidence next to "every install ever
+  // defaulted to this value silently" -- treat it as the stale default.
+  if (_settingsCache.accentColor === "#0095f6") {
+    _settingsCache.accentColor = SETTINGS_DEFAULTS.accentColor;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(_settingsCache)); } catch {}
   }
   return _settingsCache;
 }

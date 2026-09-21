@@ -2649,11 +2649,11 @@ function renderWeekChart(thisWeekDollars, lastWeekDollars) {
   el.innerHTML = `
     <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
       <rect x="18" y="${90 - lastH}" width="44" height="${lastH}" rx="5" fill="#1e2f4a"/>
-      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#0095f6"/>
+      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#2563EB"/>
       <text x="40" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">Last Week</text>
       <text x="120" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">This Week</text>
       <text x="40" y="${86 - lastH}" text-anchor="middle" font-size="8" fill="#7a8baa">${formatMoney(lastWeekDollars)}</text>
-      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#0095f6">${formatMoney(thisWeekDollars)}</text>
+      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#2563EB">${formatMoney(thisWeekDollars)}</text>
       <text x="80" y="112" text-anchor="middle" font-size="9" fill="${diffColor}">${sign}${formatMoney(diff)} vs last week</text>
     </svg>`;
 }

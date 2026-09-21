@@ -2495,8 +2495,8 @@ function initSettingsUI() {
   if (compactToggle) compactToggle.checked = !!s.compactList;
   // Haptic defaults ON; only off if explicitly saved as false
   if (hapticToggle) hapticToggle.checked  = s.haptic !== false;
-  if (colorPicker) colorPicker.value      = s.accentColor || "#0095f6";
-  if (colorPreview) colorPreview.style.background = s.accentColor || "#0095f6";
+  if (colorPicker) colorPicker.value      = s.accentColor || "#2563EB";
+  if (colorPreview) colorPreview.style.background = s.accentColor || "#2563EB";
 
   const syncDmBtns = () => {
     ["dmAuto", "dmLight", "dmDark"].forEach(id => {
