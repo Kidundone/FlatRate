@@ -219,6 +219,12 @@ body[data-page="stats"] #spa-stats {
      the browser we own horizontal here, so the anti-bounce handler stays out. */
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
+  /* The page-level bounce fix (html/body overscroll-behavior-x: none) only
+     stops the WHOLE PAGE from rubber-banding — it does nothing for a child
+     element's own overflow box, which defaults to overscroll-behavior: auto
+     and happily bounces (and can chain into a page-level bounce) when
+     dragged past its own edge. This is the row that was still wobbling. */
+  overscroll-behavior-x: contain;
 }
 /* Chip buttons inherit manipulation from the global button rule, which stops
    a drag that starts ON a chip from panning the row. They're the whole row. */
@@ -510,6 +516,10 @@ body[data-page="stats"] #spa-stats {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  /* Contain this row's own scroll bounce so dragging past its edge doesn't
+     rubber-band (and potentially chain into the page) — see the longer note
+     on .statsChipsWrap above. */
+  overscroll-behavior-x: contain;
 }
 .mnthBarsWrap {
   display: flex;
@@ -1385,6 +1395,7 @@ a.btn {
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .fr26QuickHours::-webkit-scrollbar { display: none; }
 /* Without this, #smartHourChips (a plain div, no layout of its own) becomes
@@ -1821,6 +1832,7 @@ a.btn {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding: 14px 16px;
+  overscroll-behavior-x: contain;
 }
 .fr26QuickTools::-webkit-scrollbar { display: none; }
 .fr26QuickTools > * { flex: 0 0 auto; }
@@ -1833,6 +1845,7 @@ a.btn {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  overscroll-behavior-x: contain;
 }
 .pillRow::-webkit-scrollbar { display: none; }
 
@@ -2935,6 +2948,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   gap: 8px;
   margin-top: 10px;
   padding-bottom: 2px;
+  overscroll-behavior-x: contain;
 }
 .entryActions::-webkit-scrollbar { display: none; }
 .entryActions .btn {
@@ -4380,6 +4394,7 @@ body.compact .list    { gap: 1px; }
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   border-top: 1px solid var(--stroke);
+  overscroll-behavior-x: contain;
 }
 .hcActionRow::-webkit-scrollbar { display: none; }
 .hcActionRow .btn {
@@ -5007,6 +5022,7 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
   scrollbar-width: none;
   margin-bottom: 8px;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .recentTypeChips:empty { display: none; }
 .recentTypeChips::-webkit-scrollbar { display: none; }
