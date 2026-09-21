@@ -257,6 +257,7 @@ for (const { src, filename } of VENDOR) {
 // Copy built assets to www/ for Capacitor
 const WWW_ASSETS = [
   "index.html", "more.html", "auth-callback.html", "dashboard.html", "team.html",
+  "404.html",
   "manifest.webmanifest", "sw.js", "app.css",
   "icon-192.png", "icon-512.png", "favicon.ico", "_redirects", "_headers",
   "terms.html", "privacy.html", "landing.html",
