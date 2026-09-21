@@ -889,7 +889,16 @@ header.top,
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--stroke2);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* max() instead of a bare env() call: on some WKWebView/standalone-PWA
+     renders the safe-area-inset-bottom env var reports 0 even though the
+     device really does have a home-indicator inset, which left an
+     uncovered strip of the page's own --bg color peeking out below this
+     bar (very visible against a dark bar on a bright theme bg; invisible
+     on Classic where the bar itself is a near-white color, so it went
+     unnoticed there). 20px is a safe floor close to the real ~34pt inset
+     on notch/Dynamic-Island iPhones, and max() still defers to the real
+     env() value whenever the browser reports one larger than that. */
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
 }
 
 .tabItem {
