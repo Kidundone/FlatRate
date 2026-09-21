@@ -80,41 +80,12 @@ function clearDraft() {
   clearTimeout(_draftTimer);
   localStorage.removeItem(LS_DRAFT);
 }
-const LS_KEEP_LAST_WORK = "fr_keep_last_work";
-const LS_LAST_WORK_TYPE = "fr_last_work_type";
-
-function shouldKeepLastWork() {
-  return localStorage.getItem(LS_KEEP_LAST_WORK) !== "0";
-}
-
-function setKeepLastWork(enabled) {
-  localStorage.setItem(LS_KEEP_LAST_WORK, enabled ? "1" : "0");
-}
-
-function syncKeepLastWorkInput() {
-  const keepLastWorkEl = document.getElementById("keepLastWork");
-  if (keepLastWorkEl) keepLastWorkEl.checked = shouldKeepLastWork();
-}
-
-function getLastWorkType() {
-  return String(localStorage.getItem(LS_LAST_WORK_TYPE) || "").trim();
-}
-
-function rememberLastWorkType(typeName) {
-  const next = String(typeName || "").trim();
-  if (!next) return;
-  localStorage.setItem(LS_LAST_WORK_TYPE, next);
-}
-
-function restoreLastWorkType({ force = false } = {}) {
-  if (!shouldKeepLastWork() || EDITING_ID) return;
-  const typeEl = document.getElementById("typeText");
-  if (!typeEl) return;
-  if (!force && String(typeEl.value || "").trim()) return;
-  const lastType = getLastWorkType();
-  if (!lastType) return;
-  typeEl.value = lastType;
-}
+// "Keep last work" (auto-carrying the previous job's type into a new one)
+// was removed — the primary way type gets filled is OCR reading it straight
+// off the scanned RO, with "Repeat Last" as the one deliberate, opt-in way
+// to reuse it manually. An always-on auto-carry on top of that just meant a
+// type from a different, unrelated job could still be sitting in the field
+// when a new ticket started.
 
 function setQuickHoursValue(value) {
   const hoursEl = document.getElementById("hours");
@@ -260,7 +231,7 @@ function handleClear(ev, options = {}) {
   if (ev) ev.preventDefault();
   clearDraft();
   const preserveType = !!options.preserveType;
-  const preservedType = preserveType ? String(options.typeValue || getLastWorkType()).trim() : "";
+  const preservedType = preserveType ? String(options.typeValue || "").trim() : "";
   setEditingEntry(null);
   const empInputEl = document.getElementById("empId");
   const refEl = document.getElementById("ref");
@@ -670,7 +641,6 @@ function renderRecentTypeChips(entries) {
         setQuickHoursValue(String(storedHours));
       }
       updateEarningsPreview?.();
-      restoreLastWorkType?.();
 
       // Tap animation
       chip.classList.remove("tapped");
@@ -763,7 +733,6 @@ function renderSmartHourChips(entries, forType) {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       setQuickHoursValue?.(String(val));
-      restoreLastWorkType?.();
       updateEarningsPreview?.();
     });
     container.appendChild(btn);
@@ -1944,7 +1913,6 @@ async function handleSave(ev) {
     const hoursVal = num(hoursEl?.value);
     const rateVal = num(rateEl?.value) || getDefaultRate();
     const notes = (notesEl?.value || "").trim();
-    const keepLastWork = shouldKeepLastWork() && !isEditing;
 
     if (!typeName) { shakeEl(typeEl); toast("Add a job type ↑"); return; }
     if (!hoursVal || hoursVal <= 0) { shakeEl(hoursEl); shakeHourChips(); toast("Pick or enter hours ↑"); return; }
@@ -2058,10 +2026,9 @@ async function handleSave(ev) {
     };
 
     await upsertTypeDefaults?.(typeName, hoursVal, rateVal);
-    if (keepLastWork) rememberLastWorkType(typeName);
     const savedEntry = await saveEntry(entry, {
-      preserveType: keepLastWork,
-      preservedType: keepLastWork ? typeName : "",
+      preserveType: false,
+      preservedType: "",
       __isEdit: isEditing,
     });
     haptic("success");
@@ -2098,8 +2065,8 @@ async function handleSave(ev) {
     document.getElementById("photoPicker") && (document.getElementById("photoPicker").value = "");
     document.getElementById("photoCamera") && (document.getElementById("photoCamera").value = "");
     document.getElementById("photoFile") && (document.getElementById("photoFile").value = "");
-    // Auto-focus the next field so back-to-back jobs flow without tapping:
-    // type was preserved (keepLastWork) → go to hours; type cleared → go to type.
+    // Auto-focus the next field so back-to-back jobs flow without tapping —
+    // type always clears now, so this always lands on the type field.
     // Skipped on edits, where we scroll to the list instead and focusing the
     // form would fight that scroll.
     if (!isEditing) {

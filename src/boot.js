@@ -651,7 +651,6 @@ async function runOnce() {
     if (hoursInput) {
       hoursInput.addEventListener("input", () => {
         hoursInput.dataset.touched = "1";
-        if (num(hoursInput.value) > 0) restoreLastWorkType?.();
         // Keep chip selected state in sync with whatever is typed
         const raw = hoursInput.value.trim();
         document.querySelectorAll("[data-hours-quick]").forEach(b =>
@@ -659,13 +658,11 @@ async function runOnce() {
       });
       hoursInput.addEventListener("blur", () => {
         const v = round1(num(hoursInput.value));
-        if (Number.isFinite(v) && v > 0) { hoursInput.value = String(v); restoreLastWorkType?.(); }
+        if (Number.isFinite(v) && v > 0) hoursInput.value = String(v);
         else if (hoursInput.value) hoursInput.value = "";
       });
     }
     if (rateInput) rateInput.addEventListener("input", () => rateInput.dataset.touched = "1");
-
-    syncKeepLastWorkInput?.();
 
     document.getElementById("closePhotoBtn")?.addEventListener("click", closePhotoModal);
     document.getElementById("photoModal")?.addEventListener("click", (e) => {
@@ -866,13 +863,6 @@ async function runOnce() {
     syncClearTypeBtn();
     updateSaveEnabled();
 
-    const keepLastWorkEl = document.getElementById("keepLastWork");
-    keepLastWorkEl?.addEventListener("change", () => {
-      setKeepLastWork?.(!!keepLastWorkEl.checked);
-      if (keepLastWorkEl.checked) restoreLastWorkType?.({ force: false });
-      updateSaveEnabled();
-    });
-
     // Smart hour chips are rendered dynamically by renderSmartHourChips() in main-page.js
     // with inline click handlers — no static wiring needed here.
     // Render fallback chips immediately so the row isn't blank before entries load.
@@ -909,7 +899,6 @@ async function runOnce() {
         btn.addEventListener("click", (e) => {
           e.preventDefault();
           setQuickHoursValue?.(String(val));
-          restoreLastWorkType?.();
           updateEarningsPreview?.();
         });
         container.appendChild(btn);

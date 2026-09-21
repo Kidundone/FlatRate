@@ -758,7 +758,10 @@ function prewarmScanToken() {
 // the old 18000ms budget was shorter than that, so the client could abort
 // and hand the tech a false "timed out" right as a later retry was about to
 // come back with a good read.
-async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 32000) {
+// scan-ro's server-side worst case (all 3 attempts hit their own ceiling) is
+// now ~21.6s (6500 + 700 + 6500 + 1400 + 6500) — this just needs enough
+// margin above that for the request/response round trip itself.
+async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 26000) {
   const sbInstance = window.__FR?.sb;
   const fnUrl = `${window.__SUPABASE_CONFIG__.url}/functions/v1/scan-ro`;
 

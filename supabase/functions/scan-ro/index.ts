@@ -85,12 +85,20 @@ Return ONLY this JSON, no markdown, no extra text:
     // *entire* abort budget before this loop ever got to attempt 2 — the
     // retry logic above existed but never ran. Bound each attempt so a stall
     // fails fast and actually hands control back to the loop.
-    const PER_ATTEMPT_TIMEOUT_MS = 9000;
+    //
+    // Tightened from 9000ms/1200ms — a scan reported taking "about a minute"
+    // traced here: worst case (every attempt stalling to its ceiling) was
+    // 9000 + 1200 + 9000 + 2400 + 9000 ≈ 30.6s server-side alone, on top of
+    // client image compression/upload and the round trip itself. A real,
+    // successful Gemini response is unaffected either way — it returns the
+    // moment it's ready, well under either ceiling — so this only shortens
+    // the case where an attempt is actually stuck, not the normal path.
+    const PER_ATTEMPT_TIMEOUT_MS = 6500;
     let geminiRes: Response | null = null;
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       if (attempt > 0) {
-        await new Promise((r) => setTimeout(r, attempt * 1200));
+        await new Promise((r) => setTimeout(r, attempt * 700));
       }
       const attemptCtrl = new AbortController();
       const attemptTimer = setTimeout(() => attemptCtrl.abort(), PER_ATTEMPT_TIMEOUT_MS);
