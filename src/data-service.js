@@ -530,6 +530,7 @@ async function apiCreateLog(payload, sourceEntry = null) {
     vin8: payload.vin8 || null,
     is_deleted: false,
     photo_path: null,
+    is_comeback: !!payload.is_comeback,
   };
 
   // 1) Create row first (no photo_path yet)
@@ -719,6 +720,12 @@ function normalizeEntryForApi(entry) {
     location: entry.location || null,
     vin8: entry.vin8 || null,
     photo_path: entry.photo_path || entry.photoPath || null,
+    // Comeback checkbox on the create form was captured into the local
+    // entry object but never made it into the server payload — found live:
+    // checking "Comeback" on a NEW entry silently did nothing server-side,
+    // even after the is_comeback column fix, because it was dropped here
+    // before the network call ever happened.
+    is_comeback: !!(entry.isComeback ?? entry.is_comeback ?? false),
   };
 }
 

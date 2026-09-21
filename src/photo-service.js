@@ -1105,7 +1105,17 @@ async function autoScanPhotoAndPatch(file, entryId, currentRef, currentVin8) {
     const sbInstance = window.__FR?.sb;
     const uid = window.CURRENT_UID;
     if (sbInstance && entryId && uid) {
-      await sbInstance.from("work_logs").update(patch).eq("id", entryId).eq("user_id", uid);
+      // Supabase resolves with { error } on failure, it doesn't throw — this
+      // used to go unchecked, so a failed write here still showed the
+      // "Photo scanned" success toast and updated the in-memory entry, then
+      // silently reverted on next reload with nothing to explain why. Bail
+      // out before the optimistic UI update if the save didn't actually land.
+      const { error: saveErr } = await sbInstance
+        .from("work_logs").update(patch).eq("id", entryId).eq("user_id", uid);
+      if (saveErr) {
+        console.error("[OCR] failed to save auto-filled fields:", saveErr);
+        return;
+      }
     }
 
     if (Array.isArray(window.CURRENT_ENTRIES)) {
