@@ -55,12 +55,37 @@ function resolveDarkMode(dm) {
   return dm === true || dm === "dark";
 }
 
+// --primary reads great as a button background (white text on it is a clean
+// ~5:1 contrast) but the exact same hex used directly AS text color -- links,
+// active-tab labels, the hero pace line -- was measured at only 3.2-3.9:1 on
+// dark surfaces (WCAG needs 4.5:1 for normal text). Rather than force every
+// user onto one fixed "safe" blue, this derives a text-legible variant of
+// WHATEVER accent color they picked: lightened toward white on dark
+// backgrounds, darkened toward black on light ones, by just enough to clear
+// 4.5:1 against the app's own surface colors. app.css's static --primary-text
+// values (for the default accent) were tuned the same way, at the same mix
+// fractions, so a stock install and a customized one land on the same logic.
+function textSafeAccent(hex, isDark) {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return hex;
+  const full = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const frac = isDark ? 0.30 : 0.22;
+  const target = isDark ? 255 : 0;
+  const mix = (c) => Math.max(0, Math.min(255, Math.round(c + (target - c) * frac)));
+  const toHex = (c) => c.toString(16).padStart(2, "0");
+  return `#${toHex(mix(r))}${toHex(mix(g))}${toHex(mix(b))}`;
+}
+
 function applySettings(s = getSettings()) {
   const color = s.accentColor || SETTINGS_DEFAULTS.accentColor;
+  const isDark = resolveDarkMode(s.darkMode);
   document.documentElement.style.setProperty("--primary", color);
   document.documentElement.style.setProperty("--accent", color);
+  document.documentElement.style.setProperty("--primary-text", textSafeAccent(color, isDark));
   document.body.classList.toggle("compact", !!s.compactList);
-  document.documentElement.setAttribute("data-theme", resolveDarkMode(s.darkMode) ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
 
   if (!window.__FR_DM_MQ_WIRED__) {
     window.__FR_DM_MQ_WIRED__ = true;

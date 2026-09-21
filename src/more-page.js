@@ -2520,6 +2520,11 @@ function initSettingsUI() {
     if (colorPreview) colorPreview.style.background = c;
     document.documentElement.style.setProperty("--primary", c);
     document.documentElement.style.setProperty("--accent", c);
+    // Keep the text-legible variant (see textSafeAccent in utils.js) live
+    // during the drag too, not just after save -- otherwise active-tab/link
+    // text would flash back to a low-contrast raw accent color for a moment.
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    document.documentElement.style.setProperty("--primary-text", textSafeAccent(c, isDark));
   });
 
   const autosave = () => {

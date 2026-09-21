@@ -24,18 +24,25 @@ serve(async (req) => {
 
     const prompt = `You are scanning an automotive shop document — a Get Ready checklist or Repair Order from a car dealership. Extract these fields carefully.
 
+── HANDWRITING ──
+Several fields below (VIN verification digits, handwritten hours in the margin, techs' own notes) are often handwritten rather than printed, and handwriting on a shop floor is frequently rushed. For any handwritten character:
+  - Read it character-by-character rather than pattern-matching the whole word at once — rushed handwriting distorts individual letterforms more than it distorts overall word shape.
+  - Use the field's expected format to resolve genuine ambiguity: a VIN character is never I, O, or Q (see below); an hours value is almost always between 0.1 and 12; an RO number is 4-7 digits. If a handwritten glyph is ambiguous between two readings and only one fits the expected format, prefer the one that fits.
+  - Common confusions to weigh consciously: 1 vs 7 (a 7 usually has a crossbar or a sharper top angle), 0 vs 6, 4 vs 9, 5 vs S, 2 vs Z, a decimal point vs a stray pen mark or smudge.
+  - If a handwritten value is genuinely illegible even after this — not just hard, actually unreadable — leave that field null/omitted rather than guessing. A wrong number is worse than a missing one; the tech can fill it in by hand.
+
 ── FIELDS ──
 
-ro: Work order number. Labels: "WORKORDER", "RO#", "W/O". Usually 5-6 digits printed large (e.g. "492043"). Return null if absent.
+ro: Work order number. Labels: "WORKORDER", "RO#", "W/O". Usually 5-6 digits, printed large or sometimes handwritten in a box (e.g. "492043"). Return null if absent.
 
 stk: Stock number only — the alphanumeric code after labels "Stock", "STOCK #", "STK:", "SOLD-STK:". Examples: "A7127", "VXS13593", "DT253". Do NOT include the label word "STK" in the value. Return null if absent.
 
 vin: Vehicle Identification Number. IMPORTANT rules:
-  - A full VIN is EXACTLY 17 characters, only letters A-Z (never I, O, or Q) and digits 0-9
+  - A full VIN is EXACTLY 17 characters, only letters A-Z (never I, O, or Q) and digits 0-9. This is a hard rule, not just a hint — if a character you're reading looks like O, it IS a 0; if it looks like I, it IS a 1; if it looks like Q, reconsider it as a 0 or D. Apply this correction especially to handwritten VIN digits, which is where this mistake actually happens.
   - On Repair Orders it appears in the vehicle info table row under the "VIN" column header — read it character by character carefully
   - Common VIN starts: 1G, 2G, 3G (GM), 1F, 2F (Ford), 1C, 2C (Chrysler), 5J, JH, 19X (Honda/Acura), WBA, WBS (BMW), JN, 1N (Nissan), 4T, JT (Toyota/Lexus)
   - If you find a 17-char string matching this pattern, that IS the VIN — return it fully
-  - On Get Ready sheets look near labels "VIN Verification" or "VIN (LAST 6)" for a 6-8 char partial
+  - On Get Ready sheets look near labels "VIN Verification" or "VIN (LAST 6)" for a 6-8 char partial — this is usually HANDWRITTEN by the tech verifying the vehicle, not printed; apply the handwriting rules above
   - Return null only if truly nothing VIN-like exists
 
 jobs: Array of work items. Rules:
@@ -45,7 +52,7 @@ jobs: Array of work items. Rules:
   - For Repair Orders: each LINE OP (A, B, C…) with DESCRIPTIONS/INSTRUCTIONS text = one job entry (under 40 chars)
   - Return [] if nothing found
 
-jobHours: Object mapping a job name from the "jobs" array (EXACT same string) to a numeric flag/book hour value, ONLY when a number is clearly printed right next to that item — labels like "HRS", "HOURS", "FLAT RATE", "TIME", or a bare decimal like ".5" or "1.0" directly beside the line. Rules:
+jobHours: Object mapping a job name from the "jobs" array (EXACT same string) to a numeric flag/book hour value, ONLY when a number is clearly printed OR handwritten right next to that item — labels like "HRS", "HOURS", "FLAT RATE", "TIME", or a bare decimal like ".5" or "1.0" directly beside the line (handwritten hour values are common — apply the handwriting rules above, and lean on the fact that a real hours value is almost always 0.1-12). Rules:
   - Only include an entry when you can actually see a number for that specific job — do not guess, estimate, or fill in a "typical" time.
   - Many prep checklists print NO hours at all (just checkboxes) — in that case return {} (empty object), that's expected and fine.
   - Values are decimal hours (e.g. "30 MIN"→0.5, "1 HR 30 MIN"→1.5). Ignore dollar amounts — only hour/time values.
@@ -68,7 +75,15 @@ Return ONLY this JSON, no markdown, no extra text:
         maxOutputTokens: 1024,
         temperature: 0,
         thinkingConfig: {
-          thinkingBudget: 0,
+          // Was 0 (no reasoning at all before answering) for max speed, but
+          // that's exactly the wrong setting for handwriting: distinguishing
+          // a rushed handwritten VIN digit or hours value from a look-alike
+          // needs a beat of "does this fit the expected format" reasoning,
+          // which a zero-thinking pass skips entirely. 256 is a small enough
+          // budget that it shouldn't meaningfully change response latency
+          // for Flash on an image this size, so it doesn't eat back into the
+          // per-attempt timeout budget above.
+          thinkingBudget: 256,
         },
       },
     });

@@ -825,7 +825,7 @@ async function _callScanRo(base64, mediaType = "image/jpeg", timeoutMs = 26000) 
  * Score a job name against this user's history.
  * Returns a count: how many times this emp has logged something matching that job name.
  */
-function _scoreJobForUser(jobName, empId) {
+async function _scoreJobForUser(jobName, empId) {
   const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
   const myEmpId = String(empId || "").toLowerCase().replace(/\D/g, "");
   const needle = jobName.toLowerCase().trim();
@@ -839,10 +839,14 @@ function _scoreJobForUser(jobName, empId) {
     if (ework === needle) score += 3;
     else if (ework.includes(needle) || needle.includes(ework)) score += 1;
   }
-  // Also check saved job-type defaults (findTypeByName exists in db-service)
+  // Also check saved job-type defaults (findTypeByName exists in db-service).
+  // findTypeByName is async -- this used to call it without awaiting, so
+  // `saved` was always a pending Promise object, which is always truthy.
+  // Every job on every scan silently got +2, whether or not the user had
+  // actually logged that type before, which made this signal a no-op.
   if (typeof findTypeByName === "function" && empId) {
     try {
-      const saved = findTypeByName(empId, jobName);
+      const saved = await findTypeByName(empId, jobName);
       if (saved) score += 2; // user has used this type before
     } catch {}
   }
@@ -855,15 +859,40 @@ function _scoreJobForUser(jobName, empId) {
  * We re-rank by user history score, but break ties by keeping the original order
  * (so circled items still win when no history exists).
  */
-function _rankJobsForUser(jobs, empId) {
+async function _rankJobsForUser(jobs, empId) {
   if (!Array.isArray(jobs) || jobs.length === 0) return [];
-  const scored = jobs.map((job, idx) => ({
+  const scored = await Promise.all(jobs.map(async (job, idx) => ({
     job,
-    score: _scoreJobForUser(job, empId),
+    score: await _scoreJobForUser(job, empId),
     idx,
-  }));
+  })));
   scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
   return scored.map(s => s.job);
+}
+
+/**
+ * How many hours to prefill for a detected job: this tech's own logged pace
+ * for that job type beats the generic book time printed on the RO. Book
+ * time is the same number for every tech at every shop; how long a job
+ * actually takes YOU is personal, and the app already tracks it -- every
+ * save updates this job type's lastHours for this employee (see
+ * upsertTypeDefaults in main-page.js). A tech who's logged PDIs at 1.9h
+ * consistently gets 1.9h here even when the RO prints a generic 1.2h book
+ * time. Book time is only used as a fallback for a job type this tech
+ * hasn't logged before -- still a better starting point than a blank field.
+ */
+async function _hoursForJob(jobName, jobHours) {
+  const empId = typeof getEmpId === "function" ? getEmpId() : null;
+  if (empId && typeof findTypeByName === "function") {
+    try {
+      const t = await findTypeByName(empId, jobName);
+      const personal = t && Number(t.lastHours);
+      if (Number.isFinite(personal) && personal > 0) return { hours: personal, source: "personal" };
+    } catch {}
+  }
+  const book = jobHours && Number(jobHours[jobName]);
+  if (Number.isFinite(book) && book > 0) return { hours: book, source: "book" };
+  return { hours: null, source: null };
 }
 
 // Snap-to-fill: scan photo immediately when selected, prefill form fields before save.
@@ -895,28 +924,13 @@ async function scanPhotoAndPrefillForm(file) {
 
   const hideAlts = () => { if (altChips) { altChips.innerHTML = ""; altChips.style.display = "none"; } };
 
-  // Book time printed directly on the document beats a remembered average —
-  // it reflects what THIS job actually pays, not what similar jobs paid before.
-  const _applyOcrHours = (jobName, jobHours) => {
-    const v = jobHours && Number(jobHours[jobName]);
-    const hoursEl = document.getElementById("hours");
-    if (Number.isFinite(v) && v > 0 && hoursEl) {
-      hoursEl.value = String(v);
-      // Marks it "already filled from a trusted source" so the saved
-      // per-type-default autofill (wired to typeText's change event) doesn't
-      // clobber it with a stale remembered average.
-      hoursEl.dataset.touched = "1";
-      return true;
-    }
-    return false;
-  };
-
   // Multi-select: a Get Ready checklist or RO often has several jobs on the
   // SAME piece of paper that get logged as one combined entry (e.g. a
   // re-clean bundled with a finance FPF). Every ranked job (the auto-filled
   // pick plus its alternatives) gets a toggleable chip; whichever chips are
-  // checked get merged into ONE entry — their names joined and their book
-  // hours added together — rather than creating separate entries.
+  // checked get merged into ONE entry — their names joined and their hours
+  // (personal pace where known, book time otherwise — see _hoursForJob)
+  // added together — rather than creating separate entries.
   const showAltJobChips = (rankedJobs, jobHours, primaryJob) => {
     if (!altChips || !rankedJobs.length || !typeEl) return;
     altChips.innerHTML = "";
@@ -925,7 +939,7 @@ async function scanPhotoAndPrefillForm(file) {
     hint.className = "fr26ScanJobHint";
     hint.style.display = "none";
 
-    const applySelection = () => {
+    const applySelection = async () => {
       const checked = Array.from(altChips.querySelectorAll(".fr26ScanJobAlt.selected"));
       const hoursEl = document.getElementById("hours");
       if (!checked.length) {
@@ -936,13 +950,18 @@ async function scanPhotoAndPrefillForm(file) {
       typeEl.value = names.join(" + ").slice(0, 120);
       typeEl.dispatchEvent(new Event("input", { bubbles: true }));
 
-      // Add together the book hours for every selected job we actually have
-      // a printed number for. If nothing selected has a known hour, leave
-      // the hours field alone for manual entry rather than guessing.
-      let sum = 0, knownCount = 0;
+      // Add together hours for every selected job we have a number for --
+      // each job's own personal-vs-book-time priority is resolved by
+      // _hoursForJob. If nothing selected has a known hour, leave the hours
+      // field alone for manual entry rather than guessing.
+      let sum = 0, knownCount = 0, anyPersonal = false;
       for (const n of names) {
-        const v = Number(jobHours?.[n]);
-        if (Number.isFinite(v) && v > 0) { sum += v; knownCount++; }
+        const { hours, source } = await _hoursForJob(n, jobHours);
+        if (hours != null) {
+          sum += hours;
+          knownCount++;
+          if (source === "personal") anyPersonal = true;
+        }
       }
       if (hoursEl) delete hoursEl.dataset.touched;
       if (knownCount > 0) {
@@ -954,8 +973,10 @@ async function scanPhotoAndPrefillForm(file) {
       if (names.length > 1) {
         const missing = names.length - knownCount;
         hint.textContent = missing > 0
-          ? `${names.length} jobs combined — book time missing for ${missing}, double-check hours`
-          : `${names.length} jobs combined — hours added together`;
+          ? `${names.length} jobs combined — hours missing for ${missing}, double-check hours`
+          : anyPersonal
+            ? `${names.length} jobs combined — using your usual hours where known`
+            : `${names.length} jobs combined — hours added together`;
         hint.style.display = "";
       } else {
         hint.style.display = "none";
@@ -973,7 +994,7 @@ async function scanPhotoAndPrefillForm(file) {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         btn.classList.toggle("selected");
-        applySelection();
+        applySelection(); // async, fire-and-forget — UI updates once it resolves
       });
       altChips.appendChild(btn);
     }
@@ -986,11 +1007,15 @@ async function scanPhotoAndPrefillForm(file) {
 
   try {
     // Enhanced for document scanning (checkboxes, circles, strikethroughs need
-    // crisp edges) but trimmed down from 1200px/0.82 — this is the interactive
-    // path the tech is actively staring at, so shaving pixels here cuts both
-    // the on-device processing time and the upload/model time without a
-    // noticeable accuracy hit.
-    const dataUrl  = await compressImageFileToDataUrl(file, 1050, 0.78, true);
+    // crisp edges). Was trimmed down to 1050px/0.78 for speed, on the theory
+    // that checkboxes/circles are big, coarse shapes that survive
+    // downscaling fine -- true for those, but handwritten digits (VIN
+    // verification, margin hours) are much finer detail and got noticeably
+    // softer at that size, which is exactly what was reported as unreliable.
+    // Bumped back up partway (not all the way to the original 1200px/0.82)
+    // to recover handwriting legibility without giving back all the
+    // upload-time savings.
+    const dataUrl  = await compressImageFileToDataUrl(file, 1300, 0.85, true);
     const base64   = dataUrl.split(",")[1];
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
@@ -1023,17 +1048,27 @@ async function scanPhotoAndPrefillForm(file) {
     // Role-aware job selection: rank jobs by this user's history, pick best match
     if (typeEl && !typeEl.value.trim() && Array.isArray(jobs) && jobs.length > 0) {
       const empId = typeof getEmpId === "function" ? getEmpId() : null;
-      const ranked = _rankJobsForUser(jobs, empId);
+      const ranked = await _rankJobsForUser(jobs, empId);
       const bestJob = ranked[0];
       typeEl.value = bestJob;
       typeEl.dispatchEvent(new Event("input", { bubbles: true }));
-      // If the document itself printed book time for this job, fill it before
-      // the change event fires — see _applyOcrHours for why this beats the
-      // saved per-type average.
-      const gotOcrHours = _applyOcrHours(bestJob, jobHours);
+      // Fill hours before the change event fires — this tech's own pace for
+      // this job type if we know it, else the book time off the document
+      // (see _hoursForJob).
+      const { hours: pickedHours, source: hoursSource } = await _hoursForJob(bestJob, jobHours);
+      const hoursEl = document.getElementById("hours");
+      if (pickedHours != null && hoursEl) {
+        hoursEl.value = String(pickedHours);
+        // Marks it "already filled from a trusted source" so the saved
+        // per-type-default autofill (wired to typeText's change event) doesn't
+        // clobber it with a stale value.
+        hoursEl.dataset.touched = "1";
+      }
       typeEl.dispatchEvent(new Event("change", { bubbles: true }));
       filled.push(`Job: ${bestJob}`);
-      if (gotOcrHours) filled.push(`Hours: ${jobHours[bestJob]}`);
+      if (pickedHours != null) {
+        filled.push(hoursSource === "personal" ? `Hours: ${pickedHours} (your usual)` : `Hours: ${pickedHours}`);
+      }
       // Show every detected job as a toggleable chip (best pick pre-checked) —
       // checking more than one queues them to be logged as separate entries,
       // one after another, once this save goes through.
