@@ -1390,14 +1390,19 @@ a.btn {
 }
 
 .fr26HourBtn {
+  /* Blue-tinted to match .recentTypeChip and .fr26HourBtnCustom — these are
+     all the same kind of thing (a tap-to-fill shortcut) and used to look
+     like two different UI systems: this one plain gray, the others blue.
+     Reusing the existing custom-chip treatment here instead of inventing a
+     new one. */
   flex: 0 0 auto;
   min-width: 64px;
   height: 44px;
   padding: 0 8px;
-  border: 1.5px solid var(--stroke2);
+  border: 1.5px solid rgba(37,99,235,.35);
   border-radius: 12px;
-  background: var(--surface3);
-  color: var(--text2);
+  background: rgba(37,99,235,.08);
+  color: var(--primary);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -1620,7 +1625,7 @@ a.btn {
   padding: 14px 16px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
 .scanHeroBtn {
@@ -1634,7 +1639,10 @@ a.btn {
   background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: var(--r-lg);
+  /* Flat bottom — .scanAltBtn sits flush underneath as one continuous card
+     instead of two separate floating buttons with a gap between them.
+     They're really one action (get the job details from a photo). */
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
   cursor: pointer;
   text-align: left;
   box-shadow: 0 4px 18px rgba(37,99,235,.30);
@@ -1696,19 +1704,24 @@ a.btn {
   gap: 8px;
 }
 .scanAltBtn {
+  /* Sits flush under .scanHeroBtn as the bottom of one card — see the
+     border-radius split above. Light blue tint instead of plain gray so it
+     still reads as part of the same blue "capture a job" module rather
+     than an unrelated secondary button. */
   flex: 1;
-  padding: 7px 0;
-  background: var(--surface2);
-  color: var(--text2);
-  border: 1px solid var(--stroke);
-  border-radius: var(--r-md);
+  padding: 10px 0;
+  background: rgba(37,99,235,.10);
+  color: var(--primary);
+  border: none;
+  border-top: 1px solid rgba(37,99,235,.18);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   text-align: center;
   transition: background .1s;
 }
-.scanAltBtn:active { background: var(--surface3); }
+.scanAltBtn:active { background: rgba(37,99,235,.18); }
 
 .fr26InlineStatus {
   padding: 0 16px 12px;
@@ -3033,9 +3046,8 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 [data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
 [data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8; }
 [data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
-[data-theme="light"] .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
 [data-theme="light"] .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
-[data-theme="light"] .fr26HourBtn:hover { background: var(--surface3); }
+[data-theme="light"] .fr26HourBtn:hover { background: rgba(37,99,235,.14); }
 [data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
 [data-theme="light"] .fr26Check span { color: var(--text); }
 [data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
@@ -3087,7 +3099,6 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   :root:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
   :root:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
   :root:not([data-theme="dark"]) input::placeholder, :root:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
-  :root:not([data-theme="dark"]) .fr26HourBtn { background: var(--surface2); color: var(--text2); border-color: rgba(0,0,0,.18); }
   :root:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
   :root:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
   :root:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
@@ -5619,7 +5630,18 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* ── Emp # collapsed chip ──────────────────────────────────────────────────── */
 .fr26EmployeeBar--collapsed .fr26EmployeeLabel,
 .fr26EmployeeBar--collapsed #empId { display: none; }
-.fr26EmployeeBar--collapsed { justify-content: flex-end; padding-top: 2px; padding-bottom: 2px; }
+.fr26EmployeeBar--collapsed {
+  /* The inner chip (.empChip below) was already styled as a quiet, muted
+     label — but this bar's own background/border/radius (solid surface2,
+     rounded top corners) kept rendering as a full-width card behind it, so
+     it still read as a prominent stripe between the scan card and the form
+     instead of the small aside it's meant to be. */
+  justify-content: flex-end;
+  padding: 6px 4px;
+  background: transparent;
+  border-bottom: none;
+  border-radius: 0;
+}
 .empChip {
   background: transparent; border: none;
   color: var(--muted); font-size: 11px; font-weight: 600;
