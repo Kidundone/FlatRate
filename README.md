@@ -8,7 +8,10 @@
 
 ## Status
 
-**v1.3 Beta** — All features are free during the beta period. Paid plans are coming soon.
+**v1.10, live in production.** Core job logging is free for everyone. **Flat-Rate Pro**
+(export, PDF audit/dispute reports, cloud sync) is a paid subscription via Stripe. The
+**Team/Shop dashboard** — invite your crew, see shop-wide totals, handle pay disputes —
+is free for every shop, no Pro required, on either side.
 
 ---
 
@@ -27,6 +30,8 @@
 - **PDF & CSV export** — weekly summary PDF or full CSV download
 - **Offline support** — works offline; queues edits until reconnected
 - **PWA** — installable on iOS and Android home screen; push notifications for payday reminders
+- **Team/Shop dashboard** (`team.html`) — create or join a shop with a 6-character invite code; managers get a live dashboard of the whole crew's jobs, hours, and pay, a requests inbox for pay disputes, roster management, and CSV export; techs get their own jobs auto-shared with their shop's managers. Free for every shop. Guided tour built in for both roles.
+- **Error monitoring** — client-side errors (including schema/API mismatches) are logged to a `client_errors` table so problems surface instead of failing silently
 
 ---
 
@@ -42,6 +47,10 @@ All source files are under `src/`:
 | `src/data-service.js` | Supabase auth, IndexedDB stores, API reads/writes, offline queue |
 | `src/photo-service.js` | Photo picking, downscaling, uploads, OCR scan flow, gallery viewer |
 | `src/utils.js` | Date helpers, formatting, math, filter/search utilities |
+
+`team.html` is a separate, standalone page (its own inline script, not part of the
+`src/` bundle) that powers the Team/Shop dashboard — manager view, tech view, guided
+tour, and its own Supabase client.
 
 ---
 

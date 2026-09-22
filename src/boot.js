@@ -1262,10 +1262,15 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 // added above. showWhatsNew() below renders the current version up top and
 // every older version underneath in a collapsed "Past updates" section, so
 // the full history stays browsable from the app itself, not just here.
-const APP_VERSION = "1.9";
+const APP_VERSION = "1.10";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.10": [
+    "Fixed the Team dashboard sometimes failing to load — stats, the chart, and the roster could go blank on refresh",
+    "Team dashboard now recovers and reports the problem instead of failing silently, if something like that happens again",
+    "Updated Terms & Privacy to cover what's shared on a shop's Team dashboard",
+  ],
   "1.9": [
     "Fixed the Pro upgrade screen showing page content bleeding through behind its own text",
     "Fixed the guided tour's highlight landing in the wrong spot (or hidden behind the card) on a few steps",
