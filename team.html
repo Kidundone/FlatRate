@@ -702,7 +702,17 @@
   async function fetchLogs(ids, from, to) {
     const { data, error } = await db
       .from("work_logs")
-      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount, is_comeback, vin8, notes, photo_path")
+      // "notes" was never a real column here -- the free-text field the main
+      // app writes as an entry's "notes" is stored in work_logs.description
+      // (see data-service.js's notes<->description mapping), which this
+      // select already pulls in and the table/drawer already render as the
+      // "Job" text. Requesting a second "notes" column that doesn't exist
+      // failed the whole query with a bare Postgres 42703, which took down
+      // every stat on the dashboard (found live: "column work_logs.notes
+      // does not exist" -- same failure shape as the is_comeback bug fixed
+      // in 20260921_add_work_logs_is_comeback.sql, but here there's no
+      // second field to add: description already IS the notes text).
+      .select("user_id, employee_number, work_date, ro_number, description, category, flat_hours, cash_amount, is_comeback, vin8, photo_path")
       .in("user_id", ids)
       .gte("work_date", from)
       .lte("work_date", to)
