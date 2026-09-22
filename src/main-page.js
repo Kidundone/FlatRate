@@ -5400,8 +5400,6 @@ const JOB_TYPE_ALIASES = [
   // ── Pre-owned / used-car full detail ─────────────────────────
   ["Pre-Owned",     /pre[\s-]*owned?/i,    /preowned/i,
                     /\bpo\b.*detail/i,      /detail.*\bpo\b/i],
-  // ── Re-clean / redelivery ────────────────────────────────────
-  ["Re-Clean",      /re[\s-]*clean/i],
   // ── Customer-pay mini detail ──────────────────────────────────
   ["Customer Mini", /customer[\s-]*mini/i, /mini[\s-]*detail/i,
                     /detail[\s-]*mini/i,   /\bmini\b/i],
@@ -5410,9 +5408,11 @@ const JOB_TYPE_ALIASES = [
                     /customer[\s-]*pay/i,  /detail[\s-]*customer/i,
                     /full[\s-]*detail/i,
                     /detail.*complete/i,   /complete.*detail/i],
-  // ── Sold / delivery detail (incl. FPF & no-FPF packages) ────
+  // ── Sold / delivery detail (incl. FPF, no-FPF packages, and
+  //    re-clean/redelivery — same job in practice, per this tech) ────
   ["Sold",          /\bsold\b/i,          /\bfpf\b/i,
-                    /no[\s-]*fpf/i,        /detail.*fpf/i],
+                    /no[\s-]*fpf/i,        /detail.*fpf/i,
+                    /re[\s-]*clean/i],
   // ── Dealer trade ─────────────────────────────────────────────
   ["Dealer Trade",  /dealer[\s-]*trade/i,  /\bdt\b/i],
   // ── Reclaim / SPF / Delivery ─────────────────────────────────
