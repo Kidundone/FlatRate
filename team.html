@@ -485,6 +485,25 @@
   const cfg = window.__SUPABASE_CONFIG__;
   const db  = window.supabase.createClient(cfg.url, cfg.anonKey);
 
+  // Best-effort, fire-and-forget error log -- never throws. Exists so the
+  // next schema mismatch or crash on this page surfaces in client_errors
+  // instead of failing silently the way the is_comeback/notes bugs did.
+  async function logClientError(context, err, extra) {
+    try {
+      await db.from("client_errors").insert({
+        user_id: UID || null,
+        context: String(context || "").slice(0, 200),
+        message: String(err?.message || err || "").slice(0, 1000),
+        detail: { code: err?.code, details: err?.details, hint: err?.hint, extra: extra || null },
+        page: location.pathname,
+      });
+    } catch (_) {
+      // swallow -- logging must be best-effort only
+    }
+  }
+  window.addEventListener("error", (e) => logClientError("window.onerror", e?.error || e?.message));
+  window.addEventListener("unhandledrejection", (e) => logClientError("unhandledrejection", e?.reason));
+
   let UID = null;
   let SHOP = null;      // { id, name, invite_code? }
   let MY_ROLE = null;   // 'manager' | 'tech'
@@ -763,6 +782,7 @@
       // live: a schema mismatch surfaced literally as "column
       // work_logs.is_comeback does not exist" in this table.)
       console.error("[team] fetchLogs failed:", e);
+      logClientError("team.html: fetchLogs failed", e, { shopId: SHOP?.id, memberCount: ids.length });
       $("memberRows").innerHTML = `<tr><td colspan="6" class="empty">Couldn't load team data — try refreshing.</td></tr>`;
       return;
     }

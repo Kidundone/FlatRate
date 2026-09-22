@@ -349,6 +349,34 @@ function isMissingColumnError(err, columnName) {
     && (msg.includes("column") || msg.includes("does not exist") || msg.includes("schema cache"));
 }
 
+// Best-effort, fire-and-forget error log. Never throws -- a failure here
+// must never break the thing it's trying to report on. This exists so the
+// next schema mismatch (or any uncaught error) surfaces in client_errors
+// instead of disappearing the way is_comeback/notes did for a long time.
+async function logClientError(context, err, extra) {
+  try {
+    const client = sb();
+    await client.from("client_errors").insert({
+      user_id: window.CURRENT_UID || null,
+      context: String(context || "").slice(0, 200),
+      message: String(err?.message || err || "").slice(0, 1000),
+      detail: { code: err?.code, details: err?.details, hint: err?.hint, extra: extra || null },
+      page: typeof location !== "undefined" ? location.pathname : null,
+    });
+  } catch (_) {
+    // swallow -- logging must be best-effort only
+  }
+}
+
+if (typeof window !== "undefined" && !window.__frtErrorHandlersInstalled) {
+  window.__frtErrorHandlersInstalled = true;
+  window.addEventListener("error", (e) => {
+    logClientError("window.onerror", e?.error || e?.message);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    logClientError("unhandledrejection", e?.reason);
+  });
+}
 
 async function updateWorkLogWithFallback(sbClient, logId, patch) {
   const body = { ...(patch || {}) };
@@ -361,6 +389,7 @@ async function updateWorkLogWithFallback(sbClient, logId, patch) {
     if (!error) return true;
     const missingField = Object.keys(body).find((k) => isMissingColumnError(error, k));
     if (!missingField) throw error;
+    logClientError("updateWorkLogWithFallback: dropping missing column", error, { logId, missingField });
     delete body[missingField];
   }
   return false;
@@ -547,6 +576,7 @@ async function apiCreateLog(payload, sourceEntry = null) {
 
     const missingField = Object.keys(insertBody).find((k) => isMissingColumnError(e1, k));
     if (!missingField) break;
+    logClientError("createWorkLog: dropping missing column", e1, { missingField });
     delete insertBody[missingField];
   }
 
