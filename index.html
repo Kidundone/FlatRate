@@ -41,7 +41,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.7a907f9df7.css">
+  <link rel="stylesheet" href="./app.366cddc1a6.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -237,7 +237,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.7a907f9df7.css. Now a real single-row horizontal scroll with
+               fix in app.366cddc1a6.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -307,7 +307,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.7a907f9df7.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.366cddc1a6.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -744,53 +744,6 @@
     <!-- HISTORY TAB -->
     <div class="moreTabPanel" id="mPanel-history" role="tabpanel">
       <section class="card moreCard" style="margin-top:12px;">
-        <div class="moreCardHeader">This Week</div>
-        <div id="insightsCard" style="padding:4px 16px 14px;"></div>
-      </section>
-      <section class="card moreCard">
-        <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">⚠️ Short-Pay History</summary>
-          <div id="payTrendCard"></div>
-        </details>
-      </section>
-      <section class="card moreCard">
-        <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">📈 8-Week Earnings</summary>
-          <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
-        </details>
-      </section>
-      <section class="card moreCard">
-        <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">🔁 Comeback Impact</summary>
-          <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
-        </details>
-      </section>
-      <section class="card moreCard">
-        <details class="moreSectionDetails" id="lostTimeDetails">
-          <summary class="moreCardHeader moreSectionSummary">⏳ Lost Time</summary>
-          <div id="lostTimeCard" style="padding:8px 16px 14px;"></div>
-        </details>
-      </section>
-      <section class="card moreCard">
-        <details class="moreSectionDetails" id="requestsDetails">
-          <summary class="moreCardHeader moreSectionSummary">
-            📮 Requests to Manager <span id="reqBadge" class="reqBadge" style="display:none;"></span>
-          </summary>
-          <div style="padding:8px 16px 14px;">
-            <div id="reqGate" class="reqGate">
-              <p class="reqGateText">Join your shop to send requests straight to your service manager — missing work, short pay, or “I need hours.”</p>
-              <a class="btn" href="./team.html" style="display:inline-block;">Join a shop</a>
-            </div>
-            <div id="reqBody" style="display:none;">
-              <div id="reqWins" class="reqWins" style="display:none;"></div>
-              <button type="button" class="fr26BtnPrimary" id="newRequestBtn" style="width:100%;margin-bottom:12px;">+ New request</button>
-              <div id="reqList"></div>
-            </div>
-          </div>
-        </details>
-      </section>
-
-      <section class="card moreCard">
         <div class="moreCardHeader moreCardHeaderRow">
           <span>All Entries</span>
           <button class="btn" id="bulkSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
@@ -812,6 +765,52 @@
           <button class="btn danger" id="bulkDeleteBtn" type="button">Delete</button>
         </div>
       </section>
+
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="requestsDetails">
+          <summary class="moreCardHeader moreSectionSummary">
+            📮 Requests to Manager <span id="reqBadge" class="reqBadge" style="display:none;"></span>
+          </summary>
+          <div style="padding:8px 16px 14px;">
+            <div id="reqGate" class="reqGate">
+              <p class="reqGateText">Join your shop to send requests straight to your service manager — missing work, short pay, or “I need hours.”</p>
+              <a class="btn" href="./team.html" style="display:inline-block;">Join a shop</a>
+            </div>
+            <div id="reqBody" style="display:none;">
+              <div id="reqWins" class="reqWins" style="display:none;"></div>
+              <button type="button" class="fr26BtnPrimary" id="newRequestBtn" style="width:100%;margin-bottom:12px;">+ New request</button>
+              <div id="reqList"></div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="lostTimeDetails">
+          <summary class="moreCardHeader moreSectionSummary">
+            ⏳ Lost Time
+          </summary>
+          <div id="lostTimeCard" style="padding:8px 16px 14px;"></div>
+        </details>
+      </section>
+
+      <section class="card moreCard">
+        <details class="moreSectionDetails" id="insightsDetails">
+          <summary class="moreCardHeader moreSectionSummary">📊 Insights &amp; Trends</summary>
+          <div class="insightsSubHead">This Week</div>
+          <div id="insightsCard" style="padding:4px 16px 14px;"></div>
+          <div class="moreDivider"></div>
+          <div class="insightsSubHead">⚠️ Short-Pay History</div>
+          <div id="payTrendCard"></div>
+          <div class="moreDivider"></div>
+          <div class="insightsSubHead">📈 8-Week Earnings</div>
+          <div id="eightWeekChartCard" style="padding:8px 16px 14px;"></div>
+          <div class="moreDivider"></div>
+          <div class="insightsSubHead">🔁 Comeback Impact</div>
+          <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
+        </details>
+      </section>
+
       <!-- Owe Me tracker -->
       <section class="card moreCard" style="margin-top:10px;">
         <div class="moreCardHeader" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1567,7 +1566,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.8495ca2105.js" defer></script>
+<script src="./app.56ba51402b.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
