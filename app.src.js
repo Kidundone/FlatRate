@@ -385,6 +385,7 @@ async function bootAuth() {
         _lastLoadedAt = Date.now();
         loadSubscription().catch(() => {});
         window.__FR?.loadCustomTypeAliases?.().catch(() => {});
+        window.__FR?.initShopPicker?.().catch(() => {});
 
         // Always paint the Log page's DOM here, even if the user is
         // currently on Stats/More — it's an in-memory SPA, so #spa-main's
@@ -808,6 +809,7 @@ function mapEntryToRow(payload, userId) {
     category: payload.category || "work",
     ro_number: payload.ro_number || null,
     dealer: payload.dealer || null,
+    shop_id: payload.shop_id || null,
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
@@ -842,6 +844,7 @@ async function apiCreateLog(payload, sourceEntry = null) {
     category: payload.category || "work",
     ro_number: payload.ro_number || null,
     dealer: payload.dealer || null,
+    shop_id: payload.shop_id || null,
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
@@ -1033,6 +1036,7 @@ function normalizeEntryForApi(entry) {
     category: entry.typeText || entry.type || entry.category || "work",
     ro_number: roNumber,
     dealer: entry.dealer || null,
+    shop_id: entry.shop_id || null,
     description: entry.notes || entry.desc || entry.description || null,
     flat_hours: Number(entry.hours || entry.flat || entry.flat_hours || 0),
     cash_amount: Number(entry.earnings || entry.cash || entry.cash_amount || 0),
@@ -1101,6 +1105,7 @@ function normalizeSupabaseLog(r) {
     vin: r.vin ?? "",
     vin8: r.vin8 ?? "",
     photo_path: r.photo_path ?? null,
+    shop_id: r.shop_id ?? null,
 
     owner_key: r.owner_key ?? null,
     employee_number: r.employee_number ?? null,
@@ -1236,6 +1241,35 @@ async function loadSubscription() {
   } catch {}
 }
 window.__FR.loadSubscription = loadSubscription;
+
+/* ── My shops (dealerships) ──────────────────────────────────────────────
+ * A tech can belong to more than one shop (e.g. one who works across every
+ * dealership in a complex, not just one). Cached per session — shop
+ * membership doesn't change mid-session in practice, and this gets called
+ * from both the entry form and the request modal. */
+let _myShopsCache = null;
+async function getMyShops(force = false) {
+  if (_myShopsCache && !force) return _myShopsCache;
+  try {
+    const uid = window.CURRENT_UID || (await requireUserId(sb()));
+    if (!uid) return (_myShopsCache = []);
+    const { data, error } = await sb()
+      .from("shop_members")
+      .select("shop_id, role, shops:shop_id (id, name)")
+      .eq("user_id", uid);
+    if (error || !data) return (_myShopsCache = []);
+    _myShopsCache = data
+      .filter((m) => m.shops)
+      .map((m) => ({ shop_id: m.shop_id, name: m.shops.name, role: m.role }));
+    return _myShopsCache;
+  } catch {
+    return (_myShopsCache = []);
+  }
+}
+function invalidateMyShopsCache() { _myShopsCache = null; }
+window.__FR.getMyShops = getMyShops;
+window.__FR.invalidateMyShopsCache = invalidateMyShopsCache;
+
 function initEmpIdBoot() {
   const el = document.getElementById("empId");
   if (!el) return;
@@ -6142,7 +6176,41 @@ async function deleteSelectedEntries() {
   await safeLoadEntries();
 }
 
+/* ── Dealership picker (multi-shop techs only) ──────────────────────────
+ * Solo techs and techs on exactly one shop never see this — it only shows
+ * up once someone actually belongs to more than one shop (a tech working
+ * across every dealership in a complex, not just one), so it stays out of
+ * the way for the common case. */
+const LS_LAST_SHOP = "fr_last_shop_id";
+let SOLE_SHOP_ID = null;
+
+async function initShopPicker() {
+  const row = document.getElementById("shopPickerRow");
+  const sel = document.getElementById("shopSelect");
+  if (!row || !sel) return;
+  const shops = (await window.__FR?.getMyShops?.()) || [];
+  SOLE_SHOP_ID = shops.length === 1 ? shops[0].shop_id : null;
+
+  if (shops.length < 2) { row.style.display = "none"; sel.innerHTML = ""; return; }
+
+  const lastPicked = localStorage.getItem(LS_LAST_SHOP);
+  sel.innerHTML = shops
+    .map((s) => `<option value="${s.shop_id}">${escapeHtml(s.name)}</option>`)
+    .join("");
+  sel.value = shops.some((s) => s.shop_id === lastPicked) ? lastPicked : shops[0].shop_id;
+  row.style.display = "";
+}
+function currentShopIdForNewEntry() {
+  const sel = document.getElementById("shopSelect");
+  if (sel && sel.closest("#shopPickerRow")?.style.display !== "none" && sel.value) {
+    localStorage.setItem(LS_LAST_SHOP, sel.value);
+    return sel.value;
+  }
+  return SOLE_SHOP_ID || null;
+}
 window.__FR = window.__FR || {};
+window.__FR.initShopPicker = initShopPicker;
+window.__FR.currentShopIdForNewEntry = currentShopIdForNewEntry;
 window.__FR.updateEarningsPreview = updateEarningsPreview;
 window.syncOfflineDot = syncOfflineDot;
 window.__FR.repeatLastEntry = repeatLastEntry;
@@ -6426,6 +6494,7 @@ async function handleSave(ev) {
       ref,
       ro: ref,
       dealer: baseEntry.dealer || null,
+      shop_id: isEditing ? (baseEntry.shop_id ?? null) : currentShopIdForNewEntry(),
       vin8,
       type: typeName,
       typeText: typeName,
@@ -15069,6 +15138,8 @@ async function renderRequests() {
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */
 
+let PICKED_JOB_SHOP_ID = null;
+
 async function openRequestModal(prefill = {}) {
   const modal = document.getElementById("reqModal");
   const kinds = document.getElementById("reqKinds");
@@ -15099,19 +15170,75 @@ async function openRequestModal(prefill = {}) {
   const draftErr = document.getElementById("reqDraftErr");
   if (draftErr) { draftErr.style.display = "none"; draftErr.textContent = ""; }
 
+  PICKED_JOB_SHOP_ID = null;
+  await populateJobPicker();
+  await populateShopRow();
   applyKindHint();
   openLtModal(modal);
   lockBodyScroll();
   setTimeout(() => document.getElementById("reqSubject")?.focus(), 80);
 }
 
+/** Lets a tech attach one of their own recent entries instead of retyping
+ * the RO/date/hours/pay from memory — that duplication was the main thing
+ * making this form feel like a second job-log entry every time. */
+async function populateJobPicker() {
+  const sel = document.getElementById("reqJobPick");
+  if (!sel) return;
+  const entries = (Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [])
+    .filter(e => !e.is_deleted)
+    .slice(0, 25);
+  const opt = (e) => {
+    const bits = [e.work_date || e.dayKey, e.typeText || e.category, e.ro_number ? `RO ${e.ro_number}` : ""].filter(Boolean);
+    return `<option value="${escapeHtml(String(e.id))}">${escapeHtml(bits.join(" · "))}</option>`;
+  };
+  sel.innerHTML = `<option value="">— none, I'll fill it in myself —</option>` + entries.map(opt).join("");
+  sel.value = "";
+}
+
+async function populateShopRow() {
+  const row = document.getElementById("reqShopRow");
+  const sel = document.getElementById("reqShop");
+  if (!row || !sel) return;
+  const shops = (await window.__FR?.getMyShops?.()) || [];
+  if (shops.length < 2) { row.style.display = "none"; return; }
+  sel.innerHTML = shops.map(s => `<option value="${s.shop_id}">${escapeHtml(s.name)}</option>`).join("");
+  row.style.display = "";
+}
+
+function onJobPicked(e) {
+  const id = e.target.value;
+  const set = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v ?? ""; };
+  if (!id) { PICKED_JOB_SHOP_ID = null; return; }
+  const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
+  const job = entries.find(e2 => String(e2.id) === String(id));
+  if (!job) return;
+  set("reqRo", job.ro_number || "");
+  set("reqDate", job.work_date || job.dayKey || "");
+  set("reqHours", job.hours ? String(job.hours) : "");
+  set("reqAmount", job.cash ? String(job.cash) : "");
+  PICKED_JOB_SHOP_ID = job.shop_id || null;
+  // A picked job settles which dealership this is for — no need to also ask.
+  const shopRow = document.getElementById("reqShopRow");
+  if (shopRow && PICKED_JOB_SHOP_ID) shopRow.style.display = "none";
+}
+
 function applyKindHint() {
   const k = claimKind(REQ_KIND);
   const sub = document.querySelector("#reqModal .ltSub");
   if (sub) sub.textContent = k.hint;
-  // "Need hours" isn't about a specific job — hide the evidence grid.
+  // "Need hours" isn't about a specific job — hide the evidence grid and
+  // the job picker, but the dealership picker (if the tech is on more
+  // than one shop) still matters since there's no job to infer it from.
+  const isNeedHours = REQ_KIND === "need_hours";
   const grid = document.querySelector("#reqModal .reqGrid");
-  if (grid) grid.style.display = REQ_KIND === "need_hours" ? "none" : "";
+  if (grid) grid.style.display = isNeedHours ? "none" : "";
+  const jobPickWrap = document.getElementById("reqJobPickRow");
+  if (jobPickWrap) jobPickWrap.style.display = isNeedHours ? "none" : "";
+  if (isNeedHours) {
+    PICKED_JOB_SHOP_ID = null;
+    populateShopRow();
+  }
 }
 
 function closeRequestModal() {
@@ -15214,6 +15341,15 @@ async function submitRequest() {
     return;
   }
 
+  // A picked job settles the dealership automatically; otherwise fall back
+  // to the shop picker (only shown at all when the tech is on more than
+  // one shop) — and if neither applies, submit_claim() resolves it itself
+  // for a tech who's only ever on one shop.
+  const shopSel = document.getElementById("reqShop");
+  const p_shop = PICKED_JOB_SHOP_ID
+    || (shopSel && shopSel.closest("#reqShopRow")?.style.display !== "none" ? shopSel.value : null)
+    || null;
+
   if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
   try {
     const { error } = await sb().rpc("submit_claim", {
@@ -15224,6 +15360,7 @@ async function submitRequest() {
       p_work_date:      REQ_KIND === "need_hours" ? null : (val("reqDate") || null),
       p_claimed_hours:  REQ_KIND === "need_hours" ? null : num("reqHours"),
       p_claimed_amount: REQ_KIND === "need_hours" ? null : num("reqAmount"),
+      p_shop:           p_shop,
     });
     if (error) throw error;
     closeRequestModal();
@@ -15346,6 +15483,8 @@ function initRequestsUI() {
   document.getElementById("reqCancelBtn")?.addEventListener("click", closeRequestModal);
   document.getElementById("reqSubmitBtn")?.addEventListener("click", submitRequest);
   document.getElementById("reqDraftBtn")?.addEventListener("click", draftDisputeText);
+
+  document.getElementById("reqJobPick")?.addEventListener("change", onJobPicked);
 
   document.getElementById("reqKinds")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-kind]");
@@ -16661,6 +16800,10 @@ const CHANGELOG = {
     "Fixed the Pro upgrade screen showing page content bleeding through behind its own text",
     "Fixed the guided tour's highlight landing in the wrong spot (or hidden behind the card) on a few steps",
     "Tour wording no longer assumes you're a dealership detailer — same app, any flat-rate trade",
+    "🎨 New color themes — Sunset, Classic, Carnival, Tropic, and Neon, each with its own dark and light look",
+    "History/Export PDF reports now include a Date column and a job-type summary",
+    "Fixed the bottom tab bar not covering the home-indicator area on newer iPhones",
+    "Fixed the app still wobbling side to side in a few spots — chip rows and text field focus",
   ],
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
