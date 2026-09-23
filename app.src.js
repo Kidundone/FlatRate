@@ -14724,8 +14724,8 @@ const MORE_TOUR_STEPS = [
   {
     el: "#insightsCard",
     title: "Your Stats at a Glance",
-    body: "Effective $/hr, average daily pay, comeback count, weekly pace — all auto-calculated from your logs. Check this every Friday before you clock out.",
-    action: "switch-tab:history",
+    body: "Effective $/hr, average daily pay, comeback count, weekly pace — all auto-calculated from your logs. Tucked under Insights & Trends now so the History tab leads with your actual jobs, not a wall of numbers. Check this every Friday before you clock out.",
+    action: "switch-tab:history;open-details:insightsDetails",
   },
   {
     el: "#entrySearchInput",
