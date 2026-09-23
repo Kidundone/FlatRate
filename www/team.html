@@ -295,6 +295,27 @@
 
 <!-- Shop view -->
 <div id="shopView" class="main" style="display:none;">
+  <!-- Dealership switcher only shown once a tech belongs to more than one
+       shop (e.g. someone who works across every dealership in a complex,
+       not just one) — a single-shop tech or manager never sees the select.
+       "+ Join another" is always available here, since that's how a
+       single-shop tech becomes a multi-shop one in the first place. -->
+  <div id="shopSwitcherRow" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <div id="shopSwitcherSelectWrap" style="display:none;gap:8px;align-items:center;">
+      <label for="shopSwitcher" class="page-sub" style="margin:0;">Dealership:</label>
+      <select id="shopSwitcher" class="input" style="width:auto;min-width:180px;"></select>
+    </div>
+    <button id="joinAnotherBtn" class="btn" type="button">+ Join another dealership</button>
+  </div>
+  <div id="joinAnotherPanel" class="card" style="display:none;margin-bottom:14px;">
+    <h2>Join another shop</h2>
+    <p class="sub">Ask that dealership's manager for their 6-character invite code. You'll keep your membership (and roster access, if you're a manager there too) in every shop you're on — nothing here removes you from the current one.</p>
+    <div class="field"><label>Invite code</label><input id="joinAnotherCode" class="input" placeholder="AB12CD" style="text-transform:uppercase;letter-spacing:.15em;" maxlength="6" /></div>
+    <div class="field"><label>Your name there</label><input id="joinAnotherDisplayName" class="input" placeholder="Nelly" /></div>
+    <div id="joinAnotherErr" class="err"></div>
+    <button id="joinAnotherSubmitBtn" class="btn primary" type="button">Join</button>
+  </div>
+
   <div class="page-header">
     <div>
       <div class="page-title" id="shopName"></div>
@@ -577,11 +598,29 @@
     errEl.style.display = "";
   });
 
-  /* ── Shop state ── */
+  /* ── Shop state ──
+   * A tech can belong to more than one shop — e.g. someone who works
+   * across every dealership in a complex, not just one. MY_SHOPS holds
+   * every membership; SHOP is whichever one is currently selected in the
+   * switcher (remembered per-browser so it doesn't reset on every visit). */
+  const LS_LAST_TEAM_SHOP = "fr_team_last_shop_id";
+  let MY_SHOPS = []; // [{ shop_id, role }]
+
   async function loadShop() {
-    const { data: mem, error } = await db.from("shop_members").select("shop_id, role").eq("user_id", UID).maybeSingle();
-    if (error || !mem) { show("setupView", true); show("shopView", false); startTeamTour(false); return; }
+    const { data: mems, error } = await db.from("shop_members").select("shop_id, role").eq("user_id", UID);
+    if (error || !mems || !mems.length) { show("setupView", true); show("shopView", false); startTeamTour(false); return; }
+    MY_SHOPS = mems;
+
+    const lastPicked = localStorage.getItem(LS_LAST_TEAM_SHOP);
+    const target = mems.find(m => m.shop_id === lastPicked) || mems[0];
+    await selectShop(target.shop_id);
+  }
+
+  async function selectShop(shopId) {
+    const mem = MY_SHOPS.find(m => m.shop_id === shopId) || MY_SHOPS[0];
+    if (!mem) { show("setupView", true); show("shopView", false); return; }
     MY_ROLE = mem.role;
+    localStorage.setItem(LS_LAST_TEAM_SHOP, mem.shop_id);
 
     const { data: shop } = await db.from("shops").select("*").eq("id", mem.shop_id).maybeSingle();
     if (!shop) { show("setupView", true); startTeamTour(false); return; }
@@ -595,6 +634,19 @@
     $("shopName").textContent = shop.name;
     $("shopSub").textContent = `${MEMBERS.length} member${MEMBERS.length === 1 ? "" : "s"} · you're a ${MY_ROLE}`;
 
+    // Switcher only appears once there's more than one to switch between.
+    const switcherWrap = $("shopSwitcherSelectWrap");
+    if (MY_SHOPS.length > 1) {
+      const opts = await Promise.all(MY_SHOPS.map(async m => {
+        const nm = m.shop_id === shop.id ? shop.name : (await db.from("shops").select("name").eq("id", m.shop_id).maybeSingle()).data?.name || "Dealership";
+        return `<option value="${m.shop_id}" ${m.shop_id === shop.id ? "selected" : ""}>${nm}</option>`;
+      }));
+      $("shopSwitcher").innerHTML = opts.join("");
+      switcherWrap.style.display = "flex";
+    } else {
+      switcherWrap.style.display = "none";
+    }
+
     const isMgr = MY_ROLE === "manager";
     show("inviteRow", isMgr);
     show("managerView", isMgr);
@@ -606,6 +658,30 @@
     }
     startTeamTour(false);
   }
+
+  $("shopSwitcher").addEventListener("change", async (e) => {
+    await selectShop(e.target.value);
+  });
+
+  $("joinAnotherBtn").addEventListener("click", () => {
+    const panel = $("joinAnotherPanel");
+    panel.style.display = panel.style.display === "none" ? "" : "none";
+  });
+
+  $("joinAnotherSubmitBtn").addEventListener("click", async () => {
+    const errEl = $("joinAnotherErr"); errEl.style.display = "none";
+    const btn = $("joinAnotherSubmitBtn"); btn.disabled = true;
+    const { error } = await db.rpc("join_shop", {
+      p_code: $("joinAnotherCode").value.trim().toUpperCase(),
+      p_display_name: $("joinAnotherDisplayName").value.trim() || null,
+    });
+    btn.disabled = false;
+    if (error) { errEl.textContent = error.message; errEl.style.display = ""; return; }
+    $("joinAnotherCode").value = ""; $("joinAnotherDisplayName").value = "";
+    $("joinAnotherPanel").style.display = "none";
+    window.__FR?.invalidateMyShopsCache?.();
+    await loadShop();
+  });
 
   $("inviteChip").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(SHOP?.invite_code || ""); $("inviteChip").querySelector("small").textContent = "copied!"; }
@@ -680,10 +756,12 @@
     // The client-side check above is just a fast UX guard — leave_shop()
     // enforces the same "always keep one manager" rule server-side, so it
     // can't be bypassed by calling the API directly.
-    const { error } = await db.rpc("leave_shop");
+    const { error } = await db.rpc("leave_shop", { p_shop: SHOP.id });
     if (error) { alert(error.message); return; }
+    localStorage.removeItem(LS_LAST_TEAM_SHOP);
     SHOP = null; MY_ROLE = null;
     show("shopView", false);
+    window.__FR?.invalidateMyShopsCache?.();
     await loadShop();
   });
 

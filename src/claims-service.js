@@ -209,6 +209,8 @@ async function renderRequests() {
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */
 
+let PICKED_JOB_SHOP_ID = null;
+
 async function openRequestModal(prefill = {}) {
   const modal = document.getElementById("reqModal");
   const kinds = document.getElementById("reqKinds");
@@ -239,19 +241,75 @@ async function openRequestModal(prefill = {}) {
   const draftErr = document.getElementById("reqDraftErr");
   if (draftErr) { draftErr.style.display = "none"; draftErr.textContent = ""; }
 
+  PICKED_JOB_SHOP_ID = null;
+  await populateJobPicker();
+  await populateShopRow();
   applyKindHint();
   openLtModal(modal);
   lockBodyScroll();
   setTimeout(() => document.getElementById("reqSubject")?.focus(), 80);
 }
 
+/** Lets a tech attach one of their own recent entries instead of retyping
+ * the RO/date/hours/pay from memory — that duplication was the main thing
+ * making this form feel like a second job-log entry every time. */
+async function populateJobPicker() {
+  const sel = document.getElementById("reqJobPick");
+  if (!sel) return;
+  const entries = (Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [])
+    .filter(e => !e.is_deleted)
+    .slice(0, 25);
+  const opt = (e) => {
+    const bits = [e.work_date || e.dayKey, e.typeText || e.category, e.ro_number ? `RO ${e.ro_number}` : ""].filter(Boolean);
+    return `<option value="${escapeHtml(String(e.id))}">${escapeHtml(bits.join(" · "))}</option>`;
+  };
+  sel.innerHTML = `<option value="">— none, I'll fill it in myself —</option>` + entries.map(opt).join("");
+  sel.value = "";
+}
+
+async function populateShopRow() {
+  const row = document.getElementById("reqShopRow");
+  const sel = document.getElementById("reqShop");
+  if (!row || !sel) return;
+  const shops = (await window.__FR?.getMyShops?.()) || [];
+  if (shops.length < 2) { row.style.display = "none"; return; }
+  sel.innerHTML = shops.map(s => `<option value="${s.shop_id}">${escapeHtml(s.name)}</option>`).join("");
+  row.style.display = "";
+}
+
+function onJobPicked(e) {
+  const id = e.target.value;
+  const set = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v ?? ""; };
+  if (!id) { PICKED_JOB_SHOP_ID = null; return; }
+  const entries = Array.isArray(window.CURRENT_ENTRIES) ? window.CURRENT_ENTRIES : [];
+  const job = entries.find(e2 => String(e2.id) === String(id));
+  if (!job) return;
+  set("reqRo", job.ro_number || "");
+  set("reqDate", job.work_date || job.dayKey || "");
+  set("reqHours", job.hours ? String(job.hours) : "");
+  set("reqAmount", job.cash ? String(job.cash) : "");
+  PICKED_JOB_SHOP_ID = job.shop_id || null;
+  // A picked job settles which dealership this is for — no need to also ask.
+  const shopRow = document.getElementById("reqShopRow");
+  if (shopRow && PICKED_JOB_SHOP_ID) shopRow.style.display = "none";
+}
+
 function applyKindHint() {
   const k = claimKind(REQ_KIND);
   const sub = document.querySelector("#reqModal .ltSub");
   if (sub) sub.textContent = k.hint;
-  // "Need hours" isn't about a specific job — hide the evidence grid.
+  // "Need hours" isn't about a specific job — hide the evidence grid and
+  // the job picker, but the dealership picker (if the tech is on more
+  // than one shop) still matters since there's no job to infer it from.
+  const isNeedHours = REQ_KIND === "need_hours";
   const grid = document.querySelector("#reqModal .reqGrid");
-  if (grid) grid.style.display = REQ_KIND === "need_hours" ? "none" : "";
+  if (grid) grid.style.display = isNeedHours ? "none" : "";
+  const jobPickWrap = document.getElementById("reqJobPickRow");
+  if (jobPickWrap) jobPickWrap.style.display = isNeedHours ? "none" : "";
+  if (isNeedHours) {
+    PICKED_JOB_SHOP_ID = null;
+    populateShopRow();
+  }
 }
 
 function closeRequestModal() {
@@ -354,6 +412,15 @@ async function submitRequest() {
     return;
   }
 
+  // A picked job settles the dealership automatically; otherwise fall back
+  // to the shop picker (only shown at all when the tech is on more than
+  // one shop) — and if neither applies, submit_claim() resolves it itself
+  // for a tech who's only ever on one shop.
+  const shopSel = document.getElementById("reqShop");
+  const p_shop = PICKED_JOB_SHOP_ID
+    || (shopSel && shopSel.closest("#reqShopRow")?.style.display !== "none" ? shopSel.value : null)
+    || null;
+
   if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
   try {
     const { error } = await sb().rpc("submit_claim", {
@@ -364,6 +431,7 @@ async function submitRequest() {
       p_work_date:      REQ_KIND === "need_hours" ? null : (val("reqDate") || null),
       p_claimed_hours:  REQ_KIND === "need_hours" ? null : num("reqHours"),
       p_claimed_amount: REQ_KIND === "need_hours" ? null : num("reqAmount"),
+      p_shop:           p_shop,
     });
     if (error) throw error;
     closeRequestModal();
@@ -486,6 +554,8 @@ function initRequestsUI() {
   document.getElementById("reqCancelBtn")?.addEventListener("click", closeRequestModal);
   document.getElementById("reqSubmitBtn")?.addEventListener("click", submitRequest);
   document.getElementById("reqDraftBtn")?.addEventListener("click", draftDisputeText);
+
+  document.getElementById("reqJobPick")?.addEventListener("change", onJobPicked);
 
   document.getElementById("reqKinds")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-kind]");

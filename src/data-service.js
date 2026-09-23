@@ -95,6 +95,7 @@ async function bootAuth() {
         _lastLoadedAt = Date.now();
         loadSubscription().catch(() => {});
         window.__FR?.loadCustomTypeAliases?.().catch(() => {});
+        window.__FR?.initShopPicker?.().catch(() => {});
 
         // Always paint the Log page's DOM here, even if the user is
         // currently on Stats/More — it's an in-memory SPA, so #spa-main's
@@ -518,6 +519,7 @@ function mapEntryToRow(payload, userId) {
     category: payload.category || "work",
     ro_number: payload.ro_number || null,
     dealer: payload.dealer || null,
+    shop_id: payload.shop_id || null,
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
@@ -552,6 +554,7 @@ async function apiCreateLog(payload, sourceEntry = null) {
     category: payload.category || "work",
     ro_number: payload.ro_number || null,
     dealer: payload.dealer || null,
+    shop_id: payload.shop_id || null,
     description: payload.description || null,
     flat_hours: Number(payload.flat_hours || 0),
     cash_amount: Number(payload.cash_amount || 0),
@@ -743,6 +746,7 @@ function normalizeEntryForApi(entry) {
     category: entry.typeText || entry.type || entry.category || "work",
     ro_number: roNumber,
     dealer: entry.dealer || null,
+    shop_id: entry.shop_id || null,
     description: entry.notes || entry.desc || entry.description || null,
     flat_hours: Number(entry.hours || entry.flat || entry.flat_hours || 0),
     cash_amount: Number(entry.earnings || entry.cash || entry.cash_amount || 0),
@@ -811,6 +815,7 @@ function normalizeSupabaseLog(r) {
     vin: r.vin ?? "",
     vin8: r.vin8 ?? "",
     photo_path: r.photo_path ?? null,
+    shop_id: r.shop_id ?? null,
 
     owner_key: r.owner_key ?? null,
     employee_number: r.employee_number ?? null,
@@ -946,6 +951,35 @@ async function loadSubscription() {
   } catch {}
 }
 window.__FR.loadSubscription = loadSubscription;
+
+/* ── My shops (dealerships) ──────────────────────────────────────────────
+ * A tech can belong to more than one shop (e.g. one who works across every
+ * dealership in a complex, not just one). Cached per session — shop
+ * membership doesn't change mid-session in practice, and this gets called
+ * from both the entry form and the request modal. */
+let _myShopsCache = null;
+async function getMyShops(force = false) {
+  if (_myShopsCache && !force) return _myShopsCache;
+  try {
+    const uid = window.CURRENT_UID || (await requireUserId(sb()));
+    if (!uid) return (_myShopsCache = []);
+    const { data, error } = await sb()
+      .from("shop_members")
+      .select("shop_id, role, shops:shop_id (id, name)")
+      .eq("user_id", uid);
+    if (error || !data) return (_myShopsCache = []);
+    _myShopsCache = data
+      .filter((m) => m.shops)
+      .map((m) => ({ shop_id: m.shop_id, name: m.shops.name, role: m.role }));
+    return _myShopsCache;
+  } catch {
+    return (_myShopsCache = []);
+  }
+}
+function invalidateMyShopsCache() { _myShopsCache = null; }
+window.__FR.getMyShops = getMyShops;
+window.__FR.invalidateMyShopsCache = invalidateMyShopsCache;
+
 function initEmpIdBoot() {
   const el = document.getElementById("empId");
   if (!el) return;

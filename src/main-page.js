@@ -1729,7 +1729,41 @@ async function deleteSelectedEntries() {
   await safeLoadEntries();
 }
 
+/* ── Dealership picker (multi-shop techs only) ──────────────────────────
+ * Solo techs and techs on exactly one shop never see this — it only shows
+ * up once someone actually belongs to more than one shop (a tech working
+ * across every dealership in a complex, not just one), so it stays out of
+ * the way for the common case. */
+const LS_LAST_SHOP = "fr_last_shop_id";
+let SOLE_SHOP_ID = null;
+
+async function initShopPicker() {
+  const row = document.getElementById("shopPickerRow");
+  const sel = document.getElementById("shopSelect");
+  if (!row || !sel) return;
+  const shops = (await window.__FR?.getMyShops?.()) || [];
+  SOLE_SHOP_ID = shops.length === 1 ? shops[0].shop_id : null;
+
+  if (shops.length < 2) { row.style.display = "none"; sel.innerHTML = ""; return; }
+
+  const lastPicked = localStorage.getItem(LS_LAST_SHOP);
+  sel.innerHTML = shops
+    .map((s) => `<option value="${s.shop_id}">${escapeHtml(s.name)}</option>`)
+    .join("");
+  sel.value = shops.some((s) => s.shop_id === lastPicked) ? lastPicked : shops[0].shop_id;
+  row.style.display = "";
+}
+function currentShopIdForNewEntry() {
+  const sel = document.getElementById("shopSelect");
+  if (sel && sel.closest("#shopPickerRow")?.style.display !== "none" && sel.value) {
+    localStorage.setItem(LS_LAST_SHOP, sel.value);
+    return sel.value;
+  }
+  return SOLE_SHOP_ID || null;
+}
 window.__FR = window.__FR || {};
+window.__FR.initShopPicker = initShopPicker;
+window.__FR.currentShopIdForNewEntry = currentShopIdForNewEntry;
 window.__FR.updateEarningsPreview = updateEarningsPreview;
 window.syncOfflineDot = syncOfflineDot;
 window.__FR.repeatLastEntry = repeatLastEntry;
@@ -2013,6 +2047,7 @@ async function handleSave(ev) {
       ref,
       ro: ref,
       dealer: baseEntry.dealer || null,
+      shop_id: isEditing ? (baseEntry.shop_id ?? null) : currentShopIdForNewEntry(),
       vin8,
       type: typeName,
       typeText: typeName,

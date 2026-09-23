@@ -333,6 +333,10 @@
             <label class="fr26Label" for="entryDate">Date</label>
             <input id="entryDate" name="entryDate" type="date" class="fr26Input" />
           </div>
+          <div class="fr26Row" id="shopPickerRow" style="display:none;">
+            <label class="fr26Label" for="shopSelect">Dealership</label>
+            <select id="shopSelect" name="shopSelect" class="fr26Input"></select>
+          </div>
           <div class="fr26Row">
             <label class="fr26Label" for="vin8">VIN (last 8)</label>
             <input id="vin8" name="vin8" placeholder="1A2B3C4D" maxlength="8"
@@ -602,6 +606,16 @@
     </div>
 
     <div class="reqKinds" id="reqKinds"></div>
+
+    <div id="reqJobPickRow">
+      <label class="reqLabel" for="reqJobPick">Attach a logged job <span class="reqOpt">optional — fills in RO, date, hours &amp; pay for you</span></label>
+      <select id="reqJobPick" class="fr26Input"></select>
+    </div>
+
+    <div id="reqShopRow" style="display:none;">
+      <label class="reqLabel" for="reqShop">Which dealership is this for?</label>
+      <select id="reqShop" class="fr26Input"></select>
+    </div>
 
     <label class="reqLabel" for="reqSubject">Subject</label>
     <input id="reqSubject" class="fr26Input" maxlength="140" placeholder="RO 40534 not on my paycheck" />

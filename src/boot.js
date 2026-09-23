@@ -1275,6 +1275,10 @@ const CHANGELOG = {
     "Fixed the Pro upgrade screen showing page content bleeding through behind its own text",
     "Fixed the guided tour's highlight landing in the wrong spot (or hidden behind the card) on a few steps",
     "Tour wording no longer assumes you're a dealership detailer — same app, any flat-rate trade",
+    "🎨 New color themes — Sunset, Classic, Carnival, Tropic, and Neon, each with its own dark and light look",
+    "History/Export PDF reports now include a Date column and a job-type summary",
+    "Fixed the bottom tab bar not covering the home-indicator area on newer iPhones",
+    "Fixed the app still wobbling side to side in a few spots — chip rows and text field focus",
   ],
   "1.8": [
     "💵 Your pay rate is yours — the app no longer assumes $15/hr",
