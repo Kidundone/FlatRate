@@ -484,7 +484,7 @@ body[data-page="stats"] #spa-stats {
 .statsDateInput {
   flex: 1;
   min-width: 120px;
-  font-size: 13px;
+  font-size: 16px; /* was 13px — iOS zoom-on-focus trigger */
   padding: 8px 10px;
 }
 .statsDateSep {
@@ -1428,6 +1428,10 @@ a.btn {
   border: 1.5px solid var(--stroke);
   padding: 6px 10px;
   height: auto;
+  /* The collapsed 11px badge text is fine unfocused (nothing to type into),
+     but the moment this becomes a real text field to edit, it has to clear
+     16px or iOS zooms the whole page in on tap. */
+  font-size: 16px;
 }
 
 .fr26EmployeeLabel {
@@ -1516,7 +1520,12 @@ a.btn {
   background: var(--surface2);
   color: var(--text);
   outline: none;
-  font-size: 15px;
+  /* 16px, not 15 -- anything smaller re-triggers iOS Safari's auto-zoom-on-
+     focus, which is what "the app scrolls left and right" actually was:
+     the whole page zooms in on tap and you can then pan around the
+     zoomed viewport. This is the app's main entry-form input class (RO#,
+     STK#, VIN, hours, request fields, ...), so it was the biggest offender. */
+  font-size: 16px;
   transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
 }
 
@@ -2703,7 +2712,7 @@ a.btn {
   border: 1px solid var(--stroke2);
   background: var(--surface2);
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px; /* was 15px — iOS zoom-on-focus trigger */
   font-family: inherit;
   outline: none;
   margin-top: 8px;
@@ -3619,7 +3628,7 @@ body.compact .list    { gap: 1px; }
   text-transform: uppercase;
   letter-spacing: .4px;
 }
-.typeEditLabel input { font-size: 14px; }
+.typeEditLabel input { font-size: 16px; } /* was 14px — iOS zoom-on-focus trigger */
 
 /* ── Inner More-page tab bar ─────────────────────────── */
 .moreTabBar {
@@ -5561,7 +5570,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 }
 .tcGroupHead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .tcGroupInto { font-size: 11.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
-.tcCanonicalInput { flex: 1; padding: 8px 10px; font-size: 13.5px; font-weight: 700; }
+.tcCanonicalInput { flex: 1; padding: 8px 10px; font-size: 16px; font-weight: 700; } /* was 13.5px — iOS zoom-on-focus trigger */
 .tcVariants { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .tcVariant { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
 .tcVariant input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--primary); flex: 0 0 auto; }
