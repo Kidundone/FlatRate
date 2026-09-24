@@ -3547,6 +3547,12 @@ function drawHistoryRows(entries) {
       if (!_bulkSelectMode) return;
       const cb = row.querySelector(".bulkCheck");
       if (ev.target === cb || ev.target.closest("label")) return; // let label handle it natively
+      // Also bail on the photo button — it has its own delegated handler
+      // (see the [data-photo-id] listener below) that opens the photo
+      // viewer. Without this, tapping the photo in select mode fired BOTH:
+      // it opened the photo AND silently toggled that row's checkbox, so
+      // "view photo" doubled as an invisible, unintended selection.
+      if (ev.target.closest("[data-photo-id]")) return;
       if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true })); }
     });
     container.appendChild(row);

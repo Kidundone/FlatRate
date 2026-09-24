@@ -3567,7 +3567,7 @@ body.compact .list    { gap: 1px; }
 }
 .typeRowActions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
 }
 .typeRowActions .iBtn {
@@ -3651,8 +3651,10 @@ body.compact .list    { gap: 1px; }
 
 /* ── Icon-only buttons for job type rows ─────────────── */
 .typeIconBtn {
-  width: 32px;
-  height: 32px;
+  /* Was 32px, sitting 10px from its Edit/Delete twin — bumped for the
+     same reason as the Log-tab entry actions (see .hcEntryEditBtn). */
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
   border: 1px solid var(--stroke2);
   background: var(--surface2);
@@ -4502,13 +4504,18 @@ body.compact .list    { gap: 1px; }
 /* Inline action buttons — edit + delete, always visible */
 .hcEntryActions {
   display: flex;
-  gap: 6px;
+  /* Was 6px — Edit and Delete sitting almost flush was the single most
+     common mis-tap in the app (this row renders on every logged job).
+     10px puts real air between a safe action and a destructive one. */
+  gap: 10px;
   flex-shrink: 0;
   align-items: center;
 }
 .hcEntryEditBtn {
-  width: 34px;
-  height: 34px;
+  /* Was 34px — under Apple's 44pt / Material's 48dp guidance, and with
+     Delete sitting right next to it. Bumped toward that floor. */
+  width: 38px;
+  height: 38px;
   border-radius: var(--r-sm);
   border: none;
   background: var(--surface2);
@@ -4524,8 +4531,8 @@ body.compact .list    { gap: 1px; }
 .hcEntryEditBtn:active { background: var(--surface3); color: var(--text); }
 
 .hcEntryDelBtn {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--r-sm);
   border: none;
   background: rgba(239,68,68,.1);
