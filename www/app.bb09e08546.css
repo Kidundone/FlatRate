@@ -455,6 +455,9 @@ body[data-page="stats"] #spa-stats {
 .statsChip {
   flex-shrink: 0;
   padding: 7px 14px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 20px;
   border: 1.5px solid var(--surface2, #1e2d42);
   background: transparent;
@@ -1061,9 +1064,13 @@ header.top,
 }
 
 .itemCheck {
+  /* Was 20px, sitting bare (no wrapping label) among other inline badges
+     in a dense row — a raw native checkbox is the most reliable way to
+     grow its real hit area, since ::before/::after support on <input>
+     elements isn't consistent enough to trust across browsers. */
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   box-sizing: border-box;
   margin: 0;
   accent-color: var(--primary);
@@ -1366,7 +1373,7 @@ a.btn {
   background: transparent;
   color: var(--muted);
   padding: 9px 14px;
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -1550,6 +1557,8 @@ a.btn {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
+  min-height: 40px;
   padding: 5px 10px 4px;
   border-radius: var(--r-pill);
   background: var(--surface3);
@@ -2366,8 +2375,8 @@ a.btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 0;
   background: var(--surface3);
@@ -2871,10 +2880,12 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 
 /* Accent color picker */
 .accentPickerLabel {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   cursor: pointer;
   overflow: visible;
@@ -2900,12 +2911,15 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 }
 .accentPickerLabel:active .accentColorPreview { transform: scale(.9); }
 
-/* Toggle switch (More page) */
+/* Toggle switch (More page). This label IS the tap target — the row
+   around it doesn't also toggle it — so it needs to earn its own size.
+   Height nudged from 26 to 30px, matching a real iOS switch's proportions
+   rather than the flat 44x44 floor, which would look broken here. */
 .moreToggle {
   position: relative;
   display: inline-block;
   width: 44px;
-  height: 26px;
+  height: 30px;
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -2924,8 +2938,10 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 .moreToggleTrack::after {
   content: "";
   position: absolute;
-  top: 3px;
-  left: 3px;
+  /* Re-centered for the taller (30px) track — was top/left:3px sized for
+     the old 26px track, which would now sit off-center. */
+  top: 6px;
+  left: 6px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -2939,7 +2955,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 }
 
 .moreToggle input:checked ~ .moreToggleTrack::after {
-  transform: translateX(18px);
+  transform: translateX(14px);
   background: #fff;
 }
 
@@ -3689,7 +3705,7 @@ body.compact .list    { gap: 1px; }
 }
 .bulkEntryRow:first-child { border-top: none; }
 .bulkEntryRow.is-selected { background: rgba(37,99,235,.08); }
-.bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; }
+.bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; padding: 10px; margin: -10px; }
 .bulkEntryCheck input { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
 .bulkEntryInfo { flex: 1; min-width: 0; }
 .bulkEntryRef { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -4218,6 +4234,15 @@ body.compact .list    { gap: 1px; }
   letter-spacing: .02em;
   transition: background .15s, color .15s, border-color .15s;
 }
+/* The pill itself stays visually compact (it's a corner badge sitting over
+   other card content) but gets an invisible, bigger real tap zone rather
+   than growing the visible shape, which risks overlapping neighboring
+   card content. */
+.clockInBtn::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
 .clockInBtn--active {
   border-color: var(--primary);
   color: var(--primary-text);
@@ -4295,13 +4320,13 @@ body.compact .list    { gap: 1px; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  gap: 5px;
   row-gap: 4px;
   padding: 10px 12px 8px;
 }
 .hcTab {
   padding: 7px 14px;
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   border-radius: var(--r-pill);
@@ -4430,10 +4455,12 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
 }
 
-/* Nav buttons — live inside .hcNavGroup flanking the label */
+/* Nav buttons — live inside .hcNavGroup flanking the label. Was 32px;
+   the existing flex-wrap fallback on .hcRangeTabs (see comment above)
+   already absorbs the extra width on a narrow phone, so this is safe. */
 .hcNavBtn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: var(--surface2);
@@ -4566,6 +4593,7 @@ body.compact .list    { gap: 1px; }
 }
 /* Dedicated photo chip — clearly tappable */
 .hcEntryPhotoChip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -4583,6 +4611,14 @@ body.compact .list    { gap: 1px; }
   margin-top: 2px;
 }
 .hcEntryPhotoChip:active { background: rgba(37,99,235,.22); opacity: .85; }
+/* Sits in a tightly-stacked column (2px gaps) with plain, non-tappable
+   text above and below it, so a modest invisible hit-area is safe here —
+   it can only ever compete with the chip itself, never another control. */
+.hcEntryPhotoChip::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
 .hcEntryPhotoIcon { font-size: 12px; }
 .hcEntryType {
   font-size: 13px;
@@ -5137,7 +5173,7 @@ body.compact .list    { gap: 1px; }
   background: var(--surface2);
   border: none;
   border-radius: 50%;
-  width: 30px; height: 30px;
+  width: 44px; height: 44px;
   font-size: 14px; color: var(--text2);
   cursor: pointer;
   display: flex; align-items:center; justify-content:center;
@@ -5263,7 +5299,7 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 }
 .recentTypeChips {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
@@ -5278,6 +5314,8 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
+  min-height: 40px;
   gap: 1px;
   flex-shrink: 0;
   padding: 6px 11px;
@@ -5499,9 +5537,10 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reqSt--done      { background: rgba(74,222,128,.16); color: #4ade80; }
 .reqSt--declined  { background: rgba(239,68,68,.14);  color: var(--danger); }
 
-.reqKinds { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; margin-bottom: 14px; }
+.reqKinds { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
 .reqKind {
   display: flex; align-items: center; gap: 7px; padding: 10px 11px;
+  min-height: 44px;
   background: var(--surface2); border: 1px solid var(--stroke2, var(--stroke));
   border-radius: var(--r-lg, 12px); cursor: pointer; touch-action: manipulation;
   transition: transform 130ms cubic-bezier(.34,1.56,.64,1), background 120ms, border-color 120ms, color 120ms;
@@ -5826,8 +5865,10 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .ltRemainVal { font-size: 17px; font-weight: 700; color: #f59e0b; }
 .ltRemainVal--done { color: var(--primary-text); }
 
-.ltChips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.ltChips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .ltChip {
+  display: inline-flex; align-items: center;
+  min-height: 40px;
   padding: 8px 12px; font-size: 12.5px; font-weight: 600;
   background: var(--surface2); color: var(--text2);
   border: 1px solid var(--stroke2, var(--stroke));
@@ -5856,7 +5897,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 .ltStep {
-  width: 30px; height: 30px; border-radius: 50%;
+  width: 40px; height: 40px; border-radius: 50%;
   background: var(--surface2); border: 1px solid var(--stroke2, var(--stroke));
   color: var(--text); font-size: 16px; font-weight: 700; line-height: 1;
   cursor: pointer; touch-action: manipulation;
@@ -5925,6 +5966,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   border-radius: 0;
 }
 .empChip {
+  position: relative;
   background: transparent; border: none;
   color: var(--muted); font-size: 11px; font-weight: 600;
   letter-spacing: .02em; padding: 2px 4px; cursor: pointer;
@@ -5932,6 +5974,13 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   transition: opacity 120ms, transform 130ms cubic-bezier(.34,1.56,.64,1);
 }
 .empChip:active { transform: scale(.92); opacity: 1; }
+/* Deliberately a tiny label chip — grows the real tap zone invisibly
+   instead of the visible text, which is meant to stay unobtrusive. */
+.empChip::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+}
 
 /* ── Hero "More stats" disclosure ──────────────────────────────────────────── */
 .heroDetailsToggle {
