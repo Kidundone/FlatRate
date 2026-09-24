@@ -32,7 +32,7 @@
     .navMark { width: 34px; height: 34px; border-radius: 8px; overflow: hidden; }
     .navMark img { width: 100%; height: 100%; object-fit: cover; }
     .navName { font-size: 16px; font-weight: 700; color: var(--fg); }
-    .navCta { background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; }
+    .navCta { background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
 
     .hero { text-align: center; padding: 72px 24px 64px; max-width: 700px; margin: 0 auto; }
     .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(37,99,235,0.25); }
@@ -94,7 +94,7 @@
 
     footer { border-top: 1px solid var(--stroke); padding: 28px 24px; text-align: center; }
     .footerLinks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
-    .footerLinks a { font-size: 14px; color: var(--muted); }
+    .footerLinks a { font-size: 14px; color: var(--muted); display: inline-block; padding: 10px 4px; margin: -10px -4px; }
     .footerCopy { font-size: 13px; color: var(--muted2); }
 
     @media (max-width: 480px) {

@@ -60,7 +60,7 @@
     .input { background: var(--surface2); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 14px; padding: 11px 14px; outline: none; width: 100%; }
     .input:focus { border-color: var(--primary); }
 
-    .btn { padding: 10px 18px; border-radius: var(--r); border: 1px solid var(--stroke2); background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn { padding: 10px 18px; border-radius: var(--r); border: 1px solid var(--stroke2); background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
     .btn:hover { background: var(--surface3); }
     .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
     .btn.primary:hover { opacity: .88; }
@@ -68,7 +68,7 @@
     .btn:disabled { opacity: .5; cursor: default; }
 
     .toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
-    select.filter-sel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer; }
+    select.filter-sel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r); color: var(--text); font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer; min-height: 44px; box-sizing: border-box; }
 
     .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--stroke); margin-bottom: 24px; }
     table { width: 100%; border-collapse: collapse; }
@@ -85,7 +85,7 @@
     .badge-tech    { background: rgba(41,217,165,.15); color: var(--accent); }
 
     .inviteRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
-    .invite-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px dashed var(--stroke2); border-radius: var(--r); padding: 8px 14px; font-weight: 800; letter-spacing: .2em; font-size: 16px; cursor: pointer; }
+    .invite-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px dashed var(--stroke2); border-radius: var(--r); padding: 8px 14px; font-weight: 800; letter-spacing: .2em; font-size: 16px; cursor: pointer; min-height: 44px; box-sizing: border-box; }
     .invite-chip small { letter-spacing: 0; font-weight: 500; color: var(--muted2); }
 
     .empty { text-align: center; padding: 40px 24px; color: var(--muted); }
@@ -97,6 +97,9 @@
     .auth-title { font-size: 20px; font-weight: 700; text-align: center; }
     .auth-sub { font-size: 13px; color: var(--muted); text-align: center; }
     .err { font-size: 12px; color: var(--danger); display: none; }
+    /* "Forgot password?" / "Back to app" are just small text links — pad out
+       their real tap height invisibly instead of growing the visible text. */
+    .auth-card > a { display: block; padding: 12px 4px; margin: -12px -4px; box-sizing: border-box; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
 
@@ -109,13 +112,13 @@
     .panel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 14px; padding: 16px; margin-bottom: 18px; }
     .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
     .panel-title { font-size: 15px; font-weight: 700; }
-    .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 9px 14px; min-height: 36px; font-size: 12px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+    .btn-sm { background: var(--surface2); border: 1px solid var(--stroke2); color: var(--muted); border-radius: 8px; padding: 9px 14px; min-height: 44px; font-size: 12px; font-weight: 600; cursor: pointer; touch-action: manipulation; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
     .btn-sm:hover { color: var(--primary); border-color: var(--primary); }
     .btn-sm:disabled { opacity: .5; cursor: default; }
     /* Promote/Remove sit right next to each other in a narrow table cell —
        one of the easiest places to tap the wrong one. Bigger targets + more
        gap between them (table already scrolls horizontally if needed). */
-    .roster-actions { display: flex; gap: 10px; flex-wrap: nowrap; justify-content: flex-end; }
+    .roster-actions { display: flex; gap: 14px; flex-wrap: nowrap; justify-content: flex-end; }
 
     .chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding-top: 6px; }
     .chart-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
@@ -126,7 +129,7 @@
     .insight { background: rgba(37,99,235,.08); border: 1px solid rgba(37,99,235,.25); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; }
     .insight strong { color: var(--primary); }
 
-    th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+    th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; padding-top: 13px; padding-bottom: 13px; box-sizing: border-box; }
     th[data-sort]:hover { color: var(--primary); }
     th[data-sort].sorted::after { content: " ↓"; font-size: 10px; }
     th[data-sort].sorted.asc::after { content: " ↑"; }
@@ -163,7 +166,7 @@
     .cd-msg-who { font-size: 10px; color: var(--muted2); margin-top: 3px; }
     .cd-reply { display: flex; gap: 8px; margin-bottom: 12px; }
     .cd-reply input { flex: 1; }
-    .cd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .cd-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
     .btn-sm.ok { border-color: var(--accent); color: var(--accent); }
     .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
     .cd-note { width: 100%; box-sizing: border-box; }
@@ -171,6 +174,9 @@
     /* ── Job detail + proof photo ──────────────────────────────── */
     .job-row { cursor: pointer; }
     .job-row:hover td { background: var(--surface2); }
+    /* Whole row is tappable to open the job detail drawer — pad it out to a
+       real 44px+ tap target instead of relying on the default cell padding. */
+    .job-row td { padding-top: 15px; padding-bottom: 15px; }
     .has-photo { font-size: 12px; opacity: .85; }
     .jd-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
     @media (max-width: 520px) { .jd-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
@@ -231,7 +237,8 @@
     .tourMascotSub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .tourHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .tourStepLabel { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--primary); }
-    .tourSkip { background: none; border: none; padding: 0; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .tourSkip { background: none; border: none; padding: 0; font-size: 12px; color: var(--muted); cursor: pointer; position: relative; }
+    .tourSkip::before { content: ""; position: absolute; inset: -14px; }
     .tourSkip:hover { color: var(--text); }
     .tourTitle { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: -.2px; }
     .tourBody  { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
@@ -463,7 +470,7 @@
     <div class="card">
       <h2>You're on the team ✓</h2>
       <p class="sub">Your manager can see the jobs you log in Flatrate Buddy — your proof of work is shared automatically. Keep logging jobs in the app as usual.</p>
-      <a href="./index.html" class="btn primary" style="display:inline-block;">Open the app</a>
+      <a href="./index.html" class="btn primary">Open the app</a>
     </div>
   </div>
 </div>
@@ -925,6 +932,51 @@
       <td class="num">${money(l.cash_amount)}</td>
     </tr>`).join("") || `<tr><td colspan="6" class="empty">No jobs logged in this range</td></tr>`;
   }
+
+  /* ── Live dashboard: auto-refresh ──────────────────────────────
+   * Techs log jobs from their phones while a manager watches this on a
+   * desktop/tablet — without this, seeing a new job meant mashing the
+   * browser refresh button. Polls the same renders selectShop already
+   * runs, but only when it's actually safe to yank the tables out from
+   * under someone: manager role, shop view visible, tab in the
+   * foreground, and no drawer open (reviewing one job/claim shouldn't
+   * have the list behind it silently reshuffle). */
+  const AUTO_REFRESH_MS = 30000;
+  let autoRefreshTimer = null;
+  let autoRefreshInFlight = false;
+
+  function canAutoRefresh() {
+    return MY_ROLE === "manager"
+      && !!SHOP
+      && document.visibilityState === "visible"
+      && $("shopView").style.display !== "none"
+      && $("jobDrawer").style.display !== "flex"
+      && $("claimDrawer").style.display !== "flex";
+  }
+
+  async function autoRefreshTick() {
+    if (autoRefreshInFlight || !canAutoRefresh()) return;
+    autoRefreshInFlight = true;
+    try {
+      await Promise.all([renderTeam(), loadClaims()]);
+    } catch (e) {
+      console.error("[team] auto-refresh failed:", e);
+    } finally {
+      autoRefreshInFlight = false;
+    }
+  }
+
+  function startAutoRefresh() {
+    if (autoRefreshTimer) return;
+    autoRefreshTimer = setInterval(autoRefreshTick, AUTO_REFRESH_MS);
+  }
+
+  // Coming back to the tab (or the phone screen turning back on) is the
+  // moment stale data is most noticeable, so catch up immediately instead
+  // of waiting for the next tick.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") autoRefreshTick();
+  });
 
   /* ── Job detail + proof photo (manager) ─────────────────────── */
   let RECENT_LOGS = [];
@@ -1554,6 +1606,7 @@
   $("teamTourBtnShop")?.addEventListener("click", () => startTeamTour(true));
 
   init();
+  startAutoRefresh();
 })();
 </script>
 </body>
