@@ -11782,13 +11782,15 @@ function renderPayrollReconciliation(paidLines, warn = "") {
       const e = u.entries[0] || {};
       const hasPhoto = getEntryReviewState(e).hasPhoto;
       const pPath = e.photo_path || e.photoPath || "";
+      const eid = escapeHtml(String(e.id ?? ""));
       h += `<div class="reconRow">
-        ${hasPhoto ? `<img class="reconThumb" data-recon-photo="${escapeHtml(String(e.id ?? ""))}" data-photo-path="${escapeHtml(pPath)}" alt="Proof" />` : ""}
+        ${hasPhoto ? `<img class="reconThumb" data-recon-photo="${eid}" data-photo-path="${escapeHtml(pPath)}" alt="Proof" />` : ""}
         <div>
           <div class="reconRowTop">${escapeHtml(e.type || e.typeText || "Job")}</div>
           <div class="reconRowSub mono">${escapeHtml(String(e.ref || e.ro || u.key))} · ${escapeHtml(formatDayLabel(e.dayKey) || e.dayKey || "")}${hasPhoto ? " · 📷" : ""}${u.partial ? ` · part-paid, ${formatHours(u.loggedHours)} logged` : ""}</div>
           ${u.why ? `<div class="reconWhy">Why: ${escapeHtml(u.why)}</div>` : ""}
           ${u.badRef ? `<div class="reconRowSub" style="color:var(--warn,#f59e0b);">That's your employee number, not an RO — fix the RO on this entry so it can be matched.</div>` : ""}
+          ${e.id != null ? `<button type="button" class="iBtn" style="margin-top:6px;" data-mw-flag="${eid}">🚩 Send to Manager</button>` : ""}
         </div>
         <div class="reconRowRight">
           <div class="reconRowPay">${formatMoney(u.pay)}</div>
@@ -11796,7 +11798,7 @@ function renderPayrollReconciliation(paidLines, warn = "") {
         </div>
       </div>`;
     }
-    h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager.</div>`;
+    h += `<div class="reconNote">These RO/stock numbers don't appear anywhere on their report, and nothing on it matches their hours and date. That's the list to hand your manager — or tap "Send to Manager" on any job above to file it right now.</div>`;
   }
 
   // Matches the app made but isn't confident about — shown on purpose. A shaky
@@ -11820,6 +11822,13 @@ function renderPayrollReconciliation(paidLines, warn = "") {
   // Fill the thumbnails and make them open full-screen. Seeing the car next to
   // the RO is the whole point — a manager shouldn't need it described to them.
   const byId = new Map(r.unpaid.map(u => [String(u.entries[0]?.id ?? ""), u.entries[0]]));
+
+  // Feed the same delegated "Send to Manager" handler used by the Missing
+  // Work cards above — merge rather than replace, since both lists can be
+  // showing at once and reference overlapping entries.
+  for (const [id, e] of byId) if (id) _mwEntriesById.set(id, e);
+  wireMissingWorkActions();
+
   out.querySelectorAll("[data-recon-photo]").forEach(async (img) => {
     const path = img.dataset.photoPath;
     const entry = byId.get(img.dataset.reconPhoto);
@@ -12900,7 +12909,9 @@ function renderMissingWorkReview() {
   listEl.innerHTML = html;
 
   // Keep the matched entries reachable by id for the delegated handler below.
-  _mwEntriesById = new Map((match.picks || []).map(e => [String(e.id ?? ""), e]));
+  // Merge rather than replace — renderPayrollReconciliation feeds the same
+  // map for its own "Send to Manager" buttons and can run in either order.
+  for (const e of (match.picks || [])) { const id = String(e.id ?? ""); if (id) _mwEntriesById.set(id, e); }
   wireMissingWorkActions();
   // Start fetching these photos now, so the proof is already cached by the time
   // it's tapped in front of a manager.
@@ -13558,6 +13569,30 @@ async function exportDisputeReport(weekKey) {
     ? `dispute-${empId}-${weekKey}.pdf`
     : `dispute-${empId}-all-${todayKeyLocal()}.pdf`;
   doc.save(filename);
+
+  // The PDF only reaches the manager once the tech hands it over themselves —
+  // it never touches the Requests inbox. Offer to also drop a request there
+  // now, so there's a paper trail waiting for the manager instead of relying
+  // entirely on a file changing hands outside the app.
+  if (grandMissingPay > 0.005 || grandMissingHours > 0.005) {
+    const periodLabel = singleWeek
+      ? `week of ${rangeStart}`
+      : `${weekKeys.length} week${weekKeys.length === 1 ? "" : "s"}`;
+    const send = await showActionSheet?.({
+      title: "Send this to your manager too?",
+      message: `File a request for ${periodLabel} — ${formatHours(grandMissingHours)} hrs / ${formatMoney(grandMissingPay)} unaccounted for — so it's waiting in their inbox when you hand them the PDF.`,
+      confirmLabel: "Send Request",
+    });
+    if (send) {
+      window.__FR?.openRequestModal?.({
+        kind: "short_pay",
+        subject: `Pay discrepancy — ${periodLabel}`.slice(0, 140),
+        details: `Full breakdown in "${filename}" — logged vs. paid gap: ${formatHours(grandMissingHours)} hrs / ${formatMoney(grandMissingPay)}.`,
+        hours: grandMissingHours > 0 ? String(grandMissingHours) : "",
+        amount: grandMissingPay > 0 ? grandMissingPay.toFixed(2) : "",
+      });
+    }
+  }
 }
 
 async function exportDisputeThisWeek() {
@@ -15119,6 +15154,7 @@ async function renderRequests() {
     return;
   }
   gate.style.display = "none"; body.style.display = "";
+  initClaimsRealtime();
 
   try { await loadMyClaims(); }
   catch (e) {
@@ -15153,6 +15189,55 @@ async function renderRequests() {
         ${c.resolution_note ? `<div class="reqItemNote">Manager: ${escapeHtml(c.resolution_note)}</div>` : ""}
       </button>`;
   }).join("");
+}
+
+/* ── Realtime ────────────────────────────────────────────────────────────
+ * Without this, the tech only finds out about a manager's reply or status
+ * change the next time they happen to reopen the Requests accordion. Needs
+ * the 20260925_claims_realtime.sql migration applied (adds claims and
+ * claim_messages to the supabase_realtime publication) — until it is,
+ * .subscribe() just never delivers events and everything falls back to the
+ * existing open-to-refresh behavior, so this is safe to ship ahead of it.
+ */
+let CLAIMS_CHANNEL = null;
+
+function initClaimsRealtime() {
+  if (CLAIMS_CHANNEL || !window.CURRENT_UID) return;
+  try {
+    CLAIMS_CHANNEL = sb()
+      .channel(`claims-${window.CURRENT_UID}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "claim_messages" },
+        (payload) => {
+          const m = payload.new;
+          if (!m || m.author_id === window.CURRENT_UID) return; // our own reply
+          // RLS already limited delivery to claims we can see; MY_CLAIMS may
+          // still be stale, so don't gate on it — just refresh and, if the
+          // thread for this claim happens to be open, refresh that too.
+          toast?.("Your manager replied to a request");
+          haptic?.("light");
+          renderRequests();
+          if (ACTIVE_CLAIM && String(ACTIVE_CLAIM.id) === String(m.claim_id)) {
+            renderClaimMessages(m.claim_id);
+          }
+        })
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "claims" },
+        (payload) => {
+          const c = payload.new;
+          if (!c) return;
+          const prevStatus = payload.old?.status;
+          if (c.status !== prevStatus && c.status !== "open") {
+            toast?.(`Your manager marked a request "${claimStatus(c.status).label}"`);
+            haptic?.("light");
+          }
+          renderRequests();
+          if (ACTIVE_CLAIM && String(ACTIVE_CLAIM.id) === String(c.id)) ACTIVE_CLAIM = c;
+        })
+      .subscribe();
+  } catch (e) {
+    console.warn("[claims realtime]", e?.message || e);
+  }
 }
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */

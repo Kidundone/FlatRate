@@ -204,8 +204,13 @@
 
     /* ── Requests / claims ─────────────────────────────────────── */
     .count-pill { display: inline-block; min-width: 20px; padding: 1px 7px; background: var(--primary); color: #fff; border-radius: 10px; font-size: 12px; font-weight: 700; margin-left: 6px; }
-    .claim-row { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--surface2); border: 1px solid var(--stroke2); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: inherit; font: inherit; }
+    .claim-row { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--surface2); border: 1px solid var(--stroke2); border-left: 3px solid transparent; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: inherit; font: inherit; }
     .claim-row:hover { border-color: var(--primary); }
+    /* Open/seen for 2+ days — a left-border accent so a stale request stands
+       out from the list at a glance instead of needing to be read to notice
+       it's been sitting. */
+    .claim-row--stale { border-left-color: var(--danger); }
+    .claim-stale-flag { color: var(--danger); font-weight: 700; }
     .claim-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .claim-subject { font-size: 14px; font-weight: 600; }
     .claim-meta { font-size: 11.5px; color: var(--muted2); margin-top: 4px; }
@@ -231,10 +236,12 @@
     .cd-msg-who { font-size: 10px; color: var(--muted2); margin-top: 3px; }
     .cd-reply { display: flex; gap: 8px; margin-bottom: 12px; }
     .cd-reply input { flex: 1; }
-    .cd-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .cd-divider { height: 1px; background: var(--stroke2); margin: 4px 0 12px; }
+    .cd-note-label { font-size: 11.5px; color: var(--muted2); margin-bottom: 6px; }
+    .cd-note { width: 100%; box-sizing: border-box; margin-bottom: 12px; }
+    .cd-actions { display: flex; gap: 12px; flex-wrap: wrap; }
     .btn-sm.ok { border-color: var(--accent); color: var(--accent); }
     .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
-    .cd-note { width: 100%; box-sizing: border-box; }
 
     /* ── Job detail + proof photo ──────────────────────────────── */
     .job-row { cursor: pointer; }
@@ -425,22 +432,12 @@
       <div class="stat"><div class="stat-label">Earnings</div><div class="stat-value accent" id="statPay">–</div><div class="stat-delta" id="deltaPay"></div></div>
     </div>
 
-    <!-- Shop output over the period -->
+    <!-- Requests from techs — action items first, ahead of passive stats/charts
+         below, so a pending dispute isn't buried under things that don't need
+         a response from you today. -->
     <div class="panel">
       <div class="panel-head">
-        <span class="panel-title">Shop output</span>
-        <span class="cell-muted" id="chartMeta"></span>
-      </div>
-      <div class="chart" id="outputChart"></div>
-    </div>
-
-    <!-- Headline insight -->
-    <div id="teamInsight" class="insight" style="display:none;"></div>
-
-    <!-- Requests from techs -->
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">Requests <span id="claimCount" class="count-pill" style="display:none;">0</span></span>
+        <span class="panel-title">📮 Requests <span id="claimCount" class="count-pill" style="display:none;">0</span></span>
         <select id="claimFilter" class="filter-sel" style="max-width:160px;">
           <option value="active">Needs action</option>
           <option value="all">All</option>
@@ -451,6 +448,18 @@
         </select>
       </div>
       <div id="claimList"></div>
+    </div>
+
+    <!-- Headline insight -->
+    <div id="teamInsight" class="insight" style="display:none;"></div>
+
+    <!-- Shop output over the period -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Shop output</span>
+        <span class="cell-muted" id="chartMeta"></span>
+      </div>
+      <div class="chart" id="outputChart"></div>
     </div>
 
     <div class="panel">
@@ -521,12 +530,14 @@
         <input id="cdReply" placeholder="Reply to the tech…" maxlength="4000" />
         <button type="button" class="btn primary" id="cdReplyBtn">Send</button>
       </div>
+      <div class="cd-divider"></div>
+      <div class="cd-note-label">Note for the tech (optional) — write it before marking status below</div>
+      <input id="cdNote" class="cd-note" placeholder="e.g. &quot;Confirmed with payroll, added to next check&quot;" maxlength="4000" />
       <div class="cd-actions">
         <button type="button" class="btn-sm" data-status="acknowledged">Mark seen</button>
-        <button type="button" class="btn-sm ok" data-status="resolved">Resolve</button>
+        <button type="button" class="btn-sm ok" data-status="resolved">✓ Resolve</button>
         <button type="button" class="btn-sm danger" data-status="declined">Decline</button>
       </div>
-      <input id="cdNote" class="cd-note" placeholder="Optional note shown to the tech…" maxlength="4000" />
     </div>
   </div>
 
@@ -727,6 +738,7 @@
       $("inviteCode").textContent = shop.invite_code || "";
       await renderTeam();
       await loadClaims();
+      initClaimsRealtime();
     }
     startTeamTour(false);
   }
@@ -832,6 +844,7 @@
     if (error) { alert(error.message); return; }
     localStorage.removeItem(LS_LAST_TEAM_SHOP);
     SHOP = null; MY_ROLE = null;
+    if (claimsChannel) { try { db.removeChannel(claimsChannel); } catch {} claimsChannel = null; }
     show("shopView", false);
     window.__FR?.invalidateMyShopsCache?.();
     await loadShop();
@@ -1290,6 +1303,41 @@
     drawClaims();
   }
 
+  /* ── Requests / claims: realtime ─────────────────────────────────────────
+   * Without this, a new request or a tech's reply only shows up the next
+   * time loadClaims() happens to run (page load / shop switch). Needs the
+   * 20260925_claims_realtime.sql migration applied (adds claims and
+   * claim_messages to the supabase_realtime publication) — if that hasn't
+   * been run yet, .subscribe() just never delivers events and everything
+   * falls back to the existing load-on-demand behavior, so this is safe to
+   * ship ahead of the migration. */
+  let claimsChannel = null;
+
+  function initClaimsRealtime() {
+    if (!SHOP) return;
+    if (claimsChannel) { try { db.removeChannel(claimsChannel); } catch {} claimsChannel = null; }
+    try {
+      claimsChannel = db
+        .channel(`shop-claims-${SHOP.id}`)
+        .on("postgres_changes",
+          { event: "*", schema: "public", table: "claims", filter: `shop_id=eq.${SHOP.id}` },
+          () => { loadClaims(); })
+        .on("postgres_changes",
+          { event: "INSERT", schema: "public", table: "claim_messages" },
+          (payload) => {
+            const m = payload.new;
+            // claim_messages has no shop_id to filter on server-side — only act
+            // on messages belonging to a claim we already have loaded for this shop.
+            if (!m || !CLAIMS.some(c => String(c.id) === String(m.claim_id))) return;
+            if (m.author_id === UID) return; // our own reply, already reflected locally
+            if (ACTIVE && String(ACTIVE.id) === String(m.claim_id)) drawClaimMsgs(m.claim_id);
+          })
+        .subscribe();
+    } catch (e) {
+      console.warn("[claims realtime]", e?.message || e);
+    }
+  }
+
   function drawClaims() {
     const f = $("claimFilter").value;
     // "Needs action" is the manager's real working queue.
@@ -1298,7 +1346,10 @@
       f === "active" ? (c.status === "open" || c.status === "acknowledged") :
       c.status === f);
 
-    const pending = CLAIMS.filter(c => c.status === "open").length;
+    // Match the "Needs action" filter definition above (open + acknowledged) —
+    // otherwise a claim you've replied to (which auto-marks it acknowledged)
+    // drops off this count while still sitting in your own working queue.
+    const pending = CLAIMS.filter(c => c.status === "open" || c.status === "acknowledged").length;
     const pill = $("claimCount");
     pill.textContent = pending;
     pill.style.display = pending ? "" : "none";
@@ -1311,12 +1362,16 @@
     $("claimList").innerHTML = rows.map(c => {
       const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
       const ev = claimEv(c);
-      return `<button type="button" class="claim-row" data-claim="${esc(c.id)}">
+      // Still waiting on you for 2+ days — flag it so triage doesn't depend
+      // on reading every row's timestamp.
+      const ageMs = Date.now() - new Date(c.created_at).getTime();
+      const stale = (c.status === "open" || c.status === "acknowledged") && ageMs > 48 * 3600 * 1000;
+      return `<button type="button" class="claim-row${stale ? " claim-row--stale" : ""}" data-claim="${esc(c.id)}">
         <div class="claim-top">
           <span class="claim-subject">${k.emoji} ${esc(c.subject)}</span>
           <span class="st st-${esc(c.status)}">${STATUS_LABEL[c.status] || c.status}</span>
         </div>
-        <div class="claim-meta"><span class="claim-who">${esc(techName(c.user_id))}</span> · ${k.label}${ev ? " · " + esc(ev) : ""} · ${ago(c.created_at)}</div>
+        <div class="claim-meta"><span class="claim-who">${esc(techName(c.user_id))}</span> · ${k.label}${ev ? " · " + esc(ev) : ""} · ${stale ? `<span class="claim-stale-flag">${ago(c.created_at)}</span>` : ago(c.created_at)}</div>
       </button>`;
     }).join("");
   }
