@@ -3538,6 +3538,15 @@ body.compact .list    { gap: 1px; }
 }
 
 /* ── Collapsible More-page sections ─────────────── */
+/* Previously a bare <details>/<summary> — the browser's native open/close
+   is an instant, un-animated cut (no transition possible on `display`),
+   which reads as janky next to the rest of the app's springy, haptic-backed
+   interactions. initMoreSectionAnimations() in boot.js intercepts the
+   summary click, keeps `details.open` true for the duration of the
+   animation either way, and runs a JS-driven height animation on
+   .moreSectionBody (via the Web Animations API) instead of letting the
+   browser snap it open/closed. This is purely a motion upgrade — layout,
+   spacing and padding are unchanged from before the wrapper was added. */
 .moreSectionDetails { }
 .moreSectionSummary {
   cursor: pointer;
@@ -3546,17 +3555,26 @@ body.compact .list    { gap: 1px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: background-color 120ms var(--ease);
+}
+.moreSectionSummary:active {
+  background-color: color-mix(in srgb, var(--primary) 7%, transparent);
 }
 .moreSectionSummary::-webkit-details-marker { display: none; }
 .moreSectionSummary::after {
   content: "›";
   font-size: 18px;
   color: var(--muted2);
-  transition: transform 200ms var(--ease);
+  transition: transform 220ms var(--ease);
   line-height: 1;
 }
 .moreSectionDetails[open] > .moreSectionSummary::after {
   transform: rotate(90deg);
+}
+/* Clips the content during the height animation; the animation itself
+   sets an explicit height while running and clears it afterward. */
+.moreSectionBody {
+  overflow: hidden;
 }
 
 /* ── Job type list rows (More page) ──────────────── */

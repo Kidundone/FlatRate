@@ -16049,6 +16049,61 @@ document.addEventListener("click", (e) => {
   });
 })();
 
+// ── Animate More-page section open/close ─────────────────────
+// Native <details> has no way to transition `display` — it's an instant
+// snap, which is the main thing that made this page feel stiff/outdated
+// next to the springy, haptic-backed interactions everywhere else in the
+// app. This intercepts the summary click and drives the open/close with a
+// real height animation (Web Animations API) on .moreSectionBody instead,
+// then lets `details.open` land wherever it would have anyway — so the
+// existing per-section persistence (above) and Pay Stub's own listener
+// (more-page.js) keep working untouched; this only changes how the
+// transition *looks*, never which sections end up open.
+(function initMoreSectionAnimations() {
+  const DURATION = 260;
+  const EASING = (getComputedStyle(document.documentElement).getPropertyValue("--ease") || "ease").trim();
+
+  document.querySelectorAll("details.moreSectionDetails").forEach((det) => {
+    const summary = det.querySelector(":scope > summary");
+    const body = det.querySelector(":scope > .moreSectionBody");
+    if (!summary || !body) return;
+
+    // Respects the OS-level "reduce motion" setting the same way the rest
+    // of the app already does (see the haptics/confetti reduced-motion
+    // check elsewhere in this file) — falls back to the plain native
+    // toggle with no animation at all.
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) return;
+
+    summary.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (det._sectionAnim) det._sectionAnim.cancel();
+
+      const opening = !det.open;
+      const startHeight = body.offsetHeight;
+
+      if (opening) det.open = true; // render content so scrollHeight is real
+      const endHeight = opening ? body.scrollHeight : 0;
+
+      if (startHeight === endHeight) { det.open = opening; return; }
+
+      body.style.overflow = "hidden";
+      const anim = body.animate(
+        { height: [`${startHeight}px`, `${endHeight}px`] },
+        { duration: DURATION, easing: EASING }
+      );
+      det._sectionAnim = anim;
+
+      anim.onfinish = anim.oncancel = () => {
+        det._sectionAnim = null;
+        body.style.height = "";
+        body.style.overflow = "";
+        if (!opening) det.open = false;
+      };
+    });
+  });
+})();
+
 // ── Hero "More stats" disclosure ──────────────────────────────────────────
 // Keeps the shift view to one headline number + one status line. Everything
 // else (pay period, records, rank, goal gap) is one tap away. The open/closed

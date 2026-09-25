@@ -41,7 +41,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.6ee885de90.css">
+  <link rel="stylesheet" href="./app.9004b3ee0b.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -65,7 +65,7 @@
     .splashRing {
       width: 28px; height: 28px;
       border: 2.5px solid rgba(255,255,255,0.1);
-      /* Was hardcoded Classic blue; app.6ee885de90.css (and data-color-theme, both set
+      /* Was hardcoded Classic blue; app.9004b3ee0b.css (and data-color-theme, both set
          before this point) are already loaded, so var(--primary) resolves
          correctly here too. */
       border-top-color: var(--primary);
@@ -244,7 +244,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.6ee885de90.css. Now a real single-row horizontal scroll with
+               fix in app.9004b3ee0b.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -314,7 +314,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.6ee885de90.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.9004b3ee0b.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -737,7 +737,7 @@
       <div class="moreGroupLabel">Maintenance</div>
       <section class="card moreCard">
         <details class="moreSectionDetails" id="typeCleanupDetails">
-          <summary class="moreCardHeader moreSectionSummary">🧹 Clean up job types</summary>
+          <summary class="moreCardHeader moreSectionSummary">🧹 Clean up job types</summary><div class="moreSectionBody">
           <div style="padding:8px 16px 14px;">
             <p class="muted small" style="margin:0 0 10px;line-height:1.5;">
               Typing the same job different ways ("pdi", "P.D.I.", "pre delivery insp") splits your Job Scorecard data.
@@ -747,7 +747,7 @@
             <div class="muted small" id="typeCleanupStatus" style="margin-top:10px;line-height:1.5;"></div>
             <div id="typeCleanupResults"></div>
           </div>
-        </details>
+        </div></details>
       </section>
     </div><!-- /mPanel-jobs -->
 
@@ -782,7 +782,7 @@
         <details class="moreSectionDetails" id="requestsDetails">
           <summary class="moreCardHeader moreSectionSummary">
             📮 Requests to Manager <span id="reqBadge" class="reqBadge" style="display:none;"></span>
-          </summary>
+          </summary><div class="moreSectionBody">
           <div style="padding:8px 16px 14px;">
             <div id="reqGate" class="reqGate">
               <p class="reqGateText">Join your shop to send requests straight to your service manager — missing work, short pay, needing hours, or anything else.</p>
@@ -794,21 +794,21 @@
               <div id="reqList"></div>
             </div>
           </div>
-        </details>
+        </div></details>
       </section>
 
       <section class="card moreCard">
         <details class="moreSectionDetails" id="lostTimeDetails">
           <summary class="moreCardHeader moreSectionSummary">
             ⏳ Lost Time
-          </summary>
+          </summary><div class="moreSectionBody">
           <div id="lostTimeCard" style="padding:8px 16px 14px;"></div>
-        </details>
+        </div></details>
       </section>
 
       <section class="card moreCard">
         <details class="moreSectionDetails" id="insightsDetails">
-          <summary class="moreCardHeader moreSectionSummary">📊 Insights &amp; Trends</summary>
+          <summary class="moreCardHeader moreSectionSummary">📊 Insights &amp; Trends</summary><div class="moreSectionBody">
           <div class="insightsSubHead">This Week</div>
           <div id="insightsCard" style="padding:4px 16px 14px;"></div>
           <div class="moreDivider"></div>
@@ -820,7 +820,7 @@
           <div class="moreDivider"></div>
           <div class="insightsSubHead">🔁 Comeback Impact</div>
           <div id="comebackStatsCard" style="padding:8px 16px 14px;"></div>
-        </details>
+        </div></details>
       </section>
 
       <!-- Owe Me tracker -->
@@ -904,7 +904,7 @@
            at the top of the More page already covers it — no need to say it twice.) -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">🗓️ Pay Period</summary>
+          <summary class="moreCardHeader moreSectionSummary">🗓️ Pay Period</summary><div class="moreSectionBody">
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">Standard Day</div>
@@ -946,13 +946,13 @@
               <button class="btn primary" id="saveFlaggedBtn" type="button">Set</button>
             </div>
           </div>
-        </details>
+        </div></details>
       </section>
 
       <!-- Display -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">🎨 Display</summary>
+          <summary class="moreCardHeader moreSectionSummary">🎨 Display</summary><div class="moreSectionBody">
           <div class="moreRow moreRow--stack">
             <div>
               <div class="moreRowLabel">Theme</div>
@@ -1015,13 +1015,13 @@
               <span class="moreToggleTrack"></span>
             </label>
           </div>
-        </details>
+        </div></details>
       </section>
 
       <!-- Notifications -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-        <summary class="moreCardHeader moreSectionSummary">🔔 Notifications</summary>
+        <summary class="moreCardHeader moreSectionSummary">🔔 Notifications</summary><div class="moreSectionBody">
         <div class="moreRow">
           <div>
             <div class="moreRowLabel">Haptic Feedback</div>
@@ -1073,7 +1073,7 @@
             <input id="paydayTime" type="time" class="moreInput moreInputNarrow" value="09:00" />
           </div>
         </div>
-        </details>
+        </div></details>
       </section>
 
       <div class="moreGroupLabel">Payroll Tools</div>
@@ -1081,7 +1081,7 @@
       <!-- Pay Stub -->
       <section class="card moreCard">
         <details class="moreSectionDetails" id="payStubDetails">
-          <summary class="moreCardHeader moreSectionSummary">💵 Pay Stub</summary>
+          <summary class="moreCardHeader moreSectionSummary">💵 Pay Stub</summary><div class="moreSectionBody">
           <div class="moreRow">
             <div class="moreRowLabel">Pay Period</div>
             <div class="seg">
@@ -1151,20 +1151,20 @@
           <div id="payStubExpected" class="moreResultMono"></div>
           <div id="missingWorkSummary" class="moreResultText" style="margin-top:8px;"></div>
           <div id="missingWorkList" style="padding:0 16px 8px;"></div>
-        </details>
+        </div></details>
       </section>
 
       <!-- Export & Tools -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">📤 Export &amp; Tools</summary>
+          <summary class="moreCardHeader moreSectionSummary">📤 Export &amp; Tools</summary><div class="moreSectionBody">
           <div class="exportGrid">
             <button class="exportBtn" type="button" id="exportCsvBtn"><div class="exportBtnIcon">CSV</div><div class="exportBtnLabel">Export CSV</div></button>
             <button class="exportBtn" type="button" id="exportJsonBtn"><div class="exportBtnIcon">JSON</div><div class="exportBtnLabel">Export JSON</div></button>
             <button class="exportBtn" type="button" id="exportAuditBtn"><div class="exportBtnIcon">PDF</div><div class="exportBtnLabel">Audit Report</div></button>
             <button class="exportBtn" type="button" id="repairBtn"><div class="exportBtnIcon">Fix</div><div class="exportBtnLabel">Repair Data</div></button>
           </div>
-        </details>
+        </div></details>
       </section>
 
       <div class="moreGroupLabel">Support</div>
@@ -1172,7 +1172,7 @@
       <!-- Feedback -->
       <section class="card moreCard" id="feedbackCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">💬 Send Feedback</summary>
+          <summary class="moreCardHeader moreSectionSummary">💬 Send Feedback</summary><div class="moreSectionBody">
           <div style="padding:0 16px 16px;">
             <div class="moreRow" style="padding-left:0;padding-right:0;padding-top:12px;">
               <div class="moreRowLabel">Category</div>
@@ -1188,13 +1188,13 @@
             <button class="btn primary" id="submitFeedbackBtn" type="button" style="width:100%;margin-top:10px;min-height:48px;">Submit</button>
             <div id="feedbackStatus" class="muted small" style="text-align:center;margin-top:8px;display:none;"></div>
           </div>
-        </details>
+        </div></details>
       </section>
 
       <!-- Help -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">❓ Help</summary>
+          <summary class="moreCardHeader moreSectionSummary">❓ Help</summary><div class="moreSectionBody">
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">App Tour</div>
@@ -1258,7 +1258,7 @@
             </div>
             <a href="./terms.html" class="btn" target="_blank" rel="noopener">View</a>
           </div>
-        </details>
+        </div></details>
       </section>
 
     </div><!-- /mPanel-settings -->
@@ -1572,7 +1572,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.90cd25fdd1.js" defer></script>
+<script src="./app.46e46a6857.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->
