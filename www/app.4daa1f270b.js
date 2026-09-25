@@ -1298,6 +1298,19 @@ function wireEmpIdReload() {
   });
 }
 
+// Read-only check behind "Repair Data" (More → Export & Tools): the button
+// used to sit there permanently for everyone, which made it read as
+// clutter/dead weight for the ~100% of users whose data has nothing wrong
+// with it. This is the same "needs fixing" test backfillDayKeysForEmp runs,
+// split out so boot.js can check quietly on load and only reveal the button
+// when there's actually something for it to do.
+async function needsDayKeyRepair(empId){
+  if (!empId) return false;
+  const all = await getAll(STORES.entries);
+  const mine = filterEntriesByEmp(all, empId);
+  return mine.some(e => !e.dayKey || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(e.dayKey)));
+}
+
 async function backfillDayKeysForEmp(empId){
   const all = await getAll(STORES.entries);
   const mine = filterEntriesByEmp(all, empId);
@@ -10926,14 +10939,6 @@ async function exportCSV(){
   downloadText(`flat_rate_log_${todayKeyLocal()}.csv`, toCSV(entries, true), "text/csv");
 }
 
-async function exportJSON(){
-  if (!requirePro()) return;
-  const all = await getAll(STORES.entries);
-  const entries = filterEntriesByEmp(all, getEmpId(), true);
-  entries.sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  downloadText(`flat_rate_log_${todayKeyLocal()}.json`, JSON.stringify(entries, null, 2), "application/json");
-}
-
 async function saveFlaggedHours(){
   const fh = document.getElementById("flaggedHours");
   const val = fh ? Number(fh.value || 0) : 0;
@@ -16755,7 +16760,6 @@ async function runOnce() {
     };
 
     wrapMoreClick("exportCsvBtn", exportCSV);
-    wrapMoreClick("exportJsonBtn", exportJSON);
     wrapMoreClick("exportAuditBtn", exportAuditReport);
     wrapMoreClick("exportDisputeWeekBtn", exportDisputeThisWeek);
     wrapMoreClick("saveFlaggedBtn", saveFlaggedHours);
@@ -16789,15 +16793,35 @@ async function runOnce() {
       }
     });
 
+    // Repair Data only makes sense when there's actually something broken to
+    // fix -- see needsDayKeyRepair() in data-service.js. Check quietly
+    // whenever we know the empId (load + whenever it changes) and only then
+    // reveal the button; otherwise it stays hidden (default in index.html).
+    async function maybeShowRepairButton() {
+      const btn = document.getElementById("repairBtn");
+      if (!btn) return;
+      const empId = getEmpId?.();
+      try {
+        const needsIt = !!empId && (await needsDayKeyRepair(empId));
+        btn.style.display = needsIt ? "" : "none";
+      } catch {
+        btn.style.display = "none";
+      }
+    }
+    maybeShowRepairButton();
+    document.getElementById("empId")?.addEventListener("change", maybeShowRepairButton);
+    document.getElementById("empId")?.addEventListener("blur", maybeShowRepairButton);
+
     document.getElementById("repairBtn")?.addEventListener("click", async () => {
       const empId = getEmpId();
-      if (!empId) return alert("Enter Employee # first.");
+      if (!empId) return toast("Enter Employee # first.");
       setStatusMsg("Repairing… keep this page open.");
       try {
         const fixed = await backfillDayKeysForEmp(empId);
-        alert(`Repair complete. Fixed ${fixed} entries.`);
+        toast(fixed > 0 ? `Repair complete. Fixed ${fixed} ${fixed === 1 ? "entry" : "entries"}.` : "No repair needed.");
+        await maybeShowRepairButton();
       } catch (e) {
-        alert("Repair failed: " + (e?.message || e));
+        toast("Repair failed: " + (e?.message || e));
       } finally {
         setStatusMsg("");
       }

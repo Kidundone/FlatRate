@@ -1126,7 +1126,6 @@ async function runOnce() {
     };
 
     wrapMoreClick("exportCsvBtn", exportCSV);
-    wrapMoreClick("exportJsonBtn", exportJSON);
     wrapMoreClick("exportAuditBtn", exportAuditReport);
     wrapMoreClick("exportDisputeWeekBtn", exportDisputeThisWeek);
     wrapMoreClick("saveFlaggedBtn", saveFlaggedHours);
@@ -1160,15 +1159,35 @@ async function runOnce() {
       }
     });
 
+    // Repair Data only makes sense when there's actually something broken to
+    // fix -- see needsDayKeyRepair() in data-service.js. Check quietly
+    // whenever we know the empId (load + whenever it changes) and only then
+    // reveal the button; otherwise it stays hidden (default in index.html).
+    async function maybeShowRepairButton() {
+      const btn = document.getElementById("repairBtn");
+      if (!btn) return;
+      const empId = getEmpId?.();
+      try {
+        const needsIt = !!empId && (await needsDayKeyRepair(empId));
+        btn.style.display = needsIt ? "" : "none";
+      } catch {
+        btn.style.display = "none";
+      }
+    }
+    maybeShowRepairButton();
+    document.getElementById("empId")?.addEventListener("change", maybeShowRepairButton);
+    document.getElementById("empId")?.addEventListener("blur", maybeShowRepairButton);
+
     document.getElementById("repairBtn")?.addEventListener("click", async () => {
       const empId = getEmpId();
-      if (!empId) return alert("Enter Employee # first.");
+      if (!empId) return toast("Enter Employee # first.");
       setStatusMsg("Repairing… keep this page open.");
       try {
         const fixed = await backfillDayKeysForEmp(empId);
-        alert(`Repair complete. Fixed ${fixed} entries.`);
+        toast(fixed > 0 ? `Repair complete. Fixed ${fixed} ${fixed === 1 ? "entry" : "entries"}.` : "No repair needed.");
+        await maybeShowRepairButton();
       } catch (e) {
-        alert("Repair failed: " + (e?.message || e));
+        toast("Repair failed: " + (e?.message || e));
       } finally {
         setStatusMsg("");
       }

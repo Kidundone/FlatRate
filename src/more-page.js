@@ -246,14 +246,6 @@ async function exportCSV(){
   downloadText(`flat_rate_log_${todayKeyLocal()}.csv`, toCSV(entries, true), "text/csv");
 }
 
-async function exportJSON(){
-  if (!requirePro()) return;
-  const all = await getAll(STORES.entries);
-  const entries = filterEntriesByEmp(all, getEmpId(), true);
-  entries.sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  downloadText(`flat_rate_log_${todayKeyLocal()}.json`, JSON.stringify(entries, null, 2), "application/json");
-}
-
 async function saveFlaggedHours(){
   const fh = document.getElementById("flaggedHours");
   const val = fh ? Number(fh.value || 0) : 0;

@@ -1145,7 +1145,7 @@
           </div>
           <div class="moreSaveRow" style="padding-top:0;">
             <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
-            <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Dispute Week</button>
+            <button class="btn primary moreSaveBtn" id="exportDisputeWeekBtn" type="button">Export Dispute Report</button>
           </div>
           <div id="payStubSummary" class="moreResultText"></div>
           <div id="payStubExpected" class="moreResultMono"></div>
@@ -1160,9 +1160,11 @@
           <summary class="moreCardHeader moreSectionSummary">📤 Export &amp; Tools</summary><div class="moreSectionBody">
           <div class="exportGrid">
             <button class="exportBtn" type="button" id="exportCsvBtn"><div class="exportBtnIcon">CSV</div><div class="exportBtnLabel">Export CSV</div></button>
-            <button class="exportBtn" type="button" id="exportJsonBtn"><div class="exportBtnIcon">JSON</div><div class="exportBtnLabel">Export JSON</div></button>
             <button class="exportBtn" type="button" id="exportAuditBtn"><div class="exportBtnIcon">PDF</div><div class="exportBtnLabel">Audit Report</div></button>
-            <button class="exportBtn" type="button" id="repairBtn"><div class="exportBtnIcon">Fix</div><div class="exportBtnLabel">Repair Data</div></button>
+            <!-- Repair Data: hidden by default, shown only when
+                 maybeShowRepairButton() (boot.js) actually finds entries
+                 that need it -- see the comment there for why. -->
+            <button class="exportBtn" type="button" id="repairBtn" style="display:none;"><div class="exportBtnIcon">Fix</div><div class="exportBtnLabel">Repair Data</div></button>
           </div>
         </div></details>
       </section>
@@ -1572,7 +1574,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.46e46a6857.js" defer></script>
+<script src="./app.4daa1f270b.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

@@ -1008,6 +1008,19 @@ function wireEmpIdReload() {
   });
 }
 
+// Read-only check behind "Repair Data" (More → Export & Tools): the button
+// used to sit there permanently for everyone, which made it read as
+// clutter/dead weight for the ~100% of users whose data has nothing wrong
+// with it. This is the same "needs fixing" test backfillDayKeysForEmp runs,
+// split out so boot.js can check quietly on load and only reveal the button
+// when there's actually something for it to do.
+async function needsDayKeyRepair(empId){
+  if (!empId) return false;
+  const all = await getAll(STORES.entries);
+  const mine = filterEntriesByEmp(all, empId);
+  return mine.some(e => !e.dayKey || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(e.dayKey)));
+}
+
 async function backfillDayKeysForEmp(empId){
   const all = await getAll(STORES.entries);
   const mine = filterEntriesByEmp(all, empId);
