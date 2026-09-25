@@ -171,6 +171,7 @@ async function renderRequests() {
     return;
   }
   gate.style.display = "none"; body.style.display = "";
+  initClaimsRealtime();
 
   try { await loadMyClaims(); }
   catch (e) {
@@ -205,6 +206,55 @@ async function renderRequests() {
         ${c.resolution_note ? `<div class="reqItemNote">Manager: ${escapeHtml(c.resolution_note)}</div>` : ""}
       </button>`;
   }).join("");
+}
+
+/* ── Realtime ────────────────────────────────────────────────────────────
+ * Without this, the tech only finds out about a manager's reply or status
+ * change the next time they happen to reopen the Requests accordion. Needs
+ * the 20260925_claims_realtime.sql migration applied (adds claims and
+ * claim_messages to the supabase_realtime publication) — until it is,
+ * .subscribe() just never delivers events and everything falls back to the
+ * existing open-to-refresh behavior, so this is safe to ship ahead of it.
+ */
+let CLAIMS_CHANNEL = null;
+
+function initClaimsRealtime() {
+  if (CLAIMS_CHANNEL || !window.CURRENT_UID) return;
+  try {
+    CLAIMS_CHANNEL = sb()
+      .channel(`claims-${window.CURRENT_UID}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "claim_messages" },
+        (payload) => {
+          const m = payload.new;
+          if (!m || m.author_id === window.CURRENT_UID) return; // our own reply
+          // RLS already limited delivery to claims we can see; MY_CLAIMS may
+          // still be stale, so don't gate on it — just refresh and, if the
+          // thread for this claim happens to be open, refresh that too.
+          toast?.("Your manager replied to a request");
+          haptic?.("light");
+          renderRequests();
+          if (ACTIVE_CLAIM && String(ACTIVE_CLAIM.id) === String(m.claim_id)) {
+            renderClaimMessages(m.claim_id);
+          }
+        })
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "claims" },
+        (payload) => {
+          const c = payload.new;
+          if (!c) return;
+          const prevStatus = payload.old?.status;
+          if (c.status !== prevStatus && c.status !== "open") {
+            toast?.(`Your manager marked a request "${claimStatus(c.status).label}"`);
+            haptic?.("light");
+          }
+          renderRequests();
+          if (ACTIVE_CLAIM && String(ACTIVE_CLAIM.id) === String(c.id)) ACTIVE_CLAIM = c;
+        })
+      .subscribe();
+  } catch (e) {
+    console.warn("[claims realtime]", e?.message || e);
+  }
 }
 
 /* ── Compose ─────────────────────────────────────────────────────────────── */
