@@ -122,6 +122,47 @@ function applySettings(s = getSettings()) {
   }
 }
 
+// A handful of hand-drawn charts (SVG/canvas bar charts on the Log and Stats
+// tabs) painted their "current period" bar with a hardcoded "#2563EB" —
+// Classic's blue — instead of reading the live theme color. Since applySettings()
+// above always keeps --primary resolvable on <html> (inline override for
+// Classic, app.css cascade for the 4 preset themes), reading it here stays
+// correct across every theme without those call sites needing to know why.
+// Falls back to Classic's blue only if the computed value is somehow empty
+// (e.g. called before first paint).
+function getThemePrimary() {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim();
+    if (v) return v;
+  } catch {}
+  return SETTINGS_DEFAULTS.accentColor;
+}
+
+// Same idea for --primary-dark (used for gradient endpoints where a flat
+// --primary would look like a plain fill instead of a gradient).
+function getThemePrimaryDark() {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--primary-dark").trim();
+    if (v) return v;
+  } catch {}
+  return "#1d4ed8";
+}
+
+// Same charts also hardcoded translucent "past bar" fills as rgba(37,99,235,…)
+// — the RGB components of #2563EB spelled out by hand — so even after
+// getThemePrimary() fixed the solid "current" bar, every OTHER bar in the
+// same chart stayed Classic-blue. This gives those call sites an
+// alpha-adjustable version of the live theme color instead.
+function themeRgba(alpha) {
+  const hex = getThemePrimary();
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(37,99,235,${alpha})`;
+  const full = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 /* ── Pay rate ─────────────────────────────────────────────────────────────────
  * This used to fall back to a hardcoded $15/hr, which meant a tech who hadn't
  * set their rate yet had every job silently priced at somebody else's number —

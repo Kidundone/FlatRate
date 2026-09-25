@@ -36,6 +36,15 @@
      see the comment on those blocks. */
   --on-primary: #fff;
 
+  /* --r-xs added during a sizing-consolidation pass: several small elements
+     (tags, thin skeleton bars, tiny dots) were hardcoding 4px instead of
+     using a token — this gives them one instead of inventing a one-off.
+     Some genuinely one-off radii (2/3/5/6/9/10/13/14/24px) remain literal on
+     purpose: they're single-use micro-details that don't belong to this
+     card/button scale, and snapping them to the nearest step would visibly
+     round them more or less than designed — out of scope for a pass that's
+     meant to be a no-visual-change cleanup. */
+  --r-xs: 4px;
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
@@ -458,7 +467,7 @@ body[data-page="stats"] #spa-stats {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
-  border-radius: 20px;
+  border-radius: var(--r-xl);
   border: 1.5px solid var(--surface2, #1e2d42);
   background: transparent;
   color: var(--text2, #8a9bb8);
@@ -544,7 +553,7 @@ body[data-page="stats"] #spa-stats {
   touch-action: manipulation;
   padding: 3px 2px;
   margin: -3px -2px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   transition: background 120ms var(--ease, ease);
 }
 .brkLegendItem:active { background: var(--surface2, rgba(255,255,255,.06)); }
@@ -570,7 +579,7 @@ body[data-page="stats"] #spa-stats {
 .brkSumCell {
   flex: 1;
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 12px 8px;
   text-align: center;
 }
@@ -595,7 +604,7 @@ body[data-page="stats"] #spa-stats {
 }
 .brkRow {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 14px 16px;
   display: flex;
   gap: 12px;
@@ -618,14 +627,14 @@ body[data-page="stats"] #spa-stats {
 .brkRowBar {
   margin-top: 7px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--surface2, rgba(255,255,255,.07));
   overflow: hidden;
 }
 .brkRowBar > span {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   width: 0;
   animation: brkBarGrow 620ms cubic-bezier(.22,1,.36,1) forwards;
 }
@@ -769,7 +778,7 @@ body[data-page="stats"] #spa-stats {
   width: 30px;
   min-height: 4px;
   background: var(--primary);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
   opacity: 0.75;
 }
 .mnthBarLabel {
@@ -816,7 +825,12 @@ header {
   justify-content: space-between;
   gap: 12px;
   padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
-  background: rgba(7,7,15,.94);
+  /* Was a hardcoded rgba(7,7,15,.94) — matched the default dark theme's --bg
+     exactly, but stayed that same near-black in every OTHER theme/mode (all
+     4 color presets, and light mode outside Classic), leaving a jarring
+     black bar pinned above a light or colored page. color-mix keeps the same
+     94%-opaque-over-content look while tracking whichever --bg is active. */
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
   border-bottom: 1px solid var(--stroke);
   /* Background is already 94% opaque, so a heavy blur here was buying almost
      no visible difference — barely anything shows through to blur — while
@@ -886,7 +900,10 @@ header.top,
   max-width: 680px;
   z-index: 200;
   display: flex;
-  background: rgba(17,17,19,.96);
+  /* Was a hardcoded near-black rgba(17,17,19,.96) in every theme — see the
+     header comment above, same bug, same fix: track --surface instead so
+     the tab bar isn't a black stripe under a light/colored theme. */
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   /* See header comment above — 96% opaque background, heavy blur here was
      nearly invisible but sits under every scroll gesture in the app. */
   backdrop-filter: blur(8px);
@@ -1195,8 +1212,8 @@ header.top,
   touch-action: manipulation;
 }
 .iBtn:active { background: var(--surface3); transform: scale(.94); }
-.iBtn--danger { color: var(--danger); border-color: rgba(237,73,86,.25); background: rgba(237,73,86,.06); }
-.iBtn--sameRO { color: var(--primary-text); border-color: rgba(37,99,235,.3); background: rgba(37,99,235,.08); font-weight: 600; }
+.iBtn--danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.iBtn--sameRO { color: var(--primary-text); border-color: color-mix(in srgb, var(--primary) 30%, transparent); background: color-mix(in srgb, var(--primary) 8%, transparent); font-weight: 600; }
 
 /* ── Week group header ───────────────────────────── */
 .weekGroupHdr {
@@ -1285,7 +1302,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 /* Payroll report scan buttons -- was inline flex:1 side-by-side with .btn's
@@ -1348,7 +1365,7 @@ a.btn {
 
 .btn.danger-ghost {
   background: transparent;
-  border-color: rgba(237,73,86,.35);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   color: var(--danger);
   font-size: 13px;
 }
@@ -1677,9 +1694,9 @@ a.btn {
   min-width: 64px;
   height: 44px;
   padding: 0 8px;
-  border: 1.5px solid rgba(37,99,235,.35);
-  border-radius: 12px;
-  background: rgba(37,99,235,.08);
+  border: 1.5px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--primary-text);
   font-size: 15px;
   font-weight: 600;
@@ -1700,14 +1717,14 @@ a.btn {
 /* Custom hour chips */
 #customHourChips { display: contents; }
 .fr26HourBtnCustom {
-  background: rgba(37,99,235,.08);
-  border-color: rgba(37,99,235,.35);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
   color: var(--primary-text);
 }
 /* + button */
 /* Job-type hours chip — appears first when a known job type is selected */
 .fr26HourBtnType {
-  background: rgba(37,99,235,.18);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
   border-color: var(--primary);
   color: var(--primary-text);
   font-weight: 700;
@@ -1726,9 +1743,9 @@ a.btn {
 .fr26BtnSaveRoll {
   margin-top: 8px;
   width: 100%;
-  background: rgba(37,99,235,.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary-text);
-  border: 1.5px solid rgba(37,99,235,.4);
+  border: 1.5px solid color-mix(in srgb, var(--primary) 40%, transparent);
   border-radius: var(--r-md);
   padding: 9px 14px;
   font-size: 14px;
@@ -1738,7 +1755,7 @@ a.btn {
 .fr26HourBtnAdd {
   min-width: 42px;
   color: var(--primary-text);
-  border-color: rgba(37,99,235,.4);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
   background: transparent;
   font-size: 20px;
   font-weight: 400;
@@ -1762,7 +1779,7 @@ a.btn {
   -webkit-appearance: none;
   width: 42px;
   height: 26px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--surface3);
   border: 1px solid var(--stroke2);
   position: relative;
@@ -1840,7 +1857,7 @@ a.btn {
   font-size: 17px;
   font-weight: 800;
   border-radius: var(--r-lg);
-  box-shadow: 0 4px 16px rgba(37,99,235,.28);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .fr26BtnPrimary:active { opacity: .85; transform: scale(.99); }
@@ -1923,12 +1940,12 @@ a.btn {
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   cursor: pointer;
   text-align: left;
-  box-shadow: 0 4px 18px rgba(37,99,235,.30);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 30%, transparent);
   transition: transform .12s var(--ease), box-shadow .12s var(--ease);
 }
 .scanHeroBtn:active {
   transform: scale(.97);
-  box-shadow: 0 2px 8px rgba(37,99,235,.20);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 /* Scanning state: a bright bar sweeps across like a flatbed scanner, so the
    OCR wait reads as active progress instead of a frozen button. */
@@ -1988,10 +2005,10 @@ a.btn {
      than an unrelated secondary button. */
   flex: 1;
   padding: 10px 0;
-  background: rgba(37,99,235,.10);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary-text);
   border: none;
-  border-top: 1px solid rgba(37,99,235,.18);
+  border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
   border-radius: 0 0 var(--r-lg) var(--r-lg);
   font-size: 13px;
   font-weight: 700;
@@ -1999,7 +2016,7 @@ a.btn {
   text-align: center;
   transition: background .1s;
 }
-.scanAltBtn:active { background: rgba(37,99,235,.18); }
+.scanAltBtn:active { background: color-mix(in srgb, var(--primary) 18%, transparent); }
 
 .fr26InlineStatus {
   padding: 0 16px 12px;
@@ -2030,7 +2047,7 @@ a.btn {
 .fr26ScanJobAlt {
   font-size: 12px;
   padding: 4px 10px;
-  border: 1px solid rgba(37,99,235,.5);
+  border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--primary-text);
@@ -2162,8 +2179,8 @@ a.btn {
 }
 
 #dupWarnGlobal[data-level="strong"] {
-  border-color: rgba(237,73,86,.35);
-  background: rgba(237,73,86,.1);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
 }
 
@@ -2650,7 +2667,9 @@ a.btn {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(17,17,19,.92);
+  /* Was hardcoded near-black like header/.tabBar — same theme-adherence
+     bug, same color-mix fix. */
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   /* Same fix as the main header/.tabBar — near-opaque background made the
      heavy blur mostly invisible, but it still had to run on every scroll
      frame of the More page. */
@@ -2695,12 +2714,12 @@ a.btn {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 .danger {
-  border-color: rgba(237,73,86,.25);
-  background: rgba(237,73,86,.06);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
 }
 
 /* ── Input class on more page ────────────────────── */
@@ -2920,6 +2939,14 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 }
 .accentPickerLabel:active .accentColorPreview { transform: scale(.9); }
 
+/* Accent Color row when a preset color theme (not Classic) is active — the
+   picker is genuinely disabled then (see initSettingsUI in more-page.js), so
+   it should look it instead of sitting there fully bright as if it were live. */
+.moreRow--disabled .moreRowLabel { color: var(--muted); }
+.moreRow--disabled .accentPickerLabel { opacity: .45; cursor: not-allowed; }
+.moreRow--disabled .accentColorPreview { border-color: var(--stroke); }
+.moreRow--disabled input[type="color"]:disabled { cursor: not-allowed; }
+
 /* Toggle switch (More page). This label IS the tap target — the row
    around it doesn't also toggle it — so it needs to earn its own size.
    Height nudged from 26 to 30px, matching a real iOS switch's proportions
@@ -2938,7 +2965,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 .moreToggleTrack {
   position: absolute;
   inset: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--surface3);
   border: 1px solid var(--stroke2);
   transition: background 200ms, border-color 200ms;
@@ -3046,7 +3073,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 }
 
 /* Danger */
-.moreDangerCard { border-color: rgba(237,73,86,.2); background: rgba(237,73,86,.04); }
+.moreDangerCard { border-color: color-mix(in srgb, var(--danger) 20%, transparent); background: color-mix(in srgb, var(--danger) 4%, transparent); }
 .moreDangerHeader { color: var(--danger); }
 
 .dangerActions {
@@ -3057,14 +3084,14 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 
 .dangerBtn {
   flex: 1;
-  background: rgba(237,73,86,.1);
-  border-color: rgba(237,73,86,.25);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
   color: var(--danger);
 }
 
 .dangerBtnStrong {
-  background: rgba(237,73,86,.18);
-  border-color: rgba(237,73,86,.35);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   color: var(--danger);
 }
 
@@ -3080,8 +3107,8 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   margin: 8px auto 0;
   padding: 10px 16px;
   border-radius: var(--r-md);
-  border: 1px solid rgba(237,73,86,.3);
-  background: rgba(237,73,86,.1);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: #fca5a5;
   font-size: 13px;
   font-weight: 600;
@@ -3323,7 +3350,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 
 /* Light theme — hero & chart fixes */
 [data-color-theme="classic"][data-theme="light"] .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-[data-color-theme="classic"][data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
+[data-color-theme="classic"][data-theme="light"] .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: color-mix(in srgb, var(--primary) 30%, transparent); }
 [data-color-theme="classic"][data-theme="light"] .heroGoalPctText { color: var(--text); }
 [data-color-theme="classic"][data-theme="light"] .hcChartArea { border-top-color: var(--stroke2); }
 [data-color-theme="classic"][data-theme="light"] .heroAmt { color: var(--text); }
@@ -3340,12 +3367,12 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
 
 /* Light theme — form & input visibility */
 [data-color-theme="classic"][data-theme="light"] .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-[data-color-theme="classic"][data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+[data-color-theme="classic"][data-theme="light"] .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
 [data-color-theme="classic"][data-theme="light"] .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
 [data-color-theme="classic"][data-theme="light"] input::placeholder, [data-color-theme="classic"][data-theme="light"] textarea::placeholder { color: #94a3b8; }
 [data-color-theme="classic"][data-theme="light"] .fr26Label { color: var(--text); font-weight: 600; }
-[data-color-theme="classic"][data-theme="light"] .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
-[data-color-theme="classic"][data-theme="light"] .fr26HourBtn:hover { background: rgba(37,99,235,.14); }
+[data-color-theme="classic"][data-theme="light"] .fr26HourBtn.selected { background: color-mix(in srgb, var(--primary) 15%, transparent); border-color: var(--primary); color: var(--primary-dark); }
+[data-color-theme="classic"][data-theme="light"] .fr26HourBtn:hover { background: color-mix(in srgb, var(--primary) 14%, transparent); }
 [data-color-theme="classic"][data-theme="light"] .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
 [data-color-theme="classic"][data-theme="light"] .fr26Check span { color: var(--text); }
 [data-color-theme="classic"][data-theme="light"] .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
@@ -3391,13 +3418,13 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .item { box-shadow: 0 1px 3px rgba(0,0,0,.05); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .moreTabBar { background: #ffffff; border-bottom-color: rgba(0,0,0,.08); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .heroSection { background: var(--surface); border-bottom: 1px solid var(--stroke); }
-  :root[data-color-theme="classic"]:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: rgba(37,99,235,.3); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .heroChartInner { background: var(--surface); border-color: var(--stroke2); border-top-color: color-mix(in srgb, var(--primary) 30%, transparent); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .hcGoalBarTrack { background: rgba(0,0,0,.12); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Input { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
-  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Textarea { background: #fff; color: var(--text); border: 1.5px solid rgba(0,0,0,.22); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) input::placeholder, :root[data-color-theme="classic"]:not([data-theme="dark"]) textarea::placeholder { color: #94a3b8; }
-  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26HourBtn.selected { background: rgba(37,99,235,.15); border-color: var(--primary); color: var(--primary-dark); }
+  :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26HourBtn.selected { background: color-mix(in srgb, var(--primary) 15%, transparent); border-color: var(--primary); color: var(--primary-dark); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .fr26Chip { background: var(--surface2); color: var(--text); border-color: rgba(0,0,0,.18); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .segBtn { background: transparent; color: var(--text2); border-color: rgba(0,0,0,.15); }
   :root[data-color-theme="classic"]:not([data-theme="dark"]) .segBtn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
@@ -3414,7 +3441,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   font-weight: 600;
   border-bottom: 1px solid var(--stroke);
 }
-.ptSummaryWarn { color: var(--danger); background: rgba(237,73,86,.07); }
+.ptSummaryWarn { color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, transparent); }
 .ptSummaryOk   { color: #10b981; }
 
 .ptList { }
@@ -3424,7 +3451,7 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   border-bottom: 1px solid var(--stroke);
 }
 .ptRow:last-child { border-bottom: 0; }
-.ptRow--short { background: rgba(237,73,86,.05); }
+.ptRow--short { background: color-mix(in srgb, var(--danger) 5%, transparent); }
 
 .ptWeek {
   font-size: 12px;
@@ -3680,7 +3707,7 @@ body.compact .list    { gap: 1px; }
      same reason as the Log-tab entry actions (see .hcEntryEditBtn). */
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--stroke2);
   background: var(--surface2);
   color: var(--muted);
@@ -3713,7 +3740,7 @@ body.compact .list    { gap: 1px; }
   touch-action: pan-y;
 }
 .bulkEntryRow:first-child { border-top: none; }
-.bulkEntryRow.is-selected { background: rgba(37,99,235,.08); }
+.bulkEntryRow.is-selected { background: color-mix(in srgb, var(--primary) 8%, transparent); }
 .bulkEntryCheck { display: flex; align-items: center; flex-shrink: 0; padding: 10px; margin: -10px; }
 .bulkEntryCheck input { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
 .bulkEntryInfo { flex: 1; min-width: 0; }
@@ -3793,7 +3820,7 @@ body.compact .list    { gap: 1px; }
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: var(--danger);
   color: #fff;
   font-size: 10px;
@@ -3850,9 +3877,9 @@ body.compact .list    { gap: 1px; }
   margin-bottom: 6px;
 }
 #dupWarnGlobal[data-level="strong"] {
-  background: rgba(237,73,86,.15);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
   color: #f87171;
-  border: 1px solid rgba(237,73,86,.35);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
   animation: shakeWarn .35s ease;
 }
 #dupWarnGlobal[data-level="weak"] {
@@ -4055,7 +4082,7 @@ body.compact .list    { gap: 1px; }
   flex-shrink: 0;
   overflow: hidden;
   animation: mascotBob 2.8s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(37,99,235,0.25);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 @keyframes mascotBob {
@@ -4140,7 +4167,7 @@ body.compact .list    { gap: 1px; }
   padding: 14px 16px 16px;
   max-width: 680px;
   margin: 0 auto;
-  background: linear-gradient(to bottom, rgba(37,99,235,.07) 0%, transparent 100%);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--primary) 7%, transparent) 0%, transparent 100%);
   position: relative;
 }
 
@@ -4235,7 +4262,7 @@ body.compact .list    { gap: 1px; }
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 20px;
+  border-radius: var(--r-xl);
   border: 1.5px solid var(--stroke);
   background: var(--surface2);
   color: var(--muted);
@@ -4255,7 +4282,7 @@ body.compact .list    { gap: 1px; }
 .clockInBtn--active {
   border-color: var(--primary);
   color: var(--primary-text);
-  background: rgba(37,99,235,.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 .clockInBtn:active { transform: scale(.95); }
 
@@ -4276,14 +4303,14 @@ body.compact .list    { gap: 1px; }
   transition: background .12s, border-color .12s;
 }
 .repeatChip:active, .comboSuggestChip:active { background: var(--surface3); }
-.comboSuggestChip { border-style: dashed; border-color: rgba(37,99,235,.4); color: var(--primary-text); }
+.comboSuggestChip { border-style: dashed; border-color: color-mix(in srgb, var(--primary) 40%, transparent); color: var(--primary-text); }
 
 /* ── Owe Me tracker ───────────────────────────────── */
 .oweMeTotalBadge {
   font-size: 11px;
   font-weight: 700;
   color: var(--danger);
-  background: rgba(237,73,86,.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -4309,7 +4336,7 @@ body.compact .list    { gap: 1px; }
 .heroChartInner {
   background: var(--surface);
   border: 1px solid var(--stroke);
-  border-top: 2px solid rgba(37,99,235,.25);
+  border-top: 2px solid color-mix(in srgb, var(--primary) 25%, transparent);
   border-radius: var(--r-xl);
   overflow: hidden;
 }
@@ -4351,7 +4378,7 @@ body.compact .list    { gap: 1px; }
 .hcTab.hcTab--active {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(37,99,235,.35);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 /* Nav group: label flanked by prev/next arrows */
 .hcNavGroup {
@@ -4385,10 +4412,10 @@ body.compact .list    { gap: 1px; }
   fill: rgba(255,255,255,.07);
 }
 .hcBarSkel--today {
-  fill: rgba(37,99,235,.18);
+  fill: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 [data-color-theme="classic"][data-theme="light"] .hcBarSkel { fill: rgba(0,0,0,.07); }
-[data-color-theme="classic"][data-theme="light"] .hcBarSkel--today { fill: rgba(37,99,235,.18); }
+[data-color-theme="classic"][data-theme="light"] .hcBarSkel--today { fill: color-mix(in srgb, var(--primary) 18%, transparent); }
 
 .heroChartLabelsRow {
   display: flex;
@@ -4498,7 +4525,7 @@ body.compact .list    { gap: 1px; }
   flex: 1;
   padding: 6px 10px;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   letter-spacing: .05em;
 }
 .hcVinClearBtn {
@@ -4606,8 +4633,8 @@ body.compact .list    { gap: 1px; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(37,99,235,.1);
-  border: 1px solid rgba(37,99,235,.28);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: var(--r-pill);
   padding: 2px 8px 2px 6px;
   font-size: 11px;
@@ -4619,7 +4646,7 @@ body.compact .list    { gap: 1px; }
   align-self: flex-start;
   margin-top: 2px;
 }
-.hcEntryPhotoChip:active { background: rgba(37,99,235,.22); opacity: .85; }
+.hcEntryPhotoChip:active { background: color-mix(in srgb, var(--primary) 22%, transparent); opacity: .85; }
 /* Sits in a tightly-stacked column (2px gaps) with plain, non-tappable
    text above and below it, so a modest invisible hit-area is safe here —
    it can only ever compete with the chip itself, never another control. */
@@ -4736,7 +4763,7 @@ body.compact .list    { gap: 1px; }
 .asHandle {
   width: 36px; height: 4px;
   background: var(--stroke2);
-  border-radius: 99px;
+  border-radius: var(--r-pill);
   margin: 10px auto 14px;
 }
 .asTitle {
@@ -4858,15 +4885,15 @@ body.compact .list    { gap: 1px; }
 .heroStreak {
   display:inline-flex; align-items:center; gap:3px;
   font-size:10px; font-weight:700; color:var(--primary);
-  background:rgba(37,99,235,.1); border:1px solid rgba(37,99,235,.2);
-  border-radius:8px; padding:2px 7px; margin-top:4px; letter-spacing:.04em;
+  background:color-mix(in srgb, var(--primary) 10%, transparent); border:1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border-radius:var(--r-sm); padding:2px 7px; margin-top:4px; letter-spacing:.04em;
 }
 
 /* Short-pay flag */
 .shortPayFlag {
   font-size:10px; font-weight:700;
   background:rgba(245,158,11,.15); color:#f59e0b;
-  border-radius:4px; padding:1px 5px; margin-left:4px; vertical-align:middle;
+  border-radius:var(--r-xs); padding:1px 5px; margin-left:4px; vertical-align:middle;
 }
 
 /* Empty state */
@@ -5148,8 +5175,8 @@ body.compact .list    { gap: 1px; }
 .cbGood {
   font-size: 12px;
   color: var(--primary-text);
-  background: rgba(37,99,235,.08);
-  border: 1px solid rgba(37,99,235,.18);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
   border-radius: var(--r-md);
   padding: 8px 12px;
 }
@@ -5163,7 +5190,7 @@ body.compact .list    { gap: 1px; }
   background: var(--card-bg);
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow-lg);
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   padding: 20px 20px 24px;
   max-width: 420px;
   width: calc(100% - 32px);
@@ -5223,7 +5250,7 @@ body.compact .list    { gap: 1px; }
 
 /* Fix #1: Save button — always looks actionable */
 .fr26PrimaryAction { padding: 10px 14px 12px; }
-.fr26BtnPrimary { box-shadow: 0 4px 20px rgba(37,99,235,.35); }
+.fr26BtnPrimary { box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 35%, transparent); }
 
 /* Fix #5: Clear chip — danger tint so it's not confused with positive actions */
 .fr26ChipDanger {
@@ -5329,13 +5356,13 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
   flex-shrink: 0;
   padding: 6px 11px;
   border-radius: var(--r-md);
-  background: rgba(37,99,235,.12);
-  border: 1.5px solid rgba(37,99,235,.28);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--primary) 28%, transparent);
   cursor: pointer;
   transition: background 120ms var(--ease), transform 100ms var(--ease-bounce), border-color 120ms;
   max-width: 140px;
 }
-.recentTypeChip:active { transform: scale(.91); background: rgba(37,99,235,.22); }
+.recentTypeChip:active { transform: scale(.91); background: color-mix(in srgb, var(--primary) 22%, transparent); }
 .recentTypeChipName {
   font-size: 12px;
   font-weight: 700;
@@ -5379,8 +5406,8 @@ header h1 .headerIcon { font-size: 15px; margin-right: 4px; }
 
 /* Input focus glow — snappy pop on focus */
 @keyframes inputFocusPop {
-  from { box-shadow: 0 0 0 0 rgba(37,99,235,.45); }
-  to   { box-shadow: 0 0 0 4px rgba(37,99,235,.18); }
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
+  to   { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent); }
 }
 input.fr26Input:focus, textarea.fr26Input:focus {
   animation: inputFocusPop 180ms ease forwards;
@@ -5434,7 +5461,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* Save success: background flash green */
 @keyframes saveBtnFlash {
   0%,100% { background: var(--primary); transform: scale(1); }
-  35%     { background: #1d4ed8; transform: scale(.96); }
+  35%     { background: var(--primary-dark); transform: scale(.96); }
   65%     { background: #4ade80; transform: scale(1.04); }
 }
 .fr26BtnPrimary.btn-success {
@@ -5542,7 +5569,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 
 .reqSt { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; letter-spacing: .02em; }
 .reqSt--open      { background: rgba(245,158,11,.16); color: #f59e0b; }
-.reqSt--ack       { background: rgba(37,99,235,.15);  color: var(--primary-text); }
+.reqSt--ack       { background: color-mix(in srgb, var(--primary) 15%, transparent);  color: var(--primary-text); }
 .reqSt--done      { background: rgba(74,222,128,.16); color: #4ade80; }
 .reqSt--declined  { background: rgba(239,68,68,.14);  color: var(--danger); }
 
@@ -5555,7 +5582,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   transition: transform 130ms cubic-bezier(.34,1.56,.64,1), background 120ms, border-color 120ms, color 120ms;
 }
 .reqKind:active { transform: scale(.94); }
-.reqKind--on { background: rgba(37,99,235,.13); border-color: rgba(37,99,235,.5); }
+.reqKind--on { background: color-mix(in srgb, var(--primary) 13%, transparent); border-color: color-mix(in srgb, var(--primary) 50%, transparent); }
 .reqKindEmoji { font-size: 15px; }
 .reqKindLabel { font-size: 12.5px; font-weight: 600; color: var(--text); }
 
@@ -5579,8 +5606,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reqDetailsHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; }
 .reqDraftBtn {
   display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
-  color: var(--primary-text); background: rgba(37,99,235,.12); border: 1px solid rgba(37,99,235,.3);
-  border-radius: 999px; padding: 5px 10px; cursor: pointer; touch-action: manipulation;
+  color: var(--primary-text); background: color-mix(in srgb, var(--primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-radius: var(--r-pill); padding: 5px 10px; cursor: pointer; touch-action: manipulation;
   transition: transform 130ms cubic-bezier(.34,1.56,.64,1), opacity 120ms;
 }
 .reqDraftBtn:active { transform: scale(.94); }
@@ -5599,7 +5626,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .reqMsgs { max-height: 34vh; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
 .reqNoMsgs { font-size: 12px; color: var(--muted); padding: 6px 0; }
 .reqMsg { max-width: 86%; padding: 8px 11px; border-radius: 13px; }
-.reqMsg--mine { align-self: flex-end; background: rgba(37,99,235,.15); }
+.reqMsg--mine { align-self: flex-end; background: color-mix(in srgb, var(--primary) 15%, transparent); }
 .reqMsg--them { align-self: flex-start; background: var(--surface2); }
 .reqMsgBody { font-size: 12.5px; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
 .reqMsgWho { font-size: 10px; color: var(--muted); margin-top: 3px; }
@@ -5615,8 +5642,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   margin: 12px 16px 0;
   padding: 14px 16px;
   border-radius: var(--r-lg, 12px);
-  background: linear-gradient(135deg, rgba(37,99,235,.16), rgba(37,99,235,.07));
-  border: 1px solid rgba(37,99,235,.45);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, transparent), color-mix(in srgb, var(--primary) 7%, transparent));
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
   animation: rateSetupIn 380ms cubic-bezier(.22,1,.36,1) both;
 }
 @keyframes rateSetupIn { from { opacity: 0; transform: translateY(-6px); } }
@@ -5643,9 +5670,9 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* Brief highlight when we send someone to a specific field */
 .fieldPulse { animation: fieldPulse 1.5s ease-out; }
 @keyframes fieldPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
-  15%      { box-shadow: 0 0 0 4px rgba(37,99,235,.45); }
-  60%      { box-shadow: 0 0 0 4px rgba(37,99,235,.25); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+  15%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 45%, transparent); }
+  60%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent); }
 }
 
 /* ── Pay stub audit: missing-work review rows ───────────────────────────────── */
@@ -5688,7 +5715,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 }
 .reconThumb {
   width: 54px; height: 54px; flex-shrink: 0;
-  object-fit: cover; border-radius: 8px;
+  object-fit: cover; border-radius: var(--r-sm);
   border: 1px solid var(--stroke);
   background: var(--surface2);
   cursor: pointer;
@@ -5735,8 +5762,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .mwActions .iBtn { min-height: 46px; padding: 12px 16px; font-size: 13px; }
 .mwActions .mwPhotoBtn { flex: 1 1 auto; justify-content: center; font-weight: 700; }
 .mwCard--tappable { cursor: pointer; transition: transform 120ms var(--ease, ease), border-color 120ms; }
-.mwCard--tappable:active { transform: scale(.985); border-color: rgba(37,99,235,.5); }
-.mwPhotoBtn { color: var(--primary-text); border-color: rgba(37,99,235,.4); background: rgba(37,99,235,.09); }
+.mwCard--tappable:active { transform: scale(.985); border-color: color-mix(in srgb, var(--primary) 50%, transparent); }
+.mwPhotoBtn { color: var(--primary-text); border-color: color-mix(in srgb, var(--primary) 40%, transparent); background: color-mix(in srgb, var(--primary) 9%, transparent); }
 .mwNoPhoto  { font-size: 11.5px; color: var(--muted); font-style: italic; }
 
 /* ── Efficiency card ────────────────────────────────────────────────────────── */
@@ -5748,7 +5775,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   border: 1px solid var(--stroke);
 }
 .effCard.eff--strong { border-color: rgba(74,222,128,.45); background: linear-gradient(135deg, rgba(74,222,128,.12), rgba(74,222,128,.04)); }
-.effCard.eff--ok     { border-color: rgba(37,99,235,.4);  background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(37,99,235,.04)); }
+.effCard.eff--ok     { border-color: color-mix(in srgb, var(--primary) 40%, transparent);  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, transparent), color-mix(in srgb, var(--primary) 4%, transparent)); }
 .effCard.eff--low    { border-color: rgba(245,158,11,.4); background: linear-gradient(135deg, rgba(245,158,11,.12), rgba(245,158,11,.04)); }
 
 .effTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -5766,11 +5793,11 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 .effTrend--down { color: #f59e0b; }
 
 .effBar {
-  height: 6px; border-radius: 999px; margin: 11px 0 9px;
+  height: 6px; border-radius: var(--r-pill); margin: 11px 0 9px;
   background: var(--surface3, rgba(255,255,255,.08)); overflow: hidden;
 }
 .effBar > span {
-  display: block; height: 100%; border-radius: 999px; width: 0;
+  display: block; height: 100%; border-radius: var(--r-pill); width: 0;
   animation: effBarGrow 620ms cubic-bezier(.22,1,.36,1) forwards;
 }
 .eff--strong .effBar > span { background: #4ade80; }
@@ -5825,8 +5852,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 /* ── Pro lock (teaser shown to free users when billing is live) ────────────── */
 .proLock {
   text-align: center; padding: 20px 14px;
-  background: rgba(37,99,235,.06);
-  border: 1px dashed rgba(37,99,235,.35);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--primary) 35%, transparent);
   border-radius: var(--r-lg, 12px);
 }
 .proLockIcon { font-size: 24px; line-height: 1; margin-bottom: 8px; }
@@ -5854,7 +5881,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 @keyframes ltSlideDown { from { transform: translateY(0); } to { transform: translateY(28px); } }
 .ltInner {
   width: 100%; max-width: 520px;
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   margin: 0; max-height: 88vh; overflow-y: auto;
   animation: ltSlideUp 260ms cubic-bezier(.25,.46,.45,.94) both;
@@ -5887,8 +5914,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 }
 .ltChip:active { transform: scale(.9); }
 .ltChip--on {
-  background: rgba(37,99,235,.14); color: var(--primary-text);
-  border-color: rgba(37,99,235,.5);
+  background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary-text);
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
 }
 
 .ltRows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -6004,7 +6031,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   transition: color 120ms, border-color 120ms, transform 130ms cubic-bezier(.34,1.56,.64,1);
 }
 .heroDetailsToggle:active { transform: scale(.93); }
-.heroDetailsToggle--open { color: var(--primary-text); border-color: rgba(37,99,235,.45); }
+.heroDetailsToggle--open { color: var(--primary-text); border-color: color-mix(in srgb, var(--primary) 45%, transparent); }
 .heroDetailsChev {
   font-size: 12px; line-height: 1;
   transition: transform 200ms cubic-bezier(.4,0,.2,1);
@@ -6031,8 +6058,8 @@ input.fr26Input:focus, textarea.fr26Input:focus {
 
 .jsHeadline {
   font-size: 12px; line-height: 1.5; color: var(--text2);
-  background: rgba(37,99,235,.10);
-  border: 1px solid rgba(37,99,235,.22);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
   border-radius: var(--r-lg, 12px);
   padding: 9px 12px; margin-bottom: 10px;
 }
@@ -6052,7 +6079,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   transition: transform 130ms cubic-bezier(.34,1.56,.64,1);
 }
 .jsRow:active { transform: scale(.985); }
-.jsRow--best { border-color: rgba(37,99,235,.45); background: rgba(37,99,235,.07); }
+.jsRow--best { border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: color-mix(in srgb, var(--primary) 7%, transparent); }
 
 .jsRowMain { flex: 1; min-width: 0; }
 .jsRowName {
@@ -6069,7 +6096,7 @@ input.fr26Input:focus, textarea.fr26Input:focus {
   font-size: 9px; font-weight: 700; letter-spacing: .04em;
   border-radius: 5px; padding: 2px 5px; white-space: nowrap;
 }
-.jsBadge--best { background: rgba(37,99,235,.18); color: var(--primary-text); }
+.jsBadge--best { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary-text); }
 .jsBadge--warn { background: rgba(245,158,11,.16); color: #f59e0b; }
 .jsBadge--thin { background: var(--surface3, var(--surface2)); color: var(--muted); font-weight: 600; }
 

@@ -17,24 +17,89 @@
         ?window.matchMedia('(prefers-color-scheme: dark)').matches
         :(dm===true||dm==='dark');
       document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+      // Color theme (Sunset/Classic/Carnival/Tropic/Neon) — team.html had no
+      // idea this setting existed: it always rendered Classic's blue no
+      // matter which theme a tech picked in the main app, on top of its own
+      // separately-maintained (and drifted) copy of app.css's tokens. Mirrors
+      // the same attribute + default that index.html/applySettings() use.
+      document.documentElement.setAttribute('data-color-theme', s.colorTheme || 'sunset');
     })();
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Token values below were this page's OWN hand-copied guess at app.css's
+       palette and had drifted from it (different grays, a stale --danger red
+       left over from before the app's #ef4444 rebrand). Brought back in sync
+       during a UI-consistency pass so Team Dashboard is a match for the main
+       app, not a lookalike. --accent stays intentionally decoupled from the
+       theme's brand color: on this page it means "positive" (resolved
+       status, tech badge, up-trend), so it keeps its own fixed green
+       everywhere rather than turning e.g. neon-magenta on the Neon theme. */
     :root {
-      --bg: #0f1117; --surface: #1c1c1e; --surface2: #242427; --surface3: #2c2c2f;
-      --stroke: rgba(255,255,255,.09); --stroke2: rgba(255,255,255,.16);
-      --text: #fff; --muted: #a8a8a8; --muted2: #6b6b6b;
-      --primary: #2563EB; --accent: #29d9a5; --danger: #ed4956;
+      --bg: #07070f; --surface: #0e0e1a; --surface2: #141426; --surface3: #1c1c30;
+      --stroke: rgba(255,255,255,.07); --stroke2: rgba(255,255,255,.13);
+      --text: #fff; --muted: #7a7a9a; --muted2: rgba(255,255,255,.47);
+      --primary: #2563EB; --accent: #29d9a5; --danger: #ef4444;
       --r: 12px;
     }
-    /* Light theme -- team.html had none of this; every color above was a
-       flat dark-mode literal with no override, so switching the app to
-       light theme did nothing here. Values mirror app.css's light tokens. */
     [data-theme="light"] {
       --bg: #f2f2f7; --surface: #ffffff; --surface2: #e5e5ea; --surface3: #d1d1d6;
       --stroke: rgba(0,0,0,.12); --stroke2: rgba(0,0,0,.18);
-      --text: #000000; --muted: #3c3c43; --muted2: rgba(60,60,67,.60);
+      --text: #000000; --muted: #3c3c43; --muted2: rgba(60,60,67,.82);
+    }
+    /* Color themes (Sunset/Carnival/Tropic/Neon) — same values as the
+       matching [data-color-theme="…"][data-theme="…"] blocks in app.css.
+       "classic" needs no block here either, same as there: it's exactly the
+       :root/[data-theme] tokens above. --danger is NOT themed here for the
+       same reason app.css never themes it: it's a fixed constant across all
+       5 presets there too. */
+    :root[data-color-theme="sunset"][data-theme="light"] {
+      --bg: #FFF9F2; --surface: #FFFFFF; --surface2: #F3EDE1; --surface3: #EDE6DA;
+      --stroke: rgba(43,33,64,.08); --stroke2: rgba(43,33,64,.14);
+      --text: #2B2140; --muted: #777185; --muted2: rgba(43,33,64,.64);
+      --primary: #FF6F61;
+    }
+    :root[data-color-theme="sunset"][data-theme="dark"] {
+      --bg: #180d0c; --surface: #241514; --surface2: #311d1c; --surface3: #3d2624;
+      --stroke: rgba(255,255,255,.07); --stroke2: rgba(255,255,255,.13);
+      --text: #f5f0ef; --muted: #ab7773; --muted2: rgba(245,240,239,.49);
+      --primary: #FF6F61;
+    }
+    :root[data-color-theme="carnival"][data-theme="light"] {
+      --bg: #FFFFFF; --surface: #F7F3FF; --surface2: #EDE6FB; --surface3: #E0D6F7;
+      --stroke: rgba(36,24,84,.08); --stroke2: rgba(36,24,84,.14);
+      --text: #241854; --muted: #6e678e; --muted2: rgba(36,24,84,.66);
+      --primary: #FF2D78;
+    }
+    :root[data-color-theme="carnival"][data-theme="dark"] {
+      --bg: #180c10; --surface: #24141a; --surface2: #311c23; --surface3: #3d242d;
+      --stroke: rgba(255,255,255,.07); --stroke2: rgba(255,255,255,.13);
+      --text: #f5eff1; --muted: #ab7386; --muted2: rgba(245,239,241,.50);
+      --primary: #FF2D78;
+    }
+    :root[data-color-theme="tropic"][data-theme="light"] {
+      --bg: #FFFDF4; --surface: #FFFFFF; --surface2: #EAF9F1; --surface3: #DFF3E9;
+      --stroke: rgba(14,59,46,.08); --stroke2: rgba(14,59,46,.14);
+      --text: #0E3B2E; --muted: #5b7a71; --muted2: rgba(14,59,46,.68);
+      --primary: #E8590C;
+    }
+    :root[data-color-theme="tropic"][data-theme="dark"] {
+      --bg: #18100c; --surface: #241a14; --surface2: #31231c; --surface3: #3d2d24;
+      --stroke: rgba(255,255,255,.07); --stroke2: rgba(255,255,255,.13);
+      --text: #f5f1ef; --muted: #a57e69; --muted2: rgba(245,241,239,.50);
+      --primary: #E8590C;
+    }
+    :root[data-color-theme="neon"][data-theme="dark"] {
+      --bg: #120E22; --surface: #1B1533; --surface2: #241D40; --surface3: #2E2650;
+      --stroke: rgba(255,255,255,.08); --stroke2: rgba(255,255,255,.14);
+      --text: #F2F0FF; --muted: #A99CE0; --muted2: rgba(242,240,255,.5);
+      --primary: #FF2FD0;
+    }
+    :root[data-color-theme="neon"][data-theme="light"] {
+      --bg: #fbf6fb; --surface: #FFFFFF; --surface2: #f5f0f8; --surface3: #ede4f1;
+      --stroke: rgba(41,20,52,.08); --stroke2: rgba(41,20,52,.14);
+      --text: #291434; --muted: #886699; --muted2: rgba(41,20,52,.61);
+      --primary: #FF2FD0;
     }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
     a { color: var(--primary); text-decoration: none; }
@@ -81,7 +146,7 @@
     .cell-muted { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
     .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-    .badge-manager { background: rgba(37,99,235,.15); color: var(--primary); }
+    .badge-manager { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
     .badge-tech    { background: rgba(41,217,165,.15); color: var(--accent); }
 
     .inviteRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
@@ -126,7 +191,7 @@
     .chart-bar.is-weekend { background: var(--stroke2); }
     .chart-lbl { font-size: 9px; color: var(--muted2); white-space: nowrap; overflow: hidden; }
 
-    .insight { background: rgba(37,99,235,.08); border: 1px solid rgba(37,99,235,.25); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; }
+    .insight { background: color-mix(in srgb, var(--primary) 8%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; }
     .insight strong { color: var(--primary); }
 
     th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; padding-top: 13px; padding-bottom: 13px; box-sizing: border-box; }
@@ -147,7 +212,7 @@
     .claim-who { color: var(--muted); font-weight: 600; }
     .st { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
     .st-open { background: rgba(245,158,11,.16); color: #f59e0b; }
-    .st-acknowledged { background: rgba(37,99,235,.15); color: var(--primary); }
+    .st-acknowledged { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
     .st-resolved { background: rgba(41,217,165,.15); color: var(--accent); }
     .st-declined { background: rgba(239,68,68,.14); color: var(--danger); }
 
@@ -160,7 +225,7 @@
     .cd-details { font-size: 13px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; }
     .cd-msgs { max-height: 32vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
     .cd-msg { max-width: 86%; padding: 9px 12px; border-radius: 13px; }
-    .cd-msg.mine { align-self: flex-end; background: rgba(37,99,235,.15); }
+    .cd-msg.mine { align-self: flex-end; background: color-mix(in srgb, var(--primary) 15%, transparent); }
     .cd-msg.them { align-self: flex-start; background: var(--surface2); }
     .cd-msg-body { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
     .cd-msg-who { font-size: 10px; color: var(--muted2); margin-top: 3px; }
@@ -209,14 +274,14 @@
                   width 420ms cubic-bezier(.34,1.3,.64,1), height 420ms cubic-bezier(.34,1.3,.64,1);
     }
     @keyframes tourPulse {
-      0%,100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 rgba(37,99,235,.7), 0 0 0 0 rgba(37,99,235,.3); }
-      60%     { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 10px rgba(37,99,235,0), 0 0 0 20px rgba(37,99,235,0); }
+      0%,100% { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 0 color-mix(in srgb, var(--primary) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--primary) 30%, transparent); }
+      60%     { box-shadow: 0 0 0 9999px rgba(0,0,0,.72), 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent), 0 0 0 20px color-mix(in srgb, var(--primary) 0%, transparent); }
     }
     #tourSpotlight.pulse { animation: tourPulse 1.8s cubic-bezier(.4,0,.6,1) infinite; }
     .tourTooltip {
       position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
-      background: var(--surface); border: 1px solid rgba(37,99,235,.25); border-radius: 18px;
-      padding: 20px 18px 16px; box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(37,99,235,.1);
+      background: var(--surface); border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); border-radius: 18px;
+      padding: 20px 18px 16px; box-shadow: 0 12px 48px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent);
       z-index: 10001; max-width: 520px; margin: 0 auto;
       animation: tourTooltipIn 480ms cubic-bezier(.34,1.4,.64,1) both;
     }
@@ -229,7 +294,7 @@
     .tourMascotAvatar {
       width: 46px; height: 46px; border-radius: 22%; background: #0b1220; border: 2px solid var(--primary);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;
-      animation: mascotBob 2.8s ease-in-out infinite; box-shadow: 0 0 12px rgba(37,99,235,.25);
+      animation: mascotBob 2.8s ease-in-out infinite; box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 25%, transparent);
     }
     [data-theme="light"] .tourMascotAvatar { background: var(--surface3); }
     @keyframes mascotBob { 0%,100% { transform: translateY(0) rotate(-1deg); } 45% { transform: translateY(-5px) rotate(1.5deg); } 70% { transform: translateY(-2px) rotate(0deg); } }

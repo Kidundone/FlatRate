@@ -2516,11 +2516,24 @@ function initSettingsUI() {
 
   // ── Color theme (Sunset/Classic/Carnival/Tropic/Neon) ──
   const themeButtons = Array.from(document.querySelectorAll("#themeSwatchRow .themeSwatch"));
+  const accentColorRow = document.getElementById("accentColorRow");
+  // Accent Color only ever does anything on Classic (applySettings() strips
+  // the inline --primary/--accent override for every preset theme) — but the
+  // row never LOOKED disabled on a preset theme, and worse, dragging the
+  // native color input still lived-previewed a full app recolor via the
+  // "input" listener below before autosave silently reverted it. Both are
+  // fixed together: the swatch/input actually go inert, and look it.
+  const syncAccentRowState = () => {
+    const isClassic = (getSettings().colorTheme || "sunset") === "classic";
+    if (colorPicker) colorPicker.disabled = !isClassic;
+    accentColorRow?.classList.toggle("moreRow--disabled", !isClassic);
+  };
   const syncThemeBtns = () => {
     const active = getSettings().colorTheme || "sunset";
     themeButtons.forEach(btn => {
       btn.setAttribute("aria-pressed", String(btn.dataset.themeValue === active));
     });
+    syncAccentRowState();
   };
   syncThemeBtns();
   themeButtons.forEach(btn => {
@@ -2531,8 +2544,11 @@ function initSettingsUI() {
     });
   });
 
-  // Live color preview
+  // Live color preview — no-ops while a preset theme is active (see
+  // syncAccentRowState above), since the input is disabled then anyway;
+  // this guard is belt-and-suspenders against any programmatic "input" fire.
   colorPicker?.addEventListener("input", (e) => {
+    if ((getSettings().colorTheme || "sunset") !== "classic") return;
     const c = e.target.value;
     if (colorPreview) colorPreview.style.background = c;
     document.documentElement.style.setProperty("--primary", c);

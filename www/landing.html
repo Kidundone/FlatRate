@@ -18,7 +18,7 @@
       --muted: #8a93a8;
       --muted2: #4b5563;
       --primary: #2563EB;
-      --primary-dim: rgba(37,99,235,0.12);
+      --primary-dim: color-mix(in srgb, var(--primary) 12%, transparent);
       --card: #111827;
       --stroke: #1f2937;
       --danger: #ef4444;
@@ -35,7 +35,7 @@
     .navCta { background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
 
     .hero { text-align: center; padding: 72px 24px 64px; max-width: 700px; margin: 0 auto; }
-    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(37,99,235,0.25); }
+    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); }
     .heroH1 { font-size: clamp(32px, 6vw, 54px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; letter-spacing: -0.02em; }
     .heroH1 span { color: var(--primary); }
     .heroParagraph { font-size: 18px; color: var(--muted); max-width: 520px; margin: 0 auto 36px; }

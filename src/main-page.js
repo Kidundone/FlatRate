@@ -763,13 +763,16 @@ function renderHeroChart(entries, weekStart) {
     const gap  = 3;
     const isLight = document.documentElement.dataset.theme === "light";
     const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-    const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
+    // Was a hardcoded rgba(37,99,235,…) — the RGB of Classic's blue spelled
+    // out by hand — so every non-current bar stayed blue on every theme.
+    // themeRgba() reads the live --primary instead.
+    const pastColor  = themeRgba(isLight ? .30 : .28);
     svg.innerHTML = "";
     buckets.forEach((b, i) => {
       const x = gap + i * (barW + gap);
       const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
       const y = H - barH;
-      const color = b.isCurrent ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
+      const color = b.isCurrent ? getThemePrimary() : b.dollars > 0 ? pastColor : emptyColor;
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute("x", x.toFixed(1));
       rect.setAttribute("y", y.toFixed(1));
@@ -832,7 +835,7 @@ function renderHeroChart(entries, weekStart) {
     const monthEnd   = endOfMonthLocal(navNow);
     const isLight = document.documentElement.dataset.theme === "light";
     const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-    const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
+    const pastColor  = themeRgba(isLight ? .30 : .28);
 
     // Walk week starts that overlap this month
     const wkBuckets = [];
@@ -868,7 +871,7 @@ function renderHeroChart(entries, weekStart) {
       const x = gap + i * (barW + gap);
       const barH = b.dollars > 0 ? Math.max(3, (b.dollars / max) * (H - 6)) : 3;
       const y = H - barH;
-      const color = b.isCurrent ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
+      const color = b.isCurrent ? getThemePrimary() : b.dollars > 0 ? pastColor : emptyColor;
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute("x", x.toFixed(1));
       rect.setAttribute("y", y.toFixed(1));
@@ -933,7 +936,7 @@ function renderHeroChart(entries, weekStart) {
   const W = 300, H = 56, barW = 30, gap = (W - 7 * barW) / 8;
   const isLight = document.documentElement.dataset.theme === "light";
   const emptyColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
-  const pastColor  = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
+  const pastColor  = themeRgba(isLight ? .30 : .28);
 
   // Animated bars
   svg.innerHTML = "";
@@ -941,7 +944,7 @@ function renderHeroChart(entries, weekStart) {
     const x = gap + i * (barW + gap);
     const barH = Math.max(3, (b.dollars / max) * (H - 6));
     const y = H - barH;
-    const color = b.isToday ? "#2563EB" : b.dollars > 0 ? pastColor : emptyColor;
+    const color = b.isToday ? getThemePrimary() : b.dollars > 0 ? pastColor : emptyColor;
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", x.toFixed(1));
     rect.setAttribute("y", y.toFixed(1));
@@ -2637,14 +2640,20 @@ function renderWeekChart(thisWeekDollars, lastWeekDollars) {
   const diff = round2(thisWeekDollars - lastWeekDollars);
   const sign = diff > 0 ? "+" : "";
   const diffColor = diff >= 0 ? "#29d9a5" : "#ff6b6b";
+  // Was hardcoded #1e2f4a/#2563EB/#7a8baa — a fixed dark-navy palette that
+  // never matched the app's actual theme (wrong on every color theme, and
+  // low-contrast on light mode since this chart sits on the regular themed
+  // background, not a dedicated dark card). CSS var() strings written
+  // straight into the SVG markup resolve live against whatever theme is
+  // active, same technique as the hero goal ring in index.html.
   el.innerHTML = `
     <svg viewBox="0 0 160 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
-      <rect x="18" y="${90 - lastH}" width="44" height="${lastH}" rx="5" fill="#1e2f4a"/>
-      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="#2563EB"/>
-      <text x="40" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">Last Week</text>
-      <text x="120" y="102" text-anchor="middle" font-size="9" fill="#7a8baa">This Week</text>
-      <text x="40" y="${86 - lastH}" text-anchor="middle" font-size="8" fill="#7a8baa">${formatMoney(lastWeekDollars)}</text>
-      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="#2563EB">${formatMoney(thisWeekDollars)}</text>
+      <rect x="18" y="${90 - lastH}" width="44" height="${lastH}" rx="5" fill="var(--surface3)"/>
+      <rect x="98" y="${90 - thisH}" width="44" height="${thisH}" rx="5" fill="var(--primary)"/>
+      <text x="40" y="102" text-anchor="middle" font-size="9" fill="var(--muted)">Last Week</text>
+      <text x="120" y="102" text-anchor="middle" font-size="9" fill="var(--muted)">This Week</text>
+      <text x="40" y="${86 - lastH}" text-anchor="middle" font-size="8" fill="var(--muted)">${formatMoney(lastWeekDollars)}</text>
+      <text x="120" y="${86 - thisH}" text-anchor="middle" font-size="8" fill="var(--primary-text)">${formatMoney(thisWeekDollars)}</text>
       <text x="80" y="112" text-anchor="middle" font-size="9" fill="${diffColor}">${sign}${formatMoney(diff)} vs last week</text>
     </svg>`;
 }
@@ -3229,8 +3238,10 @@ async function renderTypesListInMore(){
       const open = form.style.display !== "none";
       form.style.display = open ? "none" : "block";
       editBtn.style.opacity = open ? "" : "1";
-      editBtn.style.background = open ? "" : "rgba(37,99,235,.12)";
-      editBtn.style.borderColor = open ? "" : "rgba(37,99,235,.35)";
+      // Was hardcoded Classic-blue rgba() — color-mix() written straight into
+      // the inline style resolves against the live theme, same as app.css.
+      editBtn.style.background = open ? "" : "color-mix(in srgb, var(--primary) 12%, transparent)";
+      editBtn.style.borderColor = open ? "" : "color-mix(in srgb, var(--primary) 35%, transparent)";
       editBtn.style.color = open ? "" : "var(--primary)";
     });
     cancelBtn.addEventListener("click", () => {
@@ -4428,15 +4439,19 @@ async function shareWeekCard() {
   else ctx.rect(0, 0, W, H);
   ctx.fill();
 
-  // Green top bar
+  // Accent bar — was hardcoded Classic blue (#2563EB/#1d4ed8, and a stale
+  // "Green top bar" comment from before the brand color even became blue);
+  // this is a shareable export, not a live themed page, so it deliberately
+  // keeps its own fixed dark background, but the accent now follows
+  // whichever theme/primary color the user actually picked.
   const bar = ctx.createLinearGradient(0, 0, W, 0);
-  bar.addColorStop(0, "#2563EB");
-  bar.addColorStop(1, "#1d4ed8");
+  bar.addColorStop(0, getThemePrimary());
+  bar.addColorStop(1, getThemePrimaryDark());
   ctx.fillStyle = bar;
   ctx.fillRect(0, 0, W, 3);
 
   // Header
-  ctx.fillStyle = "rgba(37,99,235,.9)";
+  ctx.fillStyle = themeRgba(.9);
   ctx.font = "bold 13px -apple-system,system-ui,sans-serif";
   ctx.fillText("FLAT-RATE TRACKER", 24, 30);
 
@@ -4483,7 +4498,7 @@ async function shareWeekCard() {
     const x = 24 + i * (bW + bGap);
     const h = Math.max(3, (b.dollars / maxBar) * bH);
     const y = 175 + bH - h;
-    ctx.fillStyle = b.dollars > 0 ? "rgba(37,99,235,.7)" : "rgba(255,255,255,.08)";
+    ctx.fillStyle = b.dollars > 0 ? themeRgba(.7) : "rgba(255,255,255,.08)";
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, bW, h, 4);
     else ctx.rect(x, y, bW, h);
@@ -4575,7 +4590,9 @@ function render8WeekChart(allEntries) {
   const maxD = Math.max(...weeks.map(w => w.dollars), 1);
   const W2 = 340, H2 = 80, bW2 = 30, gap2 = (W2 - 8 * bW2) / 9;
   const isLight = document.documentElement.dataset.theme === "light";
-  const pastC = isLight ? "rgba(37,99,235,.30)" : "rgba(37,99,235,.28)";
+  // Was hardcoded rgba(37,99,235,…)/"#2563EB" — same Classic-blue-everywhere
+  // bug as the other hero charts; var()/getThemePrimary() track the live theme.
+  const pastC = themeRgba(isLight ? .30 : .28);
   const emptyC = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)";
 
   let rects = "";
@@ -4583,10 +4600,10 @@ function render8WeekChart(allEntries) {
     const x = gap2 + i * (bW2 + gap2);
     const bH2 = Math.max(3, (w.dollars / maxD) * (H2 - 12));
     const y2 = H2 - bH2;
-    const fill = w.isCurrent ? "#2563EB" : w.dollars > 0 ? pastC : emptyC;
+    const fill = w.isCurrent ? "var(--primary)" : w.dollars > 0 ? pastC : emptyC;
     rects += `<rect class="eightWkBar" x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bW2}" height="${bH2.toFixed(1)}" rx="4" fill="${fill}" style="transform-origin:${(x+bW2/2).toFixed(1)}px ${H2}px;transform:scaleY(0);transition:transform 360ms cubic-bezier(.34,1.56,.64,1) ${i*40}ms"/>`;
     if (w.dollars > 0) {
-      rects += `<text x="${(x+bW2/2).toFixed(1)}" y="${(y2-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${w.isCurrent ? "#2563EB" : "rgba(255,255,255,.5)"}">${formatMoney(w.dollars)}</text>`;
+      rects += `<text x="${(x+bW2/2).toFixed(1)}" y="${(y2-3).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${w.isCurrent ? "var(--primary-text)" : "rgba(255,255,255,.5)"}">${formatMoney(w.dollars)}</text>`;
     }
   });
 

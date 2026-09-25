@@ -41,7 +41,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.cdb774e10f.css">
+  <link rel="stylesheet" href="./app.bfc3048d3e.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -65,7 +65,10 @@
     .splashRing {
       width: 28px; height: 28px;
       border: 2.5px solid rgba(255,255,255,0.1);
-      border-top-color: #2563EB;
+      /* Was hardcoded Classic blue; app.bfc3048d3e.css (and data-color-theme, both set
+         before this point) are already loaded, so var(--primary) resolves
+         correctly here too. */
+      border-top-color: var(--primary);
       border-radius: 50%;
       animation: splashSpin 0.8s linear infinite;
     }
@@ -112,7 +115,11 @@
   <div class="heroGoalRingWrap">
     <svg id="heroGoalRingEl" viewBox="0 0 96 96" width="102" height="102">
       <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="6"/>
-      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="#2563EB" stroke-width="6"
+      <!-- Was a hardcoded #2563EB (Classic's blue) — every other color theme
+           (Sunset, Carnival, Tropic, Neon) still drew a random blue arc
+           instead of that theme's own primary color. var() works fine in an
+           SVG presentation attribute in every evergreen browser. -->
+      <circle id="heroGoalArc" cx="48" cy="48" r="38" fill="none" stroke="var(--primary)" stroke-width="6"
         stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
         transform="rotate(-90 48 48)"
         style="transition:stroke-dashoffset 700ms cubic-bezier(.4,0,.2,1);"/>
@@ -237,7 +244,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.cdb774e10f.css. Now a real single-row horizontal scroll with
+               fix in app.bfc3048d3e.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -307,7 +314,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.cdb774e10f.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.bfc3048d3e.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -978,7 +985,7 @@
             </div>
           </div>
           <div class="moreDivider"></div>
-          <div class="moreRow">
+          <div class="moreRow" id="accentColorRow">
             <div>
               <div class="moreRowLabel">Accent Color</div>
               <div class="moreRowSub">Classic theme only</div>
@@ -1487,7 +1494,7 @@
           <span style="font-size:26px;">⚡</span>
           <div>
             <h2 style="margin:0;font-size:22px;font-weight:800;">Flatrate Buddy Pro</h2>
-            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:rgba(37,99,235,.12);padding:2px 8px;border-radius:99px;">Get It Back</span>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);background:color-mix(in srgb, var(--primary) 12%, transparent);padding:2px 8px;border-radius:99px;">Get It Back</span>
           </div>
         </div>
         <p style="margin:12px 0 16px;color:var(--muted);font-size:14px;line-height:1.5;">Spotting a short pay is free. Pro gives you the proof to get it back — and shows you what the shop's downtime is costing you.</p>
@@ -1566,7 +1573,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.e6e2ba6f71.js" defer></script>
+<script src="./app.54c5324cdc.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

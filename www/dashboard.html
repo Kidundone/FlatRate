@@ -6,11 +6,18 @@
   <title>Flat-Rate — Feedback Dashboard</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Admin-only page (not reachable from the app's nav) — was its own
+       drifted guess at the app's palette, including a leftover
+       pre-rebrand var(--primary) (Instagram blue) that never became #2563EB the
+       way the main app did. Synced to app.bfc3048d3e.css's actual Classic tokens; kept
+       to a fixed dark look on purpose (no light/dark or 5-theme support) —
+       an internal tool, not part of the tech/manager-facing UI this pass is
+       otherwise focused on. */
     :root {
-      --bg: #0f1117; --surface: #1c1c1e; --surface2: #242427; --surface3: #2c2c2f;
-      --stroke: rgba(255,255,255,.09); --stroke2: rgba(255,255,255,.16);
-      --text: #fff; --muted: #a8a8a8; --muted2: #6b6b6b;
-      --primary: #0095f6; --accent: #29d9a5; --danger: #ed4956;
+      --bg: #07070f; --surface: #0e0e1a; --surface2: #141426; --surface3: #1c1c30;
+      --stroke: rgba(255,255,255,.07); --stroke2: rgba(255,255,255,.13);
+      --text: #fff; --muted: #7a7a9a; --muted2: rgba(255,255,255,.47);
+      --primary: #2563EB; --accent: #29d9a5; --danger: #ef4444;
       --r: 12px;
     }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
@@ -22,7 +29,7 @@
     .sidebar-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted2); padding: 0 16px 8px; }
     .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; min-height: 44px; box-sizing: border-box; border-radius: 0; cursor: pointer; color: var(--muted); font-weight: 500; border: none; background: none; width: 100%; text-align: left; font-size: 13px; transition: background 120ms, color 120ms; }
     .nav-item:hover { background: var(--surface2); color: var(--text); }
-    .nav-item.active { background: rgba(0,149,246,.15); color: var(--primary); }
+    .nav-item.active { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
     .nav-badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
     .nav-badge.zero { background: var(--surface3); color: var(--muted2); }
     .main { flex: 1; min-width: 0; padding: 28px 32px; }
@@ -73,12 +80,12 @@
 
     /* ── Badges ── */
     .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-    .badge-bug         { background: rgba(237,73,86,.15);  color: #ed4956; }
-    .badge-feature     { background: rgba(0,149,246,.15);  color: #0095f6; }
+    .badge-bug         { background: color-mix(in srgb, var(--danger) 15%, transparent);  color: var(--danger); }
+    .badge-feature     { background: color-mix(in srgb, var(--primary) 15%, transparent);  color: var(--primary); }
     .badge-usability   { background: rgba(175,82,222,.15); color: #af52de; }
     .badge-performance { background: rgba(255,159,10,.15); color: #ff9f0a; }
     .badge-general     { background: rgba(168,168,168,.15);color: #a8a8a8; }
-    .badge-new      { background: rgba(0,149,246,.15);  color: #0095f6; }
+    .badge-new      { background: color-mix(in srgb, var(--primary) 15%, transparent);  color: var(--primary); }
     .badge-reviewed { background: rgba(255,159,10,.15); color: #ff9f0a; }
     .badge-resolved { background: rgba(41,217,165,.15); color: #29d9a5; }
     .badge-wont-fix { background: rgba(168,168,168,.15);color: #a8a8a8; }
