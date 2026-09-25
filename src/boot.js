@@ -1261,10 +1261,21 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 // added above. showWhatsNew() below renders the current version up top and
 // every older version underneath in a collapsed "Past updates" section, so
 // the full history stays browsable from the app itself, not just here.
-const APP_VERSION = "1.10";
+const APP_VERSION = "1.11-beta";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
+  "1.11-beta": [
+    "🏢 Multi-dealership support — techs who work more than one shop get a dealership picker on new entries and a shop switcher on the team dashboard",
+    "Requesting a correction is simpler — pick the job you already logged and it fills in the RO, date, hours, and pay for you",
+    "Fixed a bug where a manager sharing a tech across dealerships could see 100% of that tech's hours instead of just their own shop's",
+    "History tab redesigned — your entries show up first, with insights grouped and tucked away instead of crowding the top",
+    "Fixed bulk-select sometimes firing twice on one tap",
+    "Bigger, more precise tap targets across the team dashboard, shop dashboard, and static pages",
+    "Shop dashboard now live-refreshes on its own — no more reopening the tab to see a new entry or status change",
+    "Fixed iOS text fields auto-zooming and making the app look like it's scrolling side to side",
+    "Cleaned up a bunch of small theme-inconsistency bugs — corner rounding and colors now match across every page and both light/dark modes",
+  ],
   "1.10": [
     "Fixed the Team dashboard sometimes failing to load — stats, the chart, and the roster could go blank on refresh",
     "Team dashboard now recovers and reports the problem instead of failing silently, if something like that happens again",
@@ -1336,7 +1347,11 @@ const CHANGELOG = {
 };
 
 function _whatsNewVerLabel(version) {
-  return version.includes("beta") ? "v1.3 Beta 🧪" : "v" + version;
+  // e.g. "1.11-beta" -> "v1.11 Beta 🧪"; was previously hardcoded to
+  // always show "v1.3 Beta" for any version string containing "beta".
+  return version.includes("beta")
+    ? "v" + version.replace(/-beta$/, "") + " Beta 🧪"
+    : "v" + version;
 }
 
 function showWhatsNew(version) {
