@@ -1261,11 +1261,11 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 // added above. showWhatsNew() below renders the current version up top and
 // every older version underneath in a collapsed "Past updates" section, so
 // the full history stays browsable from the app itself, not just here.
-const APP_VERSION = "1.11-beta";
+const APP_VERSION = "0.11-beta";
 const LS_SEEN_VER = "fr_seen_version";
 
 const CHANGELOG = {
-  "1.11-beta": [
+  "0.11-beta": [
     "🏢 Multi-dealership support — techs who work more than one shop get a dealership picker on new entries and a shop switcher on the team dashboard",
     "Requesting a correction is simpler — pick the job you already logged and it fills in the RO, date, hours, and pay for you",
     "Fixed a bug where a manager sharing a tech across dealerships could see 100% of that tech's hours instead of just their own shop's",
