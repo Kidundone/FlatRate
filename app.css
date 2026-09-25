@@ -2805,6 +2805,20 @@ a.btn {
   margin: 0 16px;
 }
 
+/* Group label above a cluster of Settings cards (Account / Preferences /
+   Payroll Tools / Support) — iOS-Settings-style section header so the tab
+   reads as grouped sections instead of one flat stack of identical cards. */
+.moreGroupLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 4px 6px 8px;
+  margin-top: 22px;
+}
+.moreGroupLabel--first { margin-top: 12px; }
+
 /* Sub-section labels inside a grouped collapsible (e.g. Insights & Trends) */
 .insightsSubHead {
   font-size: 12.5px;

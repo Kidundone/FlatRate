@@ -41,7 +41,7 @@
   <meta property="og:url"         content="https://app.nellylabs.dev/" />
   <meta name="description"        content="Your flat-rate sidekick — log jobs, track pay, and catch every dollar you earn." />
   <meta name="google-site-verification" content="phr9OFoYfK_SfuCeUY4l9bkMdfhMyE1DBJZru7xsdYQ" />
-  <link rel="stylesheet" href="./app.bfc3048d3e.css">
+  <link rel="stylesheet" href="./app.6ee885de90.css">
   <style>
     #appSplash {
       position: fixed; inset: 0; z-index: 99999;
@@ -65,7 +65,7 @@
     .splashRing {
       width: 28px; height: 28px;
       border: 2.5px solid rgba(255,255,255,0.1);
-      /* Was hardcoded Classic blue; app.bfc3048d3e.css (and data-color-theme, both set
+      /* Was hardcoded Classic blue; app.6ee885de90.css (and data-color-theme, both set
          before this point) are already loaded, so var(--primary) resolves
          correctly here too. */
       border-top-color: var(--primary);
@@ -244,7 +244,7 @@
                  enterkeyhint="next" />
           <!-- Was a wrapping 2-row grid because #smartHourChips (no layout
                of its own) broke out of the flex row -- see display:contents
-               fix in app.bfc3048d3e.css. Now a real single-row horizontal scroll with
+               fix in app.6ee885de90.css. Now a real single-row horizontal scroll with
                the same fade-affordance pattern as the other chip rows. -->
           <div class="fr26QuickHoursOuter">
           <div class="fr26QuickHours">
@@ -314,7 +314,7 @@
       </div>
 
       <!-- Quick-tools chip row — horizontal scroll with right fade hint, same
-           pattern as .statsChipsOuter (see app.bfc3048d3e.css). Without the fade, this row
+           pattern as .statsChipsOuter (see app.6ee885de90.css). Without the fade, this row
            silently clips its last chip(s) off-screen with no indication there's
            more to scroll to — found during a UI pass, not reported by a user. -->
       <div class="fr26QuickToolsOuter">
@@ -837,10 +837,12 @@
     <!-- SETTINGS TAB -->
     <div class="moreTabPanel" id="mPanel-settings" role="tabpanel">
 
+      <div class="moreGroupLabel moreGroupLabel--first">Account</div>
+
       <!-- Profile & Rate — kept always visible: these are the handful of
            settings people actually touch often (or need once at setup). -->
-      <section class="card moreCard" style="margin-top:12px;">
-        <div class="moreCardHeader">Profile</div>
+      <section class="card moreCard">
+        <div class="moreCardHeader">👤 Profile</div>
         <div class="moreRow">
           <div class="moreRowLabel">Employee #</div>
           <!-- settingsEmpId: separate from main-page empId to avoid duplicate-ID conflict in SPA -->
@@ -889,13 +891,15 @@
         </div>
       </section>
 
+      <div class="moreGroupLabel">Preferences</div>
+
       <!-- Pay Period — configured once at setup, rarely touched again, so it's
            tucked behind a details toggle instead of sitting open by default.
            (Team link removed here: the "Manage a shop, or on a team?" banner
            at the top of the More page already covers it — no need to say it twice.) -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Pay Period</summary>
+          <summary class="moreCardHeader moreSectionSummary">🗓️ Pay Period</summary>
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">Standard Day</div>
@@ -943,7 +947,7 @@
       <!-- Display -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Display</summary>
+          <summary class="moreCardHeader moreSectionSummary">🎨 Display</summary>
           <div class="moreRow moreRow--stack">
             <div>
               <div class="moreRowLabel">Theme</div>
@@ -1012,7 +1016,7 @@
       <!-- Notifications -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-        <summary class="moreCardHeader moreSectionSummary">Notifications</summary>
+        <summary class="moreCardHeader moreSectionSummary">🔔 Notifications</summary>
         <div class="moreRow">
           <div>
             <div class="moreRowLabel">Haptic Feedback</div>
@@ -1067,10 +1071,12 @@
         </details>
       </section>
 
+      <div class="moreGroupLabel">Payroll Tools</div>
+
       <!-- Pay Stub -->
       <section class="card moreCard">
         <details class="moreSectionDetails" id="payStubDetails">
-          <summary class="moreCardHeader moreSectionSummary">Pay Stub</summary>
+          <summary class="moreCardHeader moreSectionSummary">💵 Pay Stub</summary>
           <div class="moreRow">
             <div class="moreRowLabel">Pay Period</div>
             <div class="seg">
@@ -1114,7 +1120,7 @@
           </div>
           <div class="moreRow" style="display:block;">
             <div class="moreRowLabel">Payroll Report — find unpaid work</div>
-            <div class="moreRowSub" style="margin-bottom:10px;">Photograph the shop's "Report of Booked Repair Orders". The app reads every RO and tells you which of your jobs isn't on it.</div>
+            <div class="moreRowSub" style="margin-bottom:10px;">Photograph the shop's "Report of Booked Repair Orders". The app reads every RO, tells you which of your jobs isn't on it, and totals sold hours vs. your log day-by-day.</div>
             <div class="moreSaveRow" style="padding:0;">
               <button class="btn primary moreSaveBtn" id="scanPayrollCamBtn" type="button">📷 Photograph Report</button>
               <button class="btn moreSaveBtn" id="scanPayrollLibBtn" type="button">Choose Photo</button>
@@ -1128,6 +1134,9 @@
               <button class="btn" id="reconcilePayrollBtn" type="button" style="width:100%;margin-top:8px;">Check pasted text</button>
             </details>
             <div id="payrollReconcileOut" style="margin-top:10px;"></div>
+            <div class="moreDivider" style="margin:14px 0;"></div>
+            <div class="moreRowLabel" style="margin-bottom:6px;">Day-by-day totals</div>
+            <div id="payrollReportReconcile"></div>
           </div>
           <div class="moreSaveRow" style="padding-top:0;">
             <button class="btn moreSaveBtn" id="savePayStubBtn" type="button">Save</button>
@@ -1140,27 +1149,10 @@
         </details>
       </section>
 
-      <!-- Payroll Report Scanner -->
-      <section class="card moreCard">
-        <details class="moreSectionDetails" id="payrollReportDetails">
-          <summary class="moreCardHeader moreSectionSummary">🔍 Shop Payroll Report — Find Lost Hours</summary>
-          <div style="padding:8px 16px 4px;">
-            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Photograph your shop's Technician Payroll Report. The app will extract every RO and compare sold hours to what you've logged — day by day.</p>
-            <div class="payrollScanBtnRow">
-              <button class="btn primary" id="scanPayrollReportCamBtn" type="button">📷 Take Photo</button>
-              <button class="btn" id="scanPayrollReportBtn" type="button">🖼 Choose from Library</button>
-            </div>
-            <input id="payrollReportCamera" type="file" accept="image/*" capture="environment" style="display:none" />
-            <input id="payrollReportPicker" type="file" accept="image/*" style="display:none" />
-            <div id="payrollReportReconcile"></div>
-          </div>
-        </details>
-      </section>
-
       <!-- Export & Tools -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Export &amp; Tools</summary>
+          <summary class="moreCardHeader moreSectionSummary">📤 Export &amp; Tools</summary>
           <div class="exportGrid">
             <button class="exportBtn" type="button" id="exportCsvBtn"><div class="exportBtnIcon">CSV</div><div class="exportBtnLabel">Export CSV</div></button>
             <button class="exportBtn" type="button" id="exportJsonBtn"><div class="exportBtnIcon">JSON</div><div class="exportBtnLabel">Export JSON</div></button>
@@ -1170,10 +1162,12 @@
         </details>
       </section>
 
+      <div class="moreGroupLabel">Support</div>
+
       <!-- Feedback -->
       <section class="card moreCard" id="feedbackCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Send Feedback</summary>
+          <summary class="moreCardHeader moreSectionSummary">💬 Send Feedback</summary>
           <div style="padding:0 16px 16px;">
             <div class="moreRow" style="padding-left:0;padding-right:0;padding-top:12px;">
               <div class="moreRowLabel">Category</div>
@@ -1195,7 +1189,7 @@
       <!-- Help -->
       <section class="card moreCard">
         <details class="moreSectionDetails">
-          <summary class="moreCardHeader moreSectionSummary">Help</summary>
+          <summary class="moreCardHeader moreSectionSummary">❓ Help</summary>
           <div class="moreRow">
             <div>
               <div class="moreRowLabel">App Tour</div>
@@ -1573,7 +1567,7 @@
      just no more paying for it before first paint. -->
 <script defer src="./vendor/jspdf.umd.min.js"></script>
 <script defer src="./vendor/supabase.js"></script>
-<script src="./app.9543b2038b.js" defer></script>
+<script src="./app.58640b423b.js" defer></script>
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "80746e7f75d6490da9d8571d32c58da5"}'></script>
 
 <!-- Payday Summary modal -->

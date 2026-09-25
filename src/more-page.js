@@ -811,7 +811,7 @@ window.refreshMorePagePanels = refreshMorePagePanels;
 // supabase/functions/scan-paystub) at up to 9s each plus ~3.6s of backoff —
 // about 30.6s worst case. payroll_report mode allows up to 16s per attempt
 // (it can generate a full table, up to 8192 tokens) so callers using that
-// mode pass a larger explicit timeoutMs — see scanPayrollReport below.
+// mode pass a larger explicit timeoutMs — see scanPayrollForReconcile below.
 async function _callScanPayStub(base64, mediaType = "image/jpeg", mode = "auto", timeoutMs = 32000) {
   const sbInstance = window.__FR?.sb;
   const { data: { session } } = await sbInstance.auth.getSession();
@@ -880,44 +880,6 @@ function clearPayrollReport() {
   toast("Payroll report cleared.");
 }
 window.clearPayrollReport = clearPayrollReport;
-
-async function scanPayrollReport(file) {
-  const btn = document.getElementById("scanPayrollReportBtn");
-  const origText = btn?.textContent || "Scan Report";
-  if (btn) { btn.textContent = "Scanning…"; btn.disabled = true; }
-
-  try {
-    const dataUrl = await compressImageFileToDataUrl(file, 1400, 0.80);
-    const base64 = dataUrl.split(",")[1];
-    const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
-
-    // Shared caller: same timeout guard + token handling as every other
-    // OCR call site, instead of a third copy of the raw fetch. Explicit
-    // 55s budget here — this mode reads a whole table (up to 8192 tokens
-    // of output), so the default "auto"-mode timeout is too tight for it.
-    const result = await _callScanPayStub(base64, mediaType, "payroll_report", 55000);
-
-    if (result.error) {
-      toast(`Scan error: ${result.error}`);
-      return;
-    }
-
-    if (result.type !== "payroll_report" || !Array.isArray(result.rows)) {
-      toast("Couldn't read payroll report — try again or use a clearer photo.");
-      return;
-    }
-
-    savePayrollReport(result);
-    renderPayrollReportReconciliation();
-    const hrs = Number(result.totalSoldHours || 0);
-    toast(`Payroll report scanned — ${formatHours(hrs)} sold hrs found.`);
-  } catch (e) {
-    console.warn("[scanPayrollReport]", e?.message || e);
-    toast(`Scan failed: ${e?.message || "try again"}`);
-  } finally {
-    if (btn) { btn.textContent = origText; btn.disabled = false; }
-  }
-}
 
 function renderPayrollReportReconciliation() {
   const el = document.getElementById("payrollReportReconcile");
@@ -1004,30 +966,6 @@ function renderPayrollReportReconciliation() {
 }
 window.renderPayrollReportReconciliation = renderPayrollReportReconciliation;
 
-function initPayrollReportUI() {
-  const libBtn    = document.getElementById("scanPayrollReportBtn");
-  const camBtn    = document.getElementById("scanPayrollReportCamBtn");
-  const picker    = document.getElementById("payrollReportPicker");
-  const camPicker = document.getElementById("payrollReportCamera");
-  if (!libBtn && !camBtn) return;
-
-  const onFile = (input) => () => {
-    const file = input.files?.[0];
-    if (file) scanPayrollReport(file);
-    input.value = "";
-  };
-
-  // Wake the edge function the moment the picker opens (see prewarmEdgeFunction
-  // in photo-service.js) so this — the biggest, slowest scan in the app — isn't
-  // also paying a cold-start on top of everything else.
-  libBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); picker?.click(); });
-  camBtn?.addEventListener("click", () => { prewarmEdgeFunction?.("scan-paystub"); camPicker?.click(); });
-  picker?.addEventListener("change", onFile(picker));
-  camPicker?.addEventListener("change", onFile(camPicker));
-
-  renderPayrollReportReconciliation();
-}
-
 /**
  * Photograph the shop's payroll report and reconcile it against the log.
  * The edge function already understands mode:"payroll_report" and hands back
@@ -1066,8 +1004,9 @@ async function scanPayrollForReconcile(file) {
     const base64 = dataUrl.split(",")[1];
     const mediaType = dataUrl.startsWith("data:image/png") ? "image/png" : "image/jpeg";
 
-    // Explicit 55s budget — same reasoning as scanPayrollReport above, and
-    // this is the largest/densest image the app scans, so it needs it most.
+    // Explicit 55s budget — this mode reads a whole table (up to 8192 tokens
+    // of output) and this is the largest/densest image the app scans, so it
+    // needs it most.
     const result = await _callScanPayStub(base64, mediaType, "payroll_report", 55000);
     const rows = Array.isArray(result?.rows) ? result.rows : [];
     if (!rows.length) {
@@ -1113,7 +1052,7 @@ async function scanPayrollForReconcile(file) {
     try { savePayrollReport?.(result); renderPayrollReportReconciliation?.(); } catch {}
     haptic?.("success");
   } catch (e) {
-    console.warn("[scanPayrollReport]", e?.message || e);
+    console.warn("[scanPayrollForReconcile]", e?.message || e);
     say(`Scan failed: ${e?.message || "try again"}`);
   } finally {
     clearTimeout(patienceTimer);
