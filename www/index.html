@@ -712,7 +712,8 @@
 
     <!-- JOB TYPES TAB -->
     <div class="moreTabPanel active" id="mPanel-jobs" role="tabpanel">
-      <section class="card moreCard" style="margin-top:12px;">
+      <div class="moreGroupLabel moreGroupLabel--first">Add a Job Type</div>
+      <section class="card moreCard">
         <form id="savedTypeCreateForm" class="typeAddInline">
           <input id="savedTypeName" class="moreInput typeAddNameInput" type="text" placeholder="New job type (e.g. PDI, Oil Change…)" autocomplete="off" spellcheck="false" />
           <div class="typeAddRow2">
@@ -732,6 +733,8 @@
           <button class="btn danger" id="typeDeleteBtn" type="button">Delete</button>
         </div>
       </section>
+
+      <div class="moreGroupLabel">Maintenance</div>
       <section class="card moreCard">
         <details class="moreSectionDetails" id="typeCleanupDetails">
           <summary class="moreCardHeader moreSectionSummary">🧹 Clean up job types</summary>
@@ -750,9 +753,10 @@
 
     <!-- HISTORY TAB -->
     <div class="moreTabPanel" id="mPanel-history" role="tabpanel">
-      <section class="card moreCard" style="margin-top:12px;">
+      <div class="moreGroupLabel moreGroupLabel--first">Entries</div>
+      <section class="card moreCard">
         <div class="moreCardHeader moreCardHeaderRow">
-          <span>All Entries</span>
+          <span>📋 All Entries</span>
           <button class="btn" id="bulkSelectToggle" type="button" style="font-size:12px;padding:5px 12px;">Select</button>
         </div>
         <div style="padding:8px 12px 4px;">
@@ -773,6 +777,7 @@
         </div>
       </section>
 
+      <div class="moreGroupLabel">Insights &amp; Tools</div>
       <section class="card moreCard">
         <details class="moreSectionDetails" id="requestsDetails">
           <summary class="moreCardHeader moreSectionSummary">
@@ -819,9 +824,9 @@
       </section>
 
       <!-- Owe Me tracker -->
-      <section class="card moreCard" style="margin-top:10px;">
+      <section class="card moreCard">
         <div class="moreCardHeader" style="display:flex;align-items:center;justify-content:space-between;">
-          <span>Owe Me</span>
+          <span>💰 Owe Me</span>
           <span id="oweMeTotalBadge" class="oweMeTotalBadge" style="display:none;"></span>
         </div>
         <p style="font-size:12px;color:var(--muted);padding:0 14px 6px;margin:0;">Log what the shop owes you — comebacks, warranty, goodwill, parts delays.</p>
