@@ -15630,6 +15630,9 @@ function initRequestsUI() {
 window.__FR = window.__FR || {};
 window.__FR.initRequestsUI = initRequestsUI;
 window.__FR.renderRequests = renderRequests;
+// Exposed for team.html's deep link (?tab=history&open=requestsDetails&claim=<id>)
+// so a tech tapping a specific request there lands straight in its thread.
+window.__FR.openClaimThread = openClaimThread;
 window.__FR.openRequestModal = openRequestModal;
 
 // Suppress empty-object errors thrown by Supabase/Capacitor during boot
@@ -16872,13 +16875,31 @@ async function runOnce() {
     document.getElementById("upgradeYearlyBtn")?.addEventListener("click",  () => startCheckout?.("yearly"));
     // Returning from Stripe Checkout
     window.__FR?.handleCheckoutReturn?.();
-    // PWA shortcut deep-links: ?tab=history or ?tab=settings
-    const _tabParam = new URLSearchParams(location.search).get("tab");
+    // PWA shortcut deep-links: ?tab=history or ?tab=settings, optionally with
+    // &open=<detailsId> to expand one specific section (e.g. team.html's tech
+    // view links here with open=requestsDetails so "Open the app" actually
+    // lands on Requests to Manager instead of just the tab), and, only for
+    // requestsDetails, &claim=<id> to jump straight into one request's thread.
+    const _dlParams = new URLSearchParams(location.search);
+    const _tabParam = _dlParams.get("tab");
+    const _openParam = _dlParams.get("open");
+    const _claimParam = _dlParams.get("claim");
     if (_tabParam === "history" || _tabParam === "settings") {
       history.replaceState({}, "", location.pathname);
       showSpaPage("more");
       setTimeout(() => {
         document.querySelector(`.moreTab[data-tab="${_tabParam}"]`)?.click();
+        if (_openParam) {
+          setTimeout(() => {
+            const det = document.getElementById(_openParam);
+            if (det) det.open = true; // fires its own `toggle` listener to load content
+            if (_claimParam && _openParam === "requestsDetails") {
+              // Give the toggle-triggered renderRequests() time to fetch
+              // MY_CLAIMS before trying to open a specific thread from it.
+              setTimeout(() => window.__FR?.openClaimThread?.(_claimParam), 700);
+            }
+          }, 200);
+        }
       }, 400);
     }
     // Payday notification deep-link: ?paystub=1 → show week summary, then open pay stub

@@ -561,6 +561,36 @@
       <p class="sub">Your manager can see the jobs you log in Flatrate Buddy — your proof of work is shared automatically. Keep logging jobs in the app as usual.</p>
       <a href="./index.html" class="btn primary">Open the app</a>
     </div>
+
+    <div class="card">
+      <div class="drawer-head" style="margin-bottom:12px;">
+        <div>
+          <div class="drawer-title" style="font-size:16px;">Your Requests</div>
+          <div class="cell-muted">Missing work, short pay, or anything else you've sent your manager</div>
+        </div>
+        <a href="./index.html?tab=history&open=requestsDetails" class="btn-sm">+ New</a>
+      </div>
+      <div id="myClaimList"><div class="cell-muted">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- My Request thread (tech) -->
+<div id="myClaimDrawer" class="drawer" style="display:none;" role="dialog" aria-modal="true">
+  <div class="drawer-card">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title" id="mcdTitle">Request</div>
+        <div class="cell-muted" id="mcdSub"></div>
+      </div>
+      <button type="button" class="btn-sm" id="mcdCloseBtn">Close</button>
+    </div>
+    <div id="mcdMeta" class="cd-meta"></div>
+    <div id="mcdMsgs" class="cd-msgs"></div>
+    <div class="cd-reply">
+      <input id="mcdReply" placeholder="Reply to your manager…" maxlength="4000" />
+      <button type="button" class="btn primary" id="mcdReplyBtn">Send</button>
+    </div>
   </div>
 </div>
 
@@ -768,6 +798,9 @@
       await renderTeam();
       await loadClaims();
       initClaimsRealtime();
+    } else {
+      await loadMyClaims();
+      initMyClaimsRealtime();
     }
     startTeamTour(false);
   }
@@ -874,6 +907,7 @@
     localStorage.removeItem(LS_LAST_TEAM_SHOP);
     SHOP = null; MY_ROLE = null;
     if (claimsChannel) { try { db.removeChannel(claimsChannel); } catch {} claimsChannel = null; }
+    if (myClaimsChannel) { try { db.removeChannel(myClaimsChannel); } catch {} myClaimsChannel = null; }
     show("shopView", false);
     window.__FR?.invalidateMyShopsCache?.();
     await loadShop();
@@ -1486,6 +1520,156 @@
     if (!opts.silent) {
       $("claimDrawer").style.display = "none";
       ACTIVE = null;
+    }
+  }
+
+  /* ── My Requests (tech side) ──────────────────────────────────────────
+   * A tech landing here after joining a shop used to hit an empty card and
+   * a dead "Open the app" link -- nowhere on this page showed what they'd
+   * actually sent their manager. This mirrors the same claims/claim_messages
+   * tables the main app's Requests-to-Manager section (src/claims-service.js)
+   * already reads and writes, so a tech can see status and reply right here
+   * without leaving the Team Dashboard. Submitting a brand-new request still
+   * goes through the main app's fuller flow (job picker, AI dispute drafting)
+   * via the "+ New" deep link above rather than duplicating all of that here.
+   */
+  let MY_CLAIMS = [], MY_ACTIVE = null;
+
+  async function loadMyClaims() {
+    // No .eq("user_id", …) filter needed -- RLS already scopes a tech's own
+    // SELECT on claims to their own rows (same policy src/claims-service.js's
+    // loadMyClaims() relies on in the main app).
+    const { data, error } = await db
+      .from("claims").select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) { $("myClaimList").innerHTML = `<div class="cell-muted">${esc(error.message)}</div>`; return; }
+    MY_CLAIMS = data || [];
+    drawMyClaims();
+  }
+
+  function drawMyClaims() {
+    const list = $("myClaimList");
+    if (!list) return;
+    if (!MY_CLAIMS.length) {
+      list.innerHTML = `<div class="cell-muted">Nothing sent yet. Use "+ New" above when work goes missing, you get short-paid, or you need hours.</div>`;
+      return;
+    }
+    list.innerHTML = MY_CLAIMS.map(c => {
+      const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
+      const ev = claimEv(c);
+      return `<button type="button" class="claim-row" data-myclaim="${esc(c.id)}">
+        <div class="claim-top">
+          <span class="claim-subject">${k.emoji} ${esc(c.subject)}</span>
+          <span class="st st-${esc(c.status)}">${STATUS_LABEL[c.status] || c.status}</span>
+        </div>
+        <div class="claim-meta">${k.label}${ev ? " · " + esc(ev) : ""} · ${ago(c.created_at)}</div>
+        ${c.resolution_note ? `<div class="claim-meta" style="color:var(--accent);margin-top:2px;">Manager: ${esc(c.resolution_note)}</div>` : ""}
+      </button>`;
+    }).join("");
+  }
+
+  $("myClaimList")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-myclaim]");
+    if (b) openMyClaim(b.dataset.myclaim);
+  });
+
+  async function openMyClaim(id) {
+    const c = MY_CLAIMS.find(x => String(x.id) === String(id));
+    if (!c) return;
+    MY_ACTIVE = c;
+    const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
+    $("mcdTitle").textContent = `${k.emoji} ${c.subject}`;
+    $("mcdSub").textContent = `${STATUS_LABEL[c.status] || c.status} · sent ${ago(c.created_at)}`;
+    const ev = claimEv(c);
+    $("mcdMeta").innerHTML =
+      (ev ? `<div class="cd-ev">${esc(ev)}</div>` : "") +
+      (c.details ? `<div class="cd-details">${esc(c.details)}</div>` : "") +
+      (c.resolution_note ? `<div class="cd-details" style="margin-top:6px;"><strong>Manager:</strong> ${esc(c.resolution_note)}</div>` : "");
+    $("myClaimDrawer").style.display = "flex";
+    await drawMyClaimMsgs(c.id);
+  }
+
+  async function drawMyClaimMsgs(claimId) {
+    const box = $("mcdMsgs");
+    box.innerHTML = `<div class="cell-muted">Loading…</div>`;
+    const { data, error } = await db
+      .from("claim_messages").select("id, author_id, body, created_at")
+      .eq("claim_id", claimId).order("created_at", { ascending: true });
+    if (error) { box.innerHTML = `<div class="cell-muted">Couldn't load messages.</div>`; return; }
+    if (!data?.length) { box.innerHTML = `<div class="cell-muted">No replies yet.</div>`; return; }
+    box.innerHTML = data.map(m => {
+      const mine = m.author_id === UID;
+      return `<div class="cd-msg ${mine ? "mine" : "them"}">
+        <div class="cd-msg-body">${esc(m.body)}</div>
+        <div class="cd-msg-who">${mine ? "You" : "Manager"} · ${ago(m.created_at)}</div>
+      </div>`;
+    }).join("");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  $("mcdCloseBtn")?.addEventListener("click", () => {
+    $("myClaimDrawer").style.display = "none";
+    MY_ACTIVE = null;
+  });
+  $("myClaimDrawer")?.addEventListener("click", (e) => {
+    if (e.target === $("myClaimDrawer")) { $("myClaimDrawer").style.display = "none"; MY_ACTIVE = null; }
+  });
+
+  $("mcdReplyBtn")?.addEventListener("click", sendMyReply);
+  $("mcdReply")?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendMyReply(); } });
+
+  async function sendMyReply() {
+    const body = $("mcdReply").value.trim();
+    if (!body || !MY_ACTIVE) return;
+    const btn = $("mcdReplyBtn"); btn.disabled = true;
+    const { error } = await db.from("claim_messages").insert({
+      claim_id: MY_ACTIVE.id, author_id: UID, body,
+    });
+    btn.disabled = false;
+    if (error) { toast(error.message); return; }
+    $("mcdReply").value = "";
+    await drawMyClaimMsgs(MY_ACTIVE.id);
+  }
+
+  // Realtime: without this a tech only finds out about a manager's reply or
+  // status change the next time they happen to reopen this page. Mirrors
+  // src/claims-service.js's own initClaimsRealtime() in the main app; needs
+  // the same 20260925_claims_realtime.sql migration, and degrades quietly
+  // (no live updates, falls back to load-on-open) if that hasn't run yet.
+  let myClaimsChannel = null;
+
+  function initMyClaimsRealtime() {
+    if (myClaimsChannel || !UID) return;
+    try {
+      myClaimsChannel = db
+        .channel(`my-claims-${UID}`)
+        .on("postgres_changes",
+          { event: "INSERT", schema: "public", table: "claim_messages" },
+          (payload) => {
+            const m = payload.new;
+            if (!m || m.author_id === UID) return; // our own reply, already reflected locally
+            // RLS already limited delivery to claims we can see; MY_CLAIMS may
+            // still be stale, so don't gate on it -- just reload.
+            toast("Your manager replied to a request");
+            loadMyClaims();
+            if (MY_ACTIVE && String(MY_ACTIVE.id) === String(m.claim_id)) drawMyClaimMsgs(m.claim_id);
+          })
+        .on("postgres_changes",
+          { event: "UPDATE", schema: "public", table: "claims" },
+          (payload) => {
+            const c = payload.new;
+            if (!c) return;
+            const prevStatus = payload.old?.status;
+            if (c.status !== prevStatus && c.status !== "open") {
+              toast(`Your manager marked a request "${STATUS_LABEL[c.status] || c.status}"`);
+            }
+            loadMyClaims();
+            if (MY_ACTIVE && String(MY_ACTIVE.id) === String(c.id)) MY_ACTIVE = c;
+          })
+        .subscribe();
+    } catch (e) {
+      console.warn("[my claims realtime]", e?.message || e);
     }
   }
 

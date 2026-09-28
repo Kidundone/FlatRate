@@ -642,4 +642,7 @@ function initRequestsUI() {
 window.__FR = window.__FR || {};
 window.__FR.initRequestsUI = initRequestsUI;
 window.__FR.renderRequests = renderRequests;
+// Exposed for team.html's deep link (?tab=history&open=requestsDetails&claim=<id>)
+// so a tech tapping a specific request there lands straight in its thread.
+window.__FR.openClaimThread = openClaimThread;
 window.__FR.openRequestModal = openRequestModal;
