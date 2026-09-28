@@ -320,6 +320,19 @@
     .tourDot--active { width: 20px; background: var(--primary); }
     #tourNextBtn { transition: transform 100ms ease, opacity 100ms ease; min-width: 80px; }
     #tourNextBtn:active { transform: scale(.94); opacity: .85; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(20,20,32,.96); color: #fff; padding: 11px 18px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12); box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none;
+      max-width: calc(100vw - 48px); text-align: center;
+      transition: opacity 200ms ease, transform 200ms ease; z-index: 9000;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -577,6 +590,8 @@
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
   window.__SUPABASE_CONFIG__ = {
     url: "https://lfnydhidbwfyfjafazdy.supabase.co",
@@ -617,6 +632,20 @@
   const show = (id, on) => { $(id).style.display = on ? "" : "none"; };
   const money = (n) => "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  // Short, non-blocking status messages (e.g. a failed request) — mirrors
+  // index.html's toast() so a manager doesn't hit a jarring native alert()
+  // for a simple error. Left alone: the invite-text fallback (needs the
+  // text visible + selectable, not auto-dismissing) and the sole-manager
+  // leave warning (long enough it needs to stay up until dismissed).
+  function toast(msg, ms = 2500) {
+    const t = $("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._toastTimer);
+    t._toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+  }
 
   function dateKey(d) {
     const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
@@ -841,7 +870,7 @@
     // enforces the same "always keep one manager" rule server-side, so it
     // can't be bypassed by calling the API directly.
     const { error } = await db.rpc("leave_shop", { p_shop: SHOP.id });
-    if (error) { alert(error.message); return; }
+    if (error) { toast(error.message); return; }
     localStorage.removeItem(LS_LAST_TEAM_SHOP);
     SHOP = null; MY_ROLE = null;
     if (claimsChannel) { try { db.removeChannel(claimsChannel); } catch {} claimsChannel = null; }
@@ -1182,7 +1211,7 @@
       promoteBtn.disabled = true;
       const { error } = await db.rpc("set_member_role", { p_shop: SHOP.id, p_user: uid, p_role: nextRole });
       promoteBtn.disabled = false;
-      if (error) { alert(error.message); return; }
+      if (error) { toast(error.message); return; }
       const roster = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", SHOP.id);
       MEMBERS = roster.data || [];
       await renderTeam();
@@ -1196,7 +1225,7 @@
       removeBtn.disabled = true;
       const { error } = await db.rpc("remove_member", { p_shop: SHOP.id, p_user: uid });
       removeBtn.disabled = false;
-      if (error) { alert(error.message); return; }
+      if (error) { toast(error.message); return; }
       const roster = await db.from("shop_members").select("user_id, role, display_name, joined_at").eq("shop_id", SHOP.id);
       MEMBERS = roster.data || [];
       await renderTeam();
@@ -1434,7 +1463,7 @@
       claim_id: ACTIVE.id, author_id: UID, body,
     });
     btn.disabled = false;
-    if (error) { alert(error.message); return; }
+    if (error) { toast(error.message); return; }
     $("cdReply").value = "";
     // Replying implies you've seen it.
     if (ACTIVE.status === "open") await setClaimStatus("acknowledged", { silent: true });
@@ -1451,7 +1480,7 @@
       p_status: status,
       p_note: $("cdNote").value.trim() || null,
     });
-    if (error) { alert(error.message); return; }
+    if (error) { toast(error.message); return; }
     ACTIVE.status = status;
     await loadClaims();
     if (!opts.silent) {
