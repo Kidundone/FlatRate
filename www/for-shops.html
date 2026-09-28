@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flatrate Buddy for Shops — Fewer Pay Disputes, One Team View</title>
+  <meta name="description" content="Give your flat-rate techs a self-serve way to track their own hours, and give yourself one shared view of the shop instead of chasing down pay-stub arguments one at a time." />
+  <meta property="og:title" content="Flatrate Buddy for Shops" />
+  <meta property="og:description" content="Fewer pay disputes reaching your desk. One shared view of your shop's flat-rate techs." />
+  <meta property="og:image" content="https://app.nellylabs.dev/icon-512.png" />
+  <meta property="og:url" content="https://app.nellylabs.dev/for-shops.html" />
+  <link rel="icon" href="https://app.nellylabs.dev/icon-192.png" />
+  <style>
+    :root {
+      --bg: #07070f;
+      --bg2: #0d1117;
+      --fg: #e8eaf0;
+      --muted: #8a93a8;
+      --muted2: #4b5563;
+      --primary: #2563EB;
+      --primary-dim: color-mix(in srgb, var(--primary) 12%, transparent);
+      --card: #111827;
+      --stroke: #1f2937;
+      --accent: #29d9a5;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+    a { color: var(--primary); text-decoration: none; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; max-width: 1000px; margin: 0 auto; }
+    .navLogo { display: flex; align-items: center; gap: 10px; }
+    .navMark { width: 34px; height: 34px; border-radius: 8px; overflow: hidden; }
+    .navMark img { width: 100%; height: 100%; object-fit: cover; }
+    .navName { font-size: 16px; font-weight: 700; color: var(--fg); }
+    .navSub { font-size: 12px; color: var(--muted); margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--stroke); }
+    .navCta { background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
+
+    .hero { text-align: center; padding: 72px 24px 64px; max-width: 720px; margin: 0 auto; }
+    .heroBadge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-dim); color: var(--primary); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); }
+    .heroH1 { font-size: clamp(32px, 6vw, 52px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; letter-spacing: -0.02em; }
+    .heroH1 span { color: var(--primary); }
+    .heroParagraph { font-size: 18px; color: var(--muted); max-width: 560px; margin: 0 auto 36px; }
+    .heroButtons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btnPrimary { background: var(--primary); color: #fff; font-weight: 700; font-size: 16px; padding: 16px 32px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
+    .btnGhost { background: var(--card); color: var(--fg); font-weight: 600; font-size: 16px; padding: 16px 32px; border-radius: 12px; border: 1px solid var(--stroke); }
+    .heroSub { font-size: 13px; color: var(--muted2); margin-top: 18px; }
+
+    .statsStrip { display: flex; justify-content: center; border: 1px solid var(--stroke); border-radius: 16px; overflow: hidden; max-width: 680px; margin: 0 auto 64px; }
+    .statItem { flex: 1; padding: 20px 16px; text-align: center; border-right: 1px solid var(--stroke); }
+    .statItem:last-child { border-right: none; }
+    .statNum { font-size: 26px; font-weight: 800; color: var(--primary); }
+    .statLabel { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .section { max-width: 960px; margin: 0 auto; padding: 0 24px 80px; }
+    .sectionEye { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--primary); margin-bottom: 12px; }
+    .sectionH2 { font-size: clamp(24px, 4vw, 38px); font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+    .sectionP { font-size: 17px; color: var(--muted); max-width: 620px; }
+
+    .featureGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 36px; }
+    .featureCard { background: var(--card); border: 1px solid var(--stroke); border-radius: 14px; padding: 22px; }
+    .featureIcon { font-size: 28px; margin-bottom: 12px; }
+    .featureTitle { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .featureBody { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    .stepsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 36px; counter-reset: step; }
+    .stepCard { position: relative; padding-left: 44px; }
+    .stepCard::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%;
+      background: var(--primary-dim); color: var(--primary); font-weight: 800; font-size: 14px;
+      display: flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+    }
+    .stepTitle { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .stepBody { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    .compareGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 36px; }
+    .compareCard { border-radius: 16px; padding: 26px; border: 1px solid var(--stroke); }
+    .compareCard.bad { background: var(--card); }
+    .compareCard.good { background: linear-gradient(135deg, #0d1117, #0a0f1e); border-color: var(--primary); }
+    .compareLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 14px; }
+    .compareCard.bad .compareLabel { color: var(--danger); }
+    .compareCard.good .compareLabel { color: var(--primary); }
+    .compareList { list-style: none; }
+    .compareList li { font-size: 14px; color: var(--muted); padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; }
+    .compareCard.bad .compareList li::before { content: "✕"; color: var(--danger); font-weight: 700; flex-shrink: 0; }
+    .compareCard.good .compareList li::before { content: "✓"; color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+    .quoteSection { background: var(--bg2); border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); padding: 64px 24px; margin-bottom: 80px; }
+    .quoteInner { max-width: 640px; margin: 0 auto; text-align: center; }
+    .quoteMark { font-size: 56px; color: var(--primary); line-height: 1; margin-bottom: 8px; }
+    .quoteText { font-size: 20px; font-weight: 600; line-height: 1.5; margin-bottom: 16px; }
+    .quoteAuthor { font-size: 14px; color: var(--muted); }
+
+    .faqItem { border-bottom: 1px solid var(--stroke); padding: 18px 0; }
+    .faqQ { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .faqA { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    .ctaSection { text-align: center; padding: 0 24px 96px; }
+    .ctaH2 { font-size: clamp(26px, 5vw, 40px); font-weight: 800; margin-bottom: 16px; }
+    .ctaP { font-size: 17px; color: var(--muted); margin-bottom: 36px; }
+
+    footer { border-top: 1px solid var(--stroke); padding: 28px 24px; text-align: center; }
+    .footerLinks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .footerLinks a { font-size: 14px; color: var(--muted); display: inline-block; padding: 10px 4px; margin: -10px -4px; }
+    .footerCopy { font-size: 13px; color: var(--muted2); }
+
+    @media (max-width: 480px) {
+      .statsStrip { flex-direction: column; }
+      .statItem { border-right: none; border-bottom: 1px solid var(--stroke); }
+      .statItem:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/for-shops.html" class="navLogo">
+    <div class="navMark"><img src="https://app.nellylabs.dev/icon-192.png" alt="Flatrate Buddy" /></div>
+    <div class="navName">Flatrate Buddy</div>
+    <div class="navSub">for Shops</div>
+  </a>
+  <a href="https://app.nellylabs.dev/team.html" class="navCta">Open Team Dashboard →</a>
+</nav>
+
+<div class="hero">
+  <div class="heroBadge">🔧 For shop owners &amp; GMs</div>
+  <h1 class="heroH1">Fewer pay disputes on your desk.<br>One <span>shared view</span> of your shop.</h1>
+  <p class="heroParagraph">Your flat-rate techs are probably already logging their hours somewhere to keep track of what they're owed. Flatrate Buddy gives them a real tool for that — and gives you a shared dashboard instead of a stack of individual arguments.</p>
+  <div class="heroButtons">
+    <a href="https://app.nellylabs.dev/team.html" class="btnPrimary">🧰 Set Up Your Shop — Free</a>
+    <a href="https://app.nellylabs.dev/landing.html" class="btnGhost">See the tech-facing app</a>
+  </div>
+  <p class="heroSub">No cost to enable for your shop · Techs already use it individually · Takes 2 minutes to set up</p>
+</div>
+
+<div style="padding: 0 24px;">
+  <div class="statsStrip">
+    <div class="statItem"><div class="statNum">$0</div><div class="statLabel">Cost to your shop</div></div>
+    <div class="statItem"><div class="statNum">2 min</div><div class="statLabel">To set up a shop</div></div>
+    <div class="statItem"><div class="statNum">1 tap</div><div class="statLabel">For a tech to join</div></div>
+    <div class="statItem"><div class="statNum">0</div><div class="statLabel">DMS integration needed</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sectionEye">Why it matters to you</div>
+  <h2 class="sectionH2">Pay questions get answered before they become pay arguments.</h2>
+  <p class="sectionP">When a tech isn't sure what they're owed, it turns into a conversation at your desk — or worse, it doesn't come up until it's already a problem. Flatrate Buddy gives techs their own running record, so most questions get answered by the app before they ever reach you.</p>
+  <div class="compareGrid">
+    <div class="compareCard bad">
+      <div class="compareLabel">Without it</div>
+      <ul class="compareList">
+        <li>Pay questions land on your desk one at a time</li>
+        <li>No shared record — it's your word, a spreadsheet, or nothing</li>
+        <li>Hard to see which techs are actually struggling week to week</li>
+        <li>Disputes drag on because nobody has the same numbers</li>
+      </ul>
+    </div>
+    <div class="compareCard good">
+      <div class="compareLabel">With Flatrate Buddy</div>
+      <ul class="compareList">
+        <li>Techs check their own numbers before they come to you</li>
+        <li>One shared Team Dashboard for the whole shop</li>
+        <li>Disputes come in with the actual logged hours attached</li>
+        <li>You resolve and reply right from the dashboard — it's tracked</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sectionEye">What you get</div>
+  <h2 class="sectionH2">A dashboard for the shop, not another system to run</h2>
+  <div class="featureGrid">
+    <div class="featureCard">
+      <div class="featureIcon">👥</div>
+      <div class="featureTitle">Team Dashboard</div>
+      <div class="featureBody">One roster view of every tech who's joined your shop — no spreadsheets, no separate logins to manage.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">🎫</div>
+      <div class="featureTitle">Pay disputes, organized</div>
+      <div class="featureBody">When a tech flags a short pay, it shows up as a claim with their logged hours attached. Reply, resolve, and move on — instead of a hallway conversation nobody remembers the details of.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">🔑</div>
+      <div class="featureTitle">Invite-code setup</div>
+      <div class="featureBody">Create your shop, get a code, hand it to your techs. They tap "Join a shop" and enter it — no accounts for you to create or manage.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">🧑‍🔧</div>
+      <div class="featureTitle">Techs keep their own data</div>
+      <div class="featureBody">Every tech logs and owns their own hours. You get shop-wide visibility into disputes, not a surveillance tool over every job they touch.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">🔌</div>
+      <div class="featureTitle">Runs alongside your DMS</div>
+      <div class="featureBody">It's not a replacement for your shop management system — no migration, no integration work. Techs log their own numbers on their own phone.</div>
+    </div>
+    <div class="featureCard">
+      <div class="featureIcon">🏆</div>
+      <div class="featureTitle">A perk techs actually want</div>
+      <div class="featureBody">Techs are already asking each other for ways to track their own pay. Being the shop that already has it on hand is a small edge when you're hiring or retaining.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sectionEye">Getting started</div>
+  <h2 class="sectionH2">Set up your shop in about two minutes</h2>
+  <div class="stepsGrid">
+    <div class="stepCard">
+      <div class="stepTitle">Create your shop</div>
+      <div class="stepBody">Open the Team Dashboard, tap "Create a shop," and name it. You're the manager by default.</div>
+    </div>
+    <div class="stepCard">
+      <div class="stepTitle">Share the invite code</div>
+      <div class="stepBody">Send your techs the code — by text, group chat, or posted in the shop. They join in one tap, no app-store account needed.</div>
+    </div>
+    <div class="stepCard">
+      <div class="stepTitle">Watch the dashboard, not the disputes</div>
+      <div class="stepBody">Your roster and any flagged claims show up automatically as techs log their own hours. Resolve claims right from the dashboard.</div>
+    </div>
+  </div>
+</div>
+
+<div class="quoteSection">
+  <div class="quoteInner">
+    <div class="quoteMark">"</div>
+    <p class="quoteText">I built this on the shop floor because I wanted my own record of what I was owed. It turned into something that saves the GM time too — fewer disputes show up as guesswork, more show up with the actual numbers attached.</p>
+    <div class="quoteAuthor">— Built by a flat-rate tech</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sectionEye">Common questions</div>
+  <h2 class="sectionH2">Before you set it up</h2>
+  <div style="max-width:680px;margin-top:24px;">
+    <div class="faqItem">
+      <div class="faqQ">Does this cost the shop anything?</div>
+      <div class="faqA">No. Setting up a shop and adding techs is free. Individual techs can optionally pay for their own Pro features (dispute PDFs, exports, pay-stub scanning) — that's between them and the app, not billed to the shop.</div>
+    </div>
+    <div class="faqItem">
+      <div class="faqQ">Does it plug into our DMS or payroll system?</div>
+      <div class="faqA">No integration required. Techs log their own hours on their own phone; the Team Dashboard just gives you a shared view of that and any disputes they raise. Nothing to install on your systems.</div>
+    </div>
+    <div class="faqItem">
+      <div class="faqQ">Can I see everything a tech logs?</div>
+      <div class="faqA">The Team Dashboard shows your roster and any claims a tech chooses to raise — it's not a live feed of every job they log. It's built to surface disputes, not monitor every entry.</div>
+    </div>
+    <div class="faqItem">
+      <div class="faqQ">What if I need to remove someone or hand off manager access?</div>
+      <div class="faqA">You can remove a member from the roster at any time. Handing off manager access to someone else is on the roadmap — for now, reach out and we'll help directly.</div>
+    </div>
+  </div>
+</div>
+
+<div class="ctaSection">
+  <h2 class="ctaH2">Give your shop one shared view.</h2>
+  <p class="ctaP">Free to set up. Takes about two minutes.</p>
+  <a href="https://app.nellylabs.dev/team.html" class="btnPrimary" style="font-size:18px;padding:18px 40px;">Set Up Your Shop — Free →</a>
+</div>
+
+<footer>
+  <div class="footerLinks">
+    <a href="https://app.nellylabs.dev/team.html">Team Dashboard</a>
+    <a href="https://app.nellylabs.dev/landing.html">For Techs</a>
+    <a href="https://app.nellylabs.dev/privacy.html">Privacy Policy</a>
+    <a href="https://app.nellylabs.dev/terms.html">Terms of Service</a>
+    <a href="mailto:eamnelsonmalloy@icloud.com">Contact</a>
+  </div>
+  <div class="footerCopy">© 2026 Flatrate Buddy. All rights reserved.</div>
+</footer>
+
+</body>
+</html>
