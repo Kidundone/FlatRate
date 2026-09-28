@@ -446,6 +446,17 @@ document.addEventListener("click", (e) => {
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reducedMotion) return;
 
+    // The panel this section lives in — while a section is expanding or
+    // collapsing, every row below it is physically sliding to a new
+    // position. A tap that lands mid-animation can hit whatever just
+    // slid under the user's finger instead of what they meant to tap,
+    // which read as taps "selecting the wrong thing". Locking the whole
+    // panel to pointer-events:none for the animation's duration (with an
+    // exception carved out for the section actually animating, so
+    // re-tapping its own summary to reverse the animation still works)
+    // makes the panel ignore stray taps until the layout has settled.
+    const panel = det.closest(".moreTabPanel");
+
     summary.addEventListener("click", (e) => {
       e.preventDefault();
       if (det._sectionAnim) det._sectionAnim.cancel();
@@ -457,6 +468,9 @@ document.addEventListener("click", (e) => {
       const endHeight = opening ? body.scrollHeight : 0;
 
       if (startHeight === endHeight) { det.open = opening; return; }
+
+      panel?.classList.add("moreTabPanel--animating");
+      det.classList.add("moreSectionDetails--animating");
 
       body.style.overflow = "hidden";
       const anim = body.animate(
@@ -470,6 +484,8 @@ document.addEventListener("click", (e) => {
         body.style.height = "";
         body.style.overflow = "";
         if (!opening) det.open = false;
+        panel?.classList.remove("moreTabPanel--animating");
+        det.classList.remove("moreSectionDetails--animating");
       };
     });
   });

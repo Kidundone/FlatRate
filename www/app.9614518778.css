@@ -3577,6 +3577,19 @@ body.compact .list    { gap: 1px; }
   overflow: hidden;
 }
 
+/* While a section is opening/closing, every row below it is sliding to a
+   new position for ~260ms. A tap during that window can land on whatever
+   just slid under the user's finger instead of the thing they meant to
+   tap. Locking the whole panel to ignore taps until the layout settles
+   fixes that; the section that's actually animating stays tappable (its
+   own summary) so a quick re-tap can still reverse it mid-animation. */
+.moreTabPanel--animating {
+  pointer-events: none;
+}
+.moreTabPanel--animating .moreSectionDetails--animating {
+  pointer-events: auto;
+}
+
 /* ── Job type list rows (More page) ──────────────── */
 /* Quick-add form (always visible) */
 .typeAddInline {
