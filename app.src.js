@@ -10286,6 +10286,25 @@ function computeEfficiency(entries, standardDay) {
   };
 }
 
+/** Per-day breakdown behind the aggregate efficiency % — same inputs, split by
+ * dayKey instead of summed, so the card can point at which specific days
+ * dragged the number down instead of just reporting one blended figure. */
+function computeEfficiencyByDay(entries, standardDay) {
+  const map = new Map();
+  for (const e of (entries || [])) {
+    const k = e.dayKey || dayKeyFromISO(e.createdAt || "");
+    if (!k) continue;
+    map.set(k, (map.get(k) || 0) + (Number(e.hours) || 0));
+  }
+  const rows = Array.from(map.entries()).map(([dayKey, flatHours]) => ({
+    dayKey,
+    flatHours: round1(flatHours),
+    pct: standardDay > 0 ? Math.round((flatHours / standardDay) * 100) : null,
+  }));
+  rows.sort((a, b) => (a.pct ?? 0) - (b.pct ?? 0));
+  return rows;
+}
+
 /** The equivalent stretch immediately before [from, to], for trend comparison. */
 function _previousRange(from, to) {
   const d = (s) => { const [y, m, dd] = s.split("-").map(Number); return new Date(y, m - 1, dd); };
@@ -10327,6 +10346,35 @@ function renderEfficiencyCard(entries, period, from, to, allOwnEntries) {
       ? "Solid — most of your day is billable"
       : "A lot of your day isn't turning hours";
 
+  // Point at which specific days actually dragged the average down, instead of
+  // leaving the tech with one blended number and no idea where to look. Only
+  // worth showing once there's more than one day to compare, and only the
+  // genuinely weak ones (below the same 75% line the card's own tone uses).
+  let worstDaysHtml = "";
+  if (cur.daysWorked >= 3) {
+    const worst = computeEfficiencyByDay(entries, standardDay)
+      .filter(d => d.pct !== null && d.pct < 75)
+      .slice(0, 3);
+    if (worst.length) {
+      const rows = worst.map(d => {
+        const dt = parseDateInputValue(d.dayKey);
+        const label = dt
+          ? dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+          : d.dayKey;
+        return `
+          <div class="effDayRow">
+            <span class="effDayLabel">${escapeHtml(label)}</span>
+            <span class="effDayVal">${d.flatHours}h · ${d.pct}%</span>
+          </div>`;
+      }).join("");
+      worstDaysHtml = `
+        <div class="effWorstDays">
+          <div class="effWorstDaysTitle">Lowest day${worst.length === 1 ? "" : "s"} this period</div>
+          ${rows}
+        </div>`;
+    }
+  }
+
   el.className = `effCard ${tone}`;
   el.innerHTML = `
     <div class="effTop">
@@ -10339,6 +10387,7 @@ function renderEfficiencyCard(entries, period, from, to, allOwnEntries) {
     <div class="effBar"><span style="width:${Math.min(100, pct)}%"></span></div>
     <div class="effMath">${cur.flatHours} flat hrs / ${cur.daysWorked} day${cur.daysWorked === 1 ? "" : "s"} × ${standardDay}h = ${cur.available} available</div>
     <div class="effVerdict">${verdict}</div>
+    ${worstDaysHtml}
   `;
   el.style.display = "";
 }
