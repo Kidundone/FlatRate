@@ -15625,7 +15625,13 @@ async function draftDisputeText() {
     date:    REQ_KIND === "need_hours" ? "" : val("reqDate"),
     hours:   REQ_KIND === "need_hours" ? null : val("reqHours"),
     amount:  REQ_KIND === "need_hours" ? null : val("reqAmount"),
+    // Whatever they've already jotted down — the edge function accepts it as
+    // extra facts, so a rough note becomes a clean draft instead of being
+    // thrown away and ignored.
+    notes:   val("reqDetails"),
   };
+
+  if (payload.notes && !confirm("Replace what you've written with a drafted version?")) return;
 
   if (btn) { btn.disabled = true; btn.textContent = "Drafting…"; }
   try {
@@ -17131,6 +17137,10 @@ async function runOnce() {
     const _tabParam = _dlParams.get("tab");
     const _openParam = _dlParams.get("open");
     const _claimParam = _dlParams.get("claim");
+    // &compose=1 (only with open=requestsDetails) opens the New Request form
+    // itself — landing on a collapsed-then-expanded list with no form is what
+    // the old team.html "+ New" link did, and it read as a dead button.
+    const _composeParam = _dlParams.get("compose") === "1";
     if (_tabParam === "history" || _tabParam === "settings") {
       history.replaceState({}, "", location.pathname);
       showSpaPage("more");
@@ -17144,6 +17154,8 @@ async function runOnce() {
               // Give the toggle-triggered renderRequests() time to fetch
               // MY_CLAIMS before trying to open a specific thread from it.
               setTimeout(() => window.__FR?.openClaimThread?.(_claimParam), 700);
+            } else if (_composeParam && _openParam === "requestsDetails") {
+              window.__FR?.openRequestModal?.();
             }
           }, 200);
         }
