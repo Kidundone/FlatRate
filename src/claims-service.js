@@ -426,7 +426,13 @@ async function draftDisputeText() {
     date:    REQ_KIND === "need_hours" ? "" : val("reqDate"),
     hours:   REQ_KIND === "need_hours" ? null : val("reqHours"),
     amount:  REQ_KIND === "need_hours" ? null : val("reqAmount"),
+    // Whatever they've already jotted down — the edge function accepts it as
+    // extra facts, so a rough note becomes a clean draft instead of being
+    // thrown away and ignored.
+    notes:   val("reqDetails"),
   };
+
+  if (payload.notes && !confirm("Replace what you've written with a drafted version?")) return;
 
   if (btn) { btn.disabled = true; btn.textContent = "Drafting…"; }
   try {

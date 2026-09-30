@@ -258,6 +258,64 @@
     .cd-actions { display: flex; gap: 12px; flex-wrap: wrap; }
     .btn-sm.ok { border-color: var(--accent); color: var(--accent); }
     .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
+    .btn-sm.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-sm.primary:hover { color: #fff; opacity: .88; }
+    /* The status the claim is already in — so "Mark seen" on an already-seen
+       request reads as the current state, not an action waiting to happen. */
+    .cd-actions .btn-sm.is-current { background: var(--surface3); color: var(--text); border-color: var(--stroke2); cursor: default; }
+
+    /* Any drawer open → freeze the page behind it. Without this, iOS scrolls
+       the dashboard underneath a half-filled form on every stray swipe. */
+    body.drawer-open { overflow: hidden; }
+
+    /* ── New request (tech compose) ────────────────────────────── */
+    .nc-kinds { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
+    .nc-kind {
+      display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 10px 12px;
+      background: var(--surface2); border: 1.5px solid var(--stroke2); border-radius: 12px;
+      color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+      touch-action: manipulation;
+    }
+    .nc-kind:hover { border-color: color-mix(in srgb, var(--primary) 55%, transparent); }
+    .nc-kind.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--surface2)); }
+    .nc-kind-emoji { font-size: 18px; line-height: 1; }
+    .nc-hint { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: -4px 0 14px; }
+    .nc-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+    .nc-opt { font-weight: 500; color: var(--muted2); font-size: 11px; }
+    .nc-field { margin-bottom: 12px; }
+    .nc-field textarea.input { resize: vertical; min-height: 96px; line-height: 1.5; font-family: inherit; }
+    .nc-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 4px; }
+    .nc-grid .nc-field { margin-bottom: 10px; min-width: 0; }
+    .nc-count { font-weight: 500; font-size: 11px; color: var(--muted2); }
+    .nc-count.near { color: #f59e0b; }
+    .nc-draft {
+      background: none; border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent); color: var(--primary);
+      border-radius: 999px; padding: 6px 12px; min-height: 32px; font-size: 12px; font-weight: 700; cursor: pointer;
+      touch-action: manipulation; position: relative;
+    }
+    .nc-draft::before { content: ""; position: absolute; inset: -6px; } /* 44px tap target without the visual bulk */
+    .nc-draft:disabled { opacity: .55; cursor: default; }
+    .nc-err { font-size: 12.5px; color: var(--danger); background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: 10px; padding: 9px 12px; margin: 4px 0 12px; line-height: 1.45; }
+    .nc-note { font-size: 11.5px; color: var(--muted2); line-height: 1.5; margin: 2px 0 14px; }
+    .nc-actions { display: flex; gap: 10px; justify-content: flex-end; position: sticky; bottom: -20px; background: var(--surface); padding: 12px 0 4px; margin-top: 4px; }
+    .nc-actions .btn { flex: 1; }
+    .nc-restored { font-size: 12px; color: var(--muted); background: var(--surface2); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .nc-restored button { background: none; border: none; color: var(--primary); font: inherit; font-weight: 700; cursor: pointer; padding: 6px 4px; }
+    .my-claims-summary { font-size: 12px; color: var(--muted); margin: -4px 0 12px; }
+
+    /* On phones the drawers become bottom sheets — thumb-reachable, and the
+       keyboard pushes the sheet up instead of covering a centered card. */
+    @media (max-width: 560px) {
+      .drawer { align-items: flex-end; padding: 0; }
+      .drawer-card {
+        border-radius: 18px 18px 0 0; max-height: 92vh; max-height: 92dvh;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        animation: sheetUp 260ms cubic-bezier(.2,.9,.3,1) both;
+      }
+      .nc-actions { bottom: calc(-20px - env(safe-area-inset-bottom, 0px)); padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
+    }
+    @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .drawer-card { animation: none; } }
 
     /* ── Job detail + proof photo ──────────────────────────────── */
     .job-row { cursor: pointer; }
@@ -556,12 +614,12 @@
       <div id="cdMeta" class="cd-meta"></div>
       <div id="cdMsgs" class="cd-msgs"></div>
       <div class="cd-reply">
-        <input id="cdReply" placeholder="Reply to the tech…" maxlength="4000" />
+        <input id="cdReply" class="input" placeholder="Reply to the tech…" maxlength="4000" />
         <button type="button" class="btn primary" id="cdReplyBtn">Send</button>
       </div>
       <div class="cd-divider"></div>
       <div class="cd-note-label">Note for the tech (optional) — write it before marking status below</div>
-      <input id="cdNote" class="cd-note" placeholder="e.g. &quot;Confirmed with payroll, added to next check&quot;" maxlength="4000" />
+      <input id="cdNote" class="input cd-note" placeholder="e.g. &quot;Confirmed with payroll, added to next check&quot;" maxlength="4000" />
       <div class="cd-actions">
         <button type="button" class="btn-sm" data-status="acknowledged">Mark seen</button>
         <button type="button" class="btn-sm ok" data-status="resolved">✓ Resolve</button>
@@ -582,10 +640,16 @@
       <div class="drawer-head" style="margin-bottom:12px;">
         <div>
           <div class="drawer-title" style="font-size:16px;">Your Requests</div>
-          <div class="cell-muted">Missing work, short pay, or anything else you've sent your manager</div>
+          <div class="cell-muted" style="white-space:normal;">Missing work, short pay, or anything else you've sent your manager</div>
         </div>
-        <a href="./index.html?tab=history&open=requestsDetails" class="btn-sm">+ New</a>
+        <!-- Used to be an <a> deep link into index.html — tapping it tore
+             down this whole page and reloaded the app shell, which only
+             expanded an accordion on a timer and never opened a form. Read
+             as "the section force-closes and nothing happens", especially
+             inside the iOS app. Compose now happens right here. -->
+        <button type="button" id="newClaimBtn" class="btn-sm primary">+ New request</button>
       </div>
+      <div id="myClaimsSummary" class="my-claims-summary" style="display:none;"></div>
       <div id="myClaimList"><div class="cell-muted">Loading…</div></div>
     </div>
   </div>
@@ -604,8 +668,77 @@
     <div id="mcdMeta" class="cd-meta"></div>
     <div id="mcdMsgs" class="cd-msgs"></div>
     <div class="cd-reply">
-      <input id="mcdReply" placeholder="Reply to your manager…" maxlength="4000" />
+      <input id="mcdReply" class="input" placeholder="Reply to your manager…" maxlength="4000" />
       <button type="button" class="btn primary" id="mcdReplyBtn">Send</button>
+    </div>
+    <!-- Only an untouched (still "open") request can be pulled back — same
+         rule the claims_delete_own_while_open RLS policy enforces. -->
+    <button type="button" class="btn-sm danger" id="mcdWithdrawBtn" style="display:none;">Withdraw request</button>
+  </div>
+</div>
+
+<!-- New request (tech compose) -->
+<div id="newClaimDrawer" class="drawer" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="ncTitle">
+  <div class="drawer-card">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title" id="ncTitle">Send to your manager</div>
+        <div class="cell-muted" id="ncShopLine" style="white-space:normal;"></div>
+      </div>
+      <button type="button" class="btn-sm" id="ncCloseBtn" aria-label="Close">Close</button>
+    </div>
+
+    <div id="ncRestored" class="nc-restored" style="display:none;">
+      <span>Picked up your unsent draft.</span>
+      <button type="button" id="ncDiscardDraftBtn">Start over</button>
+    </div>
+
+    <div class="nc-kinds" id="ncKinds" role="radiogroup" aria-label="Request type"></div>
+    <div class="nc-hint" id="ncHint"></div>
+
+    <div class="nc-field" id="ncJobRow">
+      <label class="nc-label" for="ncJob">Attach a logged job <span class="nc-opt">fills in RO, date, hours &amp; pay</span></label>
+      <select id="ncJob" class="input"><option value="">Loading your jobs…</option></select>
+    </div>
+
+    <div class="nc-field">
+      <label class="nc-label" for="ncSubject">Subject <span class="nc-count" id="ncSubjectCount">0/140</span></label>
+      <input id="ncSubject" class="input" maxlength="140" placeholder="RO 40534 not on my paycheck" autocomplete="off" />
+    </div>
+
+    <div class="nc-field">
+      <label class="nc-label" for="ncDetails">
+        <span>Details <span class="nc-opt">optional</span></span>
+        <button type="button" class="nc-draft" id="ncDraftBtn">✍️ Draft for me</button>
+      </label>
+      <textarea id="ncDetails" class="input" rows="4" maxlength="4000" placeholder="What happened, and what you're asking for."></textarea>
+    </div>
+
+    <div class="nc-grid" id="ncEvidence">
+      <div class="nc-field">
+        <label class="nc-label" for="ncRo">RO # <span class="nc-opt">optional</span></label>
+        <input id="ncRo" class="input" placeholder="40534" autocomplete="off" />
+      </div>
+      <div class="nc-field">
+        <label class="nc-label" for="ncDate">Date <span class="nc-opt">optional</span></label>
+        <input id="ncDate" class="input" type="date" />
+      </div>
+      <div class="nc-field">
+        <label class="nc-label" for="ncHours">Hours <span class="nc-opt">optional</span></label>
+        <input id="ncHours" class="input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="2.5" />
+      </div>
+      <div class="nc-field">
+        <label class="nc-label" for="ncAmount">Amount $ <span class="nc-opt">optional</span></label>
+        <input id="ncAmount" class="input" type="number" inputmode="decimal" step="0.01" min="0" placeholder="75.00" />
+      </div>
+    </div>
+
+    <div class="nc-err" id="ncErr" role="alert" style="display:none;"></div>
+    <div class="nc-note">Goes straight to your manager with a timestamp. You can reply in the thread, and withdraw it until they've seen it.</div>
+
+    <div class="nc-actions">
+      <button type="button" class="btn" id="ncCancelBtn">Cancel</button>
+      <button type="button" class="btn primary" id="ncSendBtn">Send request</button>
     </div>
   </div>
 </div>
@@ -791,6 +924,10 @@
     if (!mem) { show("setupView", true); show("shopView", false); return; }
     MY_ROLE = mem.role;
     localStorage.setItem(LS_LAST_TEAM_SHOP, mem.shop_id);
+    // Switching dealerships mid-thread would leave a drawer showing the old
+    // shop's request (and a compose sheet addressed to the wrong shop).
+    ["jobDrawer", "claimDrawer", "myClaimDrawer", "newClaimDrawer"].forEach(id => { const el = $(id); if (el) el.style.display = "none"; });
+    document.body.classList.remove("drawer-open");
 
     const { data: shop } = await db.from("shops").select("*").eq("id", mem.shop_id).maybeSingle();
     if (!shop) { show("setupView", true); startTeamTour(false); return; }
@@ -1161,7 +1298,7 @@
     // Not revoking the blob: URL here — it's cache-owned now (_jobPhotoCache
     // above) and reused if the same job's photo is reopened later.
     $("jdPhotoBox").innerHTML = "";
-    $("jobDrawer").style.display = "none";
+    closeDrawer("jobDrawer");
   }
 
   async function openJob(idx) {
@@ -1189,7 +1326,7 @@
     if (l.description) { notesEl.textContent = l.description; notesEl.style.display = ""; }
     else notesEl.style.display = "none";
 
-    $("jobDrawer").style.display = "flex";
+    openDrawer("jobDrawer");
     await loadJobPhoto(l);
   }
 
@@ -1488,9 +1625,20 @@
       (ev ? `<div class="cd-ev">${esc(ev)}</div>` : "") +
       (c.details ? `<div class="cd-details">${esc(c.details)}</div>` : "");
     $("cdNote").value = c.resolution_note || "";
-    $("claimDrawer").style.display = "flex";
+    markCurrentStatus(c.status);
+    openDrawer("claimDrawer");
     await drawClaimMsgs(c.id);
   }
+
+  function markCurrentStatus(status) {
+    document.querySelectorAll("#claimDrawer [data-status]").forEach(b => {
+      const cur = b.dataset.status === status;
+      b.classList.toggle("is-current", cur);
+      b.setAttribute("aria-pressed", String(cur));
+    });
+  }
+
+  function closeManagerClaim() { closeDrawer("claimDrawer"); ACTIVE = null; }
 
   async function drawClaimMsgs(claimId) {
     const box = $("cdMsgs");
@@ -1510,12 +1658,9 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  $("cdCloseBtn").addEventListener("click", () => {
-    $("claimDrawer").style.display = "none";
-    ACTIVE = null;
-  });
+  $("cdCloseBtn").addEventListener("click", closeManagerClaim);
   $("claimDrawer").addEventListener("click", (e) => {
-    if (e.target === $("claimDrawer")) { $("claimDrawer").style.display = "none"; ACTIVE = null; }
+    if (e.target === $("claimDrawer")) closeManagerClaim();
   });
 
   $("cdReplyBtn").addEventListener("click", sendReply);
@@ -1536,46 +1681,58 @@
     await drawClaimMsgs(ACTIVE.id);
   }
 
-  document.querySelectorAll("[data-status]").forEach(b =>
-    b.addEventListener("click", () => setClaimStatus(b.dataset.status)));
+  document.querySelectorAll("#claimDrawer [data-status]").forEach(b =>
+    b.addEventListener("click", () => {
+      if (b.classList.contains("is-current")) return; // already in that state
+      setClaimStatus(b.dataset.status);
+    }));
 
+  let STATUS_SAVING = false;
   async function setClaimStatus(status, opts = {}) {
-    if (!ACTIVE) return;
+    if (!ACTIVE || STATUS_SAVING) return;
+    STATUS_SAVING = true;
+    const btns = document.querySelectorAll("#claimDrawer [data-status]");
+    btns.forEach(b => { b.disabled = true; });
     const { error } = await db.rpc("resolve_claim", {
       p_claim: ACTIVE.id,
       p_status: status,
       p_note: $("cdNote").value.trim() || null,
     });
+    STATUS_SAVING = false;
+    btns.forEach(b => { b.disabled = false; });
     if (error) { toast(error.message); return; }
     ACTIVE.status = status;
+    markCurrentStatus(status);
     await loadClaims();
     if (!opts.silent) {
-      $("claimDrawer").style.display = "none";
-      ACTIVE = null;
+      toast(status === "resolved" ? "Marked resolved ✓" : status === "declined" ? "Declined" : "Marked seen");
+      closeManagerClaim();
     }
   }
 
   /* ── My Requests (tech side) ──────────────────────────────────────────
-   * A tech landing here after joining a shop used to hit an empty card and
-   * a dead "Open the app" link -- nowhere on this page showed what they'd
-   * actually sent their manager. This mirrors the same claims/claim_messages
-   * tables the main app's Requests-to-Manager section (src/claims-service.js)
-   * already reads and writes, so a tech can see status and reply right here
-   * without leaving the Team Dashboard. Submitting a brand-new request still
-   * goes through the main app's fuller flow (job picker, AI dispute drafting)
-   * via the "+ New" deep link above rather than duplicating all of that here.
+   * List, thread, reply, withdraw, and — as of this rework — compose, all
+   * on this page. Compose used to be an <a> deep link back into index.html
+   * that tore the page down and never actually opened a form. Same
+   * claims / claim_messages tables and submit_claim() RPC the main app's
+   * Requests-to-Manager section (src/claims-service.js) uses.
    */
   let MY_CLAIMS = [], MY_ACTIVE = null;
 
   async function loadMyClaims() {
-    // No .eq("user_id", …) filter needed -- RLS already scopes a tech's own
-    // SELECT on claims to their own rows (same policy src/claims-service.js's
-    // loadMyClaims() relies on in the main app).
-    const { data, error } = await db
-      .from("claims").select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) { $("myClaimList").innerHTML = `<div class="cell-muted">${esc(error.message)}</div>`; return; }
+    // RLS already scopes a tech's SELECT on claims to their own rows. Scope
+    // to the dealership currently selected in the switcher too — otherwise a
+    // multi-shop tech saw every shop's requests mixed together under
+    // whichever shop name was showing.
+    let q = db.from("claims").select("*").order("created_at", { ascending: false }).limit(100);
+    if (SHOP?.id) q = q.eq("shop_id", SHOP.id);
+    const { data, error } = await q;
+    if (error) {
+      logClientError("team.html: loadMyClaims failed", error, { shopId: SHOP?.id });
+      $("myClaimList").innerHTML = `<div class="cell-muted" style="white-space:normal;margin-bottom:8px;">Couldn't load your requests.</div><button type="button" class="btn-sm" id="myClaimsRetryBtn">Try again</button>`;
+      $("myClaimsRetryBtn")?.addEventListener("click", loadMyClaims);
+      return;
+    }
     MY_CLAIMS = data || [];
     drawMyClaims();
   }
@@ -1583,8 +1740,22 @@
   function drawMyClaims() {
     const list = $("myClaimList");
     if (!list) return;
+    const sum = $("myClaimsSummary");
+    const waiting  = MY_CLAIMS.filter(c => c.status === "open" || c.status === "acknowledged").length;
+    const resolved = MY_CLAIMS.filter(c => c.status === "resolved").length;
+    if (sum) {
+      if (MY_CLAIMS.length) {
+        const bits = [];
+        if (waiting)  bits.push(`${waiting} waiting on your manager`);
+        if (resolved) bits.push(`${resolved} resolved`);
+        sum.textContent = bits.join(" · ");
+        sum.style.display = bits.length ? "" : "none";
+      } else {
+        sum.style.display = "none";
+      }
+    }
     if (!MY_CLAIMS.length) {
-      list.innerHTML = `<div class="cell-muted">Nothing sent yet. Use "+ New" above when work goes missing, you get short-paid, or you need hours.</div>`;
+      list.innerHTML = `<div class="cell-muted" style="white-space:normal;line-height:1.5;">Nothing sent yet. Tap <strong>+ New request</strong> when work goes missing, you get short-paid, or you need hours.</div>`;
       return;
     }
     list.innerHTML = MY_CLAIMS.map(c => {
@@ -1618,7 +1789,8 @@
       (ev ? `<div class="cd-ev">${esc(ev)}</div>` : "") +
       (c.details ? `<div class="cd-details">${esc(c.details)}</div>` : "") +
       (c.resolution_note ? `<div class="cd-details" style="margin-top:6px;"><strong>Manager:</strong> ${esc(c.resolution_note)}</div>` : "");
-    $("myClaimDrawer").style.display = "flex";
+    $("mcdWithdrawBtn").style.display = c.status === "open" ? "" : "none";
+    openDrawer("myClaimDrawer");
     await drawMyClaimMsgs(c.id);
   }
 
@@ -1640,12 +1812,25 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  $("mcdCloseBtn")?.addEventListener("click", () => {
-    $("myClaimDrawer").style.display = "none";
-    MY_ACTIVE = null;
-  });
+  function closeMyClaim() { closeDrawer("myClaimDrawer"); MY_ACTIVE = null; }
+  $("mcdCloseBtn")?.addEventListener("click", closeMyClaim);
   $("myClaimDrawer")?.addEventListener("click", (e) => {
-    if (e.target === $("myClaimDrawer")) { $("myClaimDrawer").style.display = "none"; MY_ACTIVE = null; }
+    if (e.target === $("myClaimDrawer")) closeMyClaim();
+  });
+
+  $("mcdWithdrawBtn")?.addEventListener("click", async () => {
+    if (!MY_ACTIVE || MY_ACTIVE.status !== "open") return;
+    if (!confirm("Withdraw this request? It'll be removed from your manager's inbox.")) return;
+    const btn = $("mcdWithdrawBtn"); btn.disabled = true;
+    // .select() so a silent RLS no-op (manager marked it seen a moment ago,
+    // so it's no longer "open") shows up as zero rows instead of a fake
+    // "withdrawn" toast for a request that's still sitting in their inbox.
+    const { data, error } = await db.from("claims").delete().eq("id", MY_ACTIVE.id).select("id");
+    btn.disabled = false;
+    if (error) { toast(error.message || "Couldn't withdraw — try again"); return; }
+    closeMyClaim();
+    toast(data?.length ? "Request withdrawn" : "Your manager already opened it — reply in the thread instead", data?.length ? 2500 : 4000);
+    await loadMyClaims();
   });
 
   $("mcdReplyBtn")?.addEventListener("click", sendMyReply);
@@ -1663,6 +1848,357 @@
     $("mcdReply").value = "";
     await drawMyClaimMsgs(MY_ACTIVE.id);
   }
+
+  /* ── Drawer helpers ──────────────────────────────────────────────────
+   * One place that knows whether any drawer is up, so the page behind it
+   * can be frozen (body.drawer-open) and Escape can close the top one. */
+  const DRAWER_IDS = ["jobDrawer", "claimDrawer", "myClaimDrawer", "newClaimDrawer"];
+  function syncDrawerLock() {
+    const anyOpen = DRAWER_IDS.some(id => $(id)?.style.display === "flex");
+    document.body.classList.toggle("drawer-open", anyOpen);
+  }
+  function openDrawer(id)  { const el = $(id); if (!el) return; el.style.display = "flex"; syncDrawerLock(); }
+  function closeDrawer(id) { const el = $(id); if (!el) return; el.style.display = "none"; syncDrawerLock(); }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if ($("newClaimDrawer")?.style.display === "flex") { closeCompose(); return; }
+    if ($("myClaimDrawer")?.style.display === "flex")  { closeMyClaim(); return; }
+    if ($("claimDrawer")?.style.display === "flex")    { closeManagerClaim(); return; }
+    if ($("jobDrawer")?.style.display === "flex")      { closeJob(); }
+  });
+
+  /* ── New request (tech compose) ──────────────────────────────────────
+   * Kind → optional logged job (fills RO/date/hours/pay) → subject →
+   * details (with AI "Draft for me") → submit_claim() for THIS dealership.
+   * An unsent draft is kept per tech+shop in localStorage, so closing the
+   * sheet, a crash, or the iOS app getting killed never loses what was typed. */
+  const NC_KINDS = [
+    { id: "missing_work", emoji: "🔍", label: "Missing work",
+      hint: "A job you did isn't showing up or wasn't paid.",
+      subj: (j) => j?.ro_number ? `RO ${j.ro_number} not on my paycheck` : "" },
+    { id: "short_pay",    emoji: "💸", label: "Short pay",
+      hint: "You were paid less time than you turned.",
+      subj: (j) => j?.ro_number ? `RO ${j.ro_number} was short-paid` : "" },
+    { id: "need_hours",   emoji: "🕐", label: "Need hours",
+      hint: "You're out of work — ask your manager to send you something.",
+      subj: () => "Out of work — can you send me something?" },
+    { id: "other",        emoji: "💬", label: "Other",
+      hint: "Anything else your manager should know.",
+      subj: () => "" },
+  ];
+  let NC_KIND = "missing_work";
+  let NC_JOBS = [];
+  let NC_AUTO_SUBJECT = "";   // a subject WE filled in — safe to swap when the kind/job changes
+  let NC_SENDING = false;
+  const ncDraftKey = () => `fr_team_claim_draft_${UID || "anon"}_${SHOP?.id || "none"}`;
+
+  function showNcErr(msg) { const el = $("ncErr"); el.textContent = msg; el.style.display = ""; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  function hideNcErr() { const el = $("ncErr"); el.textContent = ""; el.style.display = "none"; }
+
+  function pickedJob() {
+    const v = $("ncJob").value;
+    return v === "" ? null : (NC_JOBS[Number(v)] || null);
+  }
+
+  function updateSubjectCount() {
+    const n = $("ncSubject").value.length;
+    const el = $("ncSubjectCount");
+    el.textContent = `${n}/140`;
+    el.classList.toggle("near", n > 120);
+  }
+
+  function maybeAutoSubject() {
+    const input = $("ncSubject");
+    const cur = input.value.trim();
+    if (cur && cur !== NC_AUTO_SUBJECT) return; // they typed their own — never overwrite it
+    const k = NC_KINDS.find(x => x.id === NC_KIND) || NC_KINDS[0];
+    const s = k.subj(NC_KIND === "need_hours" ? null : pickedJob()) || "";
+    input.value = s;
+    NC_AUTO_SUBJECT = s;
+    updateSubjectCount();
+  }
+
+  function renderNcKinds(skipAuto) {
+    $("ncKinds").innerHTML = NC_KINDS.map(k =>
+      `<button type="button" class="nc-kind${k.id === NC_KIND ? " on" : ""}" role="radio" aria-checked="${k.id === NC_KIND}" data-kind="${k.id}">
+        <span class="nc-kind-emoji">${k.emoji}</span><span>${k.label}</span>
+      </button>`).join("");
+    const k = NC_KINDS.find(x => x.id === NC_KIND) || NC_KINDS[0];
+    $("ncHint").textContent = k.hint;
+    // "Need hours" isn't about a specific job — no job picker, no evidence grid.
+    const needHours = NC_KIND === "need_hours";
+    $("ncJobRow").style.display = needHours ? "none" : "";
+    $("ncEvidence").style.display = needHours ? "none" : "";
+    if (!skipAuto) maybeAutoSubject();
+  }
+
+  $("ncKinds").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kind]");
+    if (!b || b.dataset.kind === NC_KIND) return;
+    NC_KIND = b.dataset.kind;
+    hideNcErr();
+    renderNcKinds();
+    saveNcDraft();
+  });
+
+  function shortDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
+  }
+
+  async function loadComposeJobs() {
+    const sel = $("ncJob");
+    sel.disabled = true;
+    sel.innerHTML = `<option value="">Loading your jobs…</option>`;
+    const since = new Date(); since.setDate(since.getDate() - 60);
+    const { data, error } = await db
+      .from("work_logs")
+      .select("work_date, ro_number, description, category, flat_hours, cash_amount, shop_id")
+      .eq("user_id", UID)
+      .gte("work_date", dateKey(since))
+      .or("is_deleted.is.null,is_deleted.eq.false")
+      .order("work_date", { ascending: false })
+      .limit(80);
+    sel.disabled = false;
+    if (error) {
+      logClientError("team.html: loadComposeJobs failed", error, { shopId: SHOP?.id });
+      NC_JOBS = [];
+      sel.innerHTML = `<option value="">Couldn't load your jobs — fill it in below</option>`;
+      return;
+    }
+    // Jobs tagged to a different dealership don't belong on this shop's request.
+    NC_JOBS = (data || []).filter(l => !l.shop_id || l.shop_id === SHOP?.id);
+    if (!NC_JOBS.length) {
+      sel.innerHTML = `<option value="">No jobs logged in the last 60 days</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— None, I'll fill it in —</option>` + NC_JOBS.map((l, i) => {
+      const what = String(l.description || l.category || "Job").replace(/\s+/g, " ").trim();
+      const bits = [
+        shortDate(l.work_date),
+        l.ro_number ? `RO ${l.ro_number}` : "",
+        what.length > 34 ? what.slice(0, 33) + "…" : what,
+        Number(l.flat_hours) > 0 ? `${Number(l.flat_hours).toFixed(1)}h` : "",
+      ].filter(Boolean);
+      return `<option value="${i}">${esc(bits.join(" · "))}</option>`;
+    }).join("");
+  }
+
+  $("ncJob").addEventListener("change", () => {
+    const j = pickedJob();
+    if (j) {
+      $("ncRo").value     = j.ro_number || "";
+      $("ncDate").value   = j.work_date || "";
+      $("ncHours").value  = Number(j.flat_hours)  > 0 ? String(Number(j.flat_hours)) : "";
+      $("ncAmount").value = Number(j.cash_amount) > 0 ? Number(j.cash_amount).toFixed(2) : "";
+    }
+    hideNcErr();
+    maybeAutoSubject();
+    saveNcDraft();
+  });
+
+  /* Draft persistence */
+  function ncValues() {
+    return {
+      kind: NC_KIND, auto: NC_AUTO_SUBJECT,
+      subject: $("ncSubject").value, details: $("ncDetails").value,
+      ro: $("ncRo").value, date: $("ncDate").value, hours: $("ncHours").value, amount: $("ncAmount").value,
+    };
+  }
+  function ncDirty() {
+    const v = ncValues();
+    return !!((v.subject.trim() && v.subject.trim() !== NC_AUTO_SUBJECT) || v.details.trim() ||
+              v.ro.trim() || v.date || v.hours || v.amount);
+  }
+  function saveNcDraft() {
+    try {
+      if (ncDirty()) localStorage.setItem(ncDraftKey(), JSON.stringify({ ...ncValues(), at: Date.now() }));
+      else localStorage.removeItem(ncDraftKey());
+    } catch {}
+  }
+  function clearNcDraft() { try { localStorage.removeItem(ncDraftKey()); } catch {} }
+  function readNcDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(ncDraftKey()) || "null");
+      if (d && Date.now() - (d.at || 0) < 14 * 864e5) return d; // two weeks, then it's stale
+    } catch {}
+    return null;
+  }
+  ["ncSubject", "ncDetails", "ncRo", "ncDate", "ncHours", "ncAmount"].forEach(id =>
+    $(id).addEventListener("input", () => {
+      if (id === "ncSubject") updateSubjectCount();
+      if ($("ncErr").style.display !== "none") hideNcErr();
+      saveNcDraft();
+    }));
+  // Enter in the subject moves on to details instead of doing nothing.
+  $("ncSubject").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); $("ncDetails").focus(); }
+  });
+
+  function fillCompose(d) {
+    NC_KIND = d?.kind && NC_KINDS.some(k => k.id === d.kind) ? d.kind : "missing_work";
+    $("ncSubject").value = d?.subject || "";
+    NC_AUTO_SUBJECT      = d?.auto || "";
+    $("ncDetails").value = d?.details || "";
+    $("ncRo").value      = d?.ro || "";
+    $("ncDate").value    = d?.date || "";
+    $("ncHours").value   = d?.hours || "";
+    $("ncAmount").value  = d?.amount || "";
+    $("ncJob").value = "";
+    // A restored draft keeps its subject exactly as it was left; a blank
+    // form gets the kind's default suggestion.
+    renderNcKinds(!!d);
+    updateSubjectCount();
+  }
+
+  async function openCompose() {
+    if (!SHOP) { toast("Pick a dealership first"); return; }
+    hideNcErr();
+    const draft = readNcDraft();
+    fillCompose(draft);
+    $("ncRestored").style.display = draft ? "flex" : "none";
+    $("ncShopLine").textContent = `Goes to ${SHOP.name}'s manager${MEMBERS.filter(m => m.role === "manager").length > 1 ? "s" : ""}`;
+    openDrawer("newClaimDrawer");
+    $("newClaimDrawer").querySelector(".drawer-card").scrollTop = 0;
+    // No autofocus on phones — popping the keyboard on open hides the kind
+    // picker, which is the first choice they need to make.
+    if (!window.matchMedia?.("(pointer: coarse)").matches) setTimeout(() => $("ncSubject").focus(), 60);
+    await loadComposeJobs();
+  }
+
+  function closeCompose() {
+    saveNcDraft(); // closing is never destructive — it's all still there next time
+    closeDrawer("newClaimDrawer");
+  }
+
+  $("newClaimBtn")?.addEventListener("click", () => openCompose());
+  $("ncCloseBtn").addEventListener("click", closeCompose);
+  $("ncCancelBtn").addEventListener("click", () => {
+    if (ncDirty() && !confirm("Discard this request?")) return;
+    clearNcDraft();
+    fillCompose(null);
+    closeDrawer("newClaimDrawer");
+  });
+  $("ncDiscardDraftBtn").addEventListener("click", () => {
+    clearNcDraft();
+    fillCompose(null);
+    $("ncRestored").style.display = "none";
+    hideNcErr();
+  });
+  // Deliberately no close-on-backdrop-tap here: on a phone the sheet's top
+  // edge is easy to graze mid-scroll, and that was the exact "it just
+  // closed on me" feeling this rework is fixing.
+
+  $("ncDraftBtn").addEventListener("click", async () => {
+    hideNcErr();
+    const needHours = NC_KIND === "need_hours";
+    const j = needHours ? null : pickedJob();
+    const existing = $("ncDetails").value.trim();
+    const payload = {
+      kind:    NC_KIND,
+      subject: $("ncSubject").value.trim(),
+      ro:      needHours ? "" : $("ncRo").value.trim(),
+      date:    needHours ? "" : $("ncDate").value,
+      hours:   needHours ? null : $("ncHours").value,
+      amount:  needHours ? null : $("ncAmount").value,
+      notes:   [j?.description, existing].filter(Boolean).join(" — "),
+    };
+    const hasFact = payload.ro || payload.date || Number(payload.hours) > 0 || Number(payload.amount) > 0 || payload.notes;
+    if (!needHours && !hasFact) {
+      showNcErr("Attach a job, or add an RO, date, hours, or amount first — the draft needs at least one real fact to work with.");
+      return;
+    }
+    if (existing && !confirm("Replace what you've written with a drafted version?")) return;
+
+    const btn = $("ncDraftBtn");
+    btn.disabled = true; btn.textContent = "Drafting…";
+    const call = async (tok) => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      try {
+        return await fetch(`${cfg.url}/functions/v1/draft-dispute`, {
+          method: "POST", signal: ctrl.signal,
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tok}`, "apikey": cfg.anonKey },
+          body: JSON.stringify(payload),
+        });
+      } finally { clearTimeout(timer); }
+    };
+    try {
+      const { data: s } = await db.auth.getSession();
+      const token = s?.session?.access_token;
+      if (!token) throw new Error("Sign back in to use the drafting tool.");
+      let res = await call(token);
+      if (res.status === 401) {
+        const r = await db.auth.refreshSession().catch(() => null);
+        const t2 = r?.data?.session?.access_token;
+        if (t2) res = await call(t2);
+      }
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out?.error || `Couldn't draft that (${res.status}) — try again.`);
+      if (out.text) {
+        $("ncDetails").value = out.text;
+        saveNcDraft();
+      }
+    } catch (e) {
+      showNcErr(e?.name === "AbortError" ? "Drafting is taking too long — try again, or write it yourself." : (e?.message || "Couldn't draft that — try again."));
+    } finally {
+      btn.disabled = false; btn.textContent = "✍️ Draft for me";
+    }
+  });
+
+  function friendlyClaimError(err) {
+    const m = String(err?.message || err || "");
+    if (/failed to fetch|network|load failed/i.test(m)) return "Couldn't reach the server — check your connection. Your request is saved here; tap Send again when you're back online.";
+    if (/not a member/i.test(m)) return "You're no longer on this dealership's roster, so this can't be sent here.";
+    if (/subject/i.test(m)) return "Give it a short subject so your manager knows what it's about.";
+    return m || "Couldn't send — try again.";
+  }
+
+  $("ncSendBtn").addEventListener("click", async () => {
+    if (NC_SENDING) return;
+    hideNcErr();
+    const subject = $("ncSubject").value.trim();
+    if (!subject) {
+      showNcErr("Give it a short subject so your manager knows what it's about.");
+      $("ncSubject").focus();
+      return;
+    }
+    const needHours = NC_KIND === "need_hours";
+    const num = (id) => { const v = parseFloat($(id).value); return Number.isFinite(v) && v > 0 ? v : null; };
+    if (!needHours && (num("ncHours") || 0) > 200) { showNcErr("Hours looks too high — double-check it."); $("ncHours").focus(); return; }
+    if (!needHours && (num("ncAmount") || 0) > 99999) { showNcErr("Amount looks too high — double-check it."); $("ncAmount").focus(); return; }
+    if (!navigator.onLine) { saveNcDraft(); showNcErr(friendlyClaimError("network")); return; }
+
+    NC_SENDING = true;
+    const btn = $("ncSendBtn");
+    btn.disabled = true; btn.textContent = "Sending…";
+    const { error } = await db.rpc("submit_claim", {
+      p_kind:           NC_KIND,
+      p_subject:        subject,
+      p_details:        $("ncDetails").value.trim() || null,
+      p_ro_number:      needHours ? null : ($("ncRo").value.trim() || null),
+      p_work_date:      needHours ? null : ($("ncDate").value || null),
+      p_claimed_hours:  needHours ? null : num("ncHours"),
+      p_claimed_amount: needHours ? null : num("ncAmount"),
+      p_shop:           SHOP.id,
+    });
+    NC_SENDING = false;
+    btn.disabled = false; btn.textContent = "Send request";
+    if (error) {
+      logClientError("team.html: submit_claim failed", error, { shopId: SHOP?.id, kind: NC_KIND });
+      saveNcDraft();
+      showNcErr(friendlyClaimError(error));
+      return;
+    }
+    clearNcDraft();
+    fillCompose(null);
+    closeDrawer("newClaimDrawer");
+    toast("Sent to your manager ✓");
+    await loadMyClaims();
+  });
 
   // Realtime: without this a tech only finds out about a manager's reply or
   // status change the next time they happen to reopen this page. Mirrors
