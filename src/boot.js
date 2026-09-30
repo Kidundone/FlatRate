@@ -1392,6 +1392,16 @@ window.__FR.triggerInstall = () => document.getElementById("installBtn")?.click(
 const APP_VERSION = "0.11-beta";
 const LS_SEEN_VER = "fr_seen_version";
 
+// Keep the "Report a Bug" mailto's pre-filled version line current — it used
+// to be a hand-typed "1.2" baked into the HTML that never got bumped along
+// with APP_VERSION, so every bug report came in claiming the wrong version.
+(() => {
+  const bugBtn = document.getElementById("bugReportBtn");
+  if (!bugBtn) return;
+  const body = `App version: ${APP_VERSION}\n\nWhat happened:\n\nSteps to reproduce:\n`;
+  bugBtn.href = `mailto:eamnelsonmalloy@icloud.com?subject=${encodeURIComponent("Flatrate Buddy Bug Report")}&body=${encodeURIComponent(body)}`;
+})();
+
 const CHANGELOG = {
   "0.11-beta": [
     "🏢 Multi-dealership support — techs who work more than one shop get a dealership picker on new entries and a shop switcher on the team dashboard",
