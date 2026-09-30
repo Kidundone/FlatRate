@@ -813,18 +813,20 @@ function renderHeroChart(entries, weekStart) {
         renderRangeEntries(moEntries.slice().sort((a, b2) => (b2.createdAt || "").localeCompare(a.createdAt || "")), "month");
       });
     });
-    // Default: highlight most recent month with data
+    // Default: visually highlight the most recent month with data — but only
+    // the highlight. This used to dispatch a real click, which ran the full
+    // handler above and silently swapped the YEAR totals/title/job-list for
+    // just that one month's numbers the instant Year mode loaded, before the
+    // user touched anything. Harmless-looking on an account with only one
+    // month of history (the numbers happen to match), but wrong the moment
+    // there's more than a month of data. A real click still drills down
+    // deliberately; this default just dims the other bars.
     let lastIdx = -1;
     buckets.forEach((b, i) => { if (b.dollars > 0) lastIdx = i; });
-    // rect.click() -- SVGElement has no .click() method in WebKit (the engine
-    // behind both the iOS app and Safari), so this threw "click is not a
-    // function" on every single load whenever the hero chart was left on
-    // Year mode. The ?. only guards a missing element, not a missing method,
-    // so it threw anyway -- and since this runs inside renderLogs, which
-    // loadEntries awaits, the whole entries load aborted into its offline/
-    // cached-data fallback path even though the real fetch had succeeded.
-    // Dispatching a synthetic click event works on every element type.
-    if (lastIdx >= 0) svg.querySelectorAll("rect")[lastIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (lastIdx >= 0) {
+      svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === lastIdx ? "1" : "0.45"; });
+      labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === lastIdx); });
+    }
     return;
   }
 
@@ -910,10 +912,18 @@ function renderHeroChart(entries, weekStart) {
         renderRangeEntries(b.entries.slice().sort((a, b2) => (b2.createdAt || "").localeCompare(a.createdAt || "")), "week");
       });
     });
-    // Default: highlight current week
-    // Same SVGElement.click()-doesn't-exist-in-WebKit fix as year mode above.
+    // Default: visually highlight the current week — only the highlight, not
+    // a real click. Same bug as year mode above: dispatching an actual click
+    // ran the full handler and replaced the MONTH totals/title/job-list with
+    // just the current week's numbers as soon as Month mode loaded. A real
+    // click still drills down into a single week on purpose; this default
+    // just dims the other bars so "you are here" is visible without lying
+    // about which period the numbers above are summarizing.
     const curIdx = wkBuckets.findIndex(b => b.isCurrent);
-    if (curIdx >= 0) svg.querySelectorAll("rect")[curIdx]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (curIdx >= 0) {
+      svg.querySelectorAll("rect").forEach((r, j) => { r.style.opacity = j === curIdx ? "1" : "0.45"; });
+      labelsRow.querySelectorAll("span").forEach((s, j) => { s.classList.toggle("heroChartLabel--now", j === curIdx); });
+    }
     return;
   }
 
