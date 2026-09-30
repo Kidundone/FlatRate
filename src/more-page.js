@@ -249,9 +249,9 @@ async function exportCSV(){
 async function saveFlaggedHours(){
   const fh = document.getElementById("flaggedHours");
   const val = fh ? Number(fh.value || 0) : 0;
-  if (!Number.isFinite(val) || val < 0) { toast("Flagged hours must be a number ≥ 0."); return; }
+  if (!Number.isFinite(val) || val < 0) { toast("Expected hours must be a number ≥ 0."); return; }
   await setThisWeekFlag(val);
-  toast("Flagged hours saved for this week.");
+  toast("Expected hours saved for this week.");
 }
 
 function expectedTotalsForWeekKey(weekStartKey, empId = getEmpId()) {
