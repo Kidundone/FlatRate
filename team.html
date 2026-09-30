@@ -23,6 +23,14 @@
       // separately-maintained (and drifted) copy of app.css's tokens. Mirrors
       // the same attribute + default that index.html/applySettings() use.
       document.documentElement.setAttribute('data-color-theme', s.colorTheme || 'sunset');
+      // Custom Accent Color (Classic theme only, same scoping as the Settings
+      // UI in src/more-page.js) -- team.html mirrored the named theme above
+      // but never this override, so a tech with a custom accent color saw
+      // this page in the Classic default blue instead of their own color.
+      var ct = s.colorTheme || 'sunset';
+      if (ct === 'classic' && s.accentColor) {
+        document.documentElement.style.setProperty('--primary', s.accentColor);
+      }
     })();
   </script>
   <style>
@@ -689,9 +697,21 @@
     const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
     return `${y}-${m}-${dd}`;
   }
-  function startOfWeek(d) { // Monday
-    const x = new Date(d); const day = (x.getDay() + 6) % 7;
-    x.setDate(x.getDate() - day); x.setHours(0,0,0,0); return x;
+  // Respect the shop's configured pay-week start day instead of hardcoding
+  // Monday -- this used to disagree with a tech's own Stats page whenever
+  // payWeekStartDay was set to anything else. Mirrors (day-of-week part of)
+  // getPayWeekConfig()/startOfWeekLocal() in src/utils.js; team.html can't
+  // import that module directly, so this reads the same fr_settings key.
+  function getPayWeekStartDay() {
+    let s = {}; try { s = JSON.parse(localStorage.getItem('fr_settings') || '{}'); } catch (e) {}
+    const raw = Number(s.payWeekStartDay);
+    return Number.isInteger(raw) && raw >= 0 && raw <= 6 ? raw : 1;
+  }
+  function startOfWeek(d) {
+    const startDay = getPayWeekStartDay();
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diff = (x.getDay() - startDay + 7) % 7;
+    x.setDate(x.getDate() - diff); x.setHours(0,0,0,0); return x;
   }
   function rangeFor(mode) {
     const now = new Date();
@@ -1161,8 +1181,12 @@
       cell("Comeback", l.is_comeback ? '<span class="flag-cb">Yes</span>' : "No"),
     ].join("");
 
+    // "notes" isn't a real work_logs column -- the free-text field is stored
+    // as description (see fetchLogs' comment above), so this always read
+    // undefined and the panel silently never showed. Point it at the field
+    // that actually holds the text.
     const notesEl = $("jdNotes");
-    if (l.notes) { notesEl.textContent = l.notes; notesEl.style.display = ""; }
+    if (l.description) { notesEl.textContent = l.description; notesEl.style.display = ""; }
     else notesEl.style.display = "none";
 
     $("jobDrawer").style.display = "flex";
