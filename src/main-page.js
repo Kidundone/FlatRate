@@ -2928,7 +2928,31 @@ async function ensureDefaultTypes(){
 
 async function loadTypesSorted(empId){
   const e = String(empId || "").trim();
-  const types = (await getAll(STORES.types)).filter(t => String(t.empId || "").trim() === e);
+  let types = (await getAll(STORES.types)).filter(t => String(t.empId || "").trim() === e);
+
+  // Self-heal exact-duplicate saved types (same tech, same name). These show
+  // up as two identical rows in the Job Types list — seen live with
+  // "Detail without FPF" appearing twice — most likely from using the app
+  // across more than one device/browser, since each one builds this list
+  // locally and neither knows about the other's writes. The AI "clean up job
+  // types" scanner can't catch this: it only looks at logged-entry text that
+  // isn't a recognized type yet, and an exact duplicate is already
+  // "recognized" twice over. Keep whichever row was touched most recently
+  // and quietly drop the rest — entries reference types by name, not by id,
+  // so nothing else depends on the row being removed.
+  const byName = new Map();
+  for (const t of types) {
+    const key = normalizeTypeLower(t.name);
+    const prev = byName.get(key);
+    if (!prev || (t.updatedAt || "") > (prev.updatedAt || "")) byName.set(key, t);
+  }
+  if (byName.size < types.length) {
+    const keepIds = new Set([...byName.values()].map(t => t.id));
+    const dupes = types.filter(t => !keepIds.has(t.id));
+    for (const dupe of dupes) { try { await del(STORES.types, dupe.id); } catch {} }
+    types = [...byName.values()];
+  }
+
   types.sort((a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || a.name.localeCompare(b.name));
   return types;
 }
