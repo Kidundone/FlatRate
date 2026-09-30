@@ -8,7 +8,7 @@ const PAGES_CACHE  = "fr-pages-v1";
 // Hashed asset URLs for this build
 const HASHED_ASSETS = [
   "./app.f984585ac7.js",
-  "./app.9614518778.css",
+  "./app.1a54d89fe1.css",
 ];
 
 // Static assets cached for offline use (icons, manifest)

@@ -2886,6 +2886,15 @@ input[type="time"].moreInputNarrow { min-width: 150px; max-width: 160px; text-al
   display: flex;
   gap: 8px;
   align-items: center;
+  /* Never let this shrink below what its input+button actually need --
+     it sits in a space-between .moreRow next to a label/sub-label that
+     wraps freely (min-width: 0 further up). Without flex-shrink: 0 here,
+     a longer label string (e.g. "Expected Hours (This Week)") competes
+     for width and can squeeze this group narrower than its children's
+     own min-content size, which spills the Set button out past the row
+     and off the right edge of the screen instead of just wrapping the
+     label text more. Found via live viewport check after a copy change. */
+  flex-shrink: 0;
 }
 
 .moreInputStack { border-top: 1px solid var(--stroke); }
