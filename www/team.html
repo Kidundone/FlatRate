@@ -1720,13 +1720,13 @@
   let MY_CLAIMS = [], MY_ACTIVE = null;
 
   async function loadMyClaims() {
-    // RLS already scopes a tech's SELECT on claims to their own rows. Scope
-    // to the dealership currently selected in the switcher too — otherwise a
-    // multi-shop tech saw every shop's requests mixed together under
-    // whichever shop name was showing.
-    let q = db.from("claims").select("*").order("created_at", { ascending: false }).limit(100);
-    if (SHOP?.id) q = q.eq("shop_id", SHOP.id);
-    const { data, error } = await q;
+    // RLS already scopes a tech's SELECT on claims to their own rows. NOT
+    // filtered to the selected shop: a tech who left and rejoined (or moved
+    // dealerships) would otherwise lose their whole request history from
+    // view. Requests sent somewhere other than the shop on screen get a
+    // label instead (see drawMyClaims).
+    const { data, error } = await db.from("claims").select("*")
+      .order("created_at", { ascending: false }).limit(100);
     if (error) {
       logClientError("team.html: loadMyClaims failed", error, { shopId: SHOP?.id });
       $("myClaimList").innerHTML = `<div class="cell-muted" style="white-space:normal;margin-bottom:8px;">Couldn't load your requests.</div><button type="button" class="btn-sm" id="myClaimsRetryBtn">Try again</button>`;
@@ -1761,12 +1761,17 @@
     list.innerHTML = MY_CLAIMS.map(c => {
       const k = CLAIM_KIND[c.kind] || CLAIM_KIND.other;
       const ev = claimEv(c);
+      // Sent to a different dealership than the one on screen — say so, so
+      // it doesn't read as if this shop's manager has it.
+      const where = SHOP && c.shop_id !== SHOP.id
+        ? (MY_SHOPS.some(m => m.shop_id === c.shop_id) ? "Other dealership" : "Former shop")
+        : "";
       return `<button type="button" class="claim-row" data-myclaim="${esc(c.id)}">
         <div class="claim-top">
           <span class="claim-subject">${k.emoji} ${esc(c.subject)}</span>
           <span class="st st-${esc(c.status)}">${STATUS_LABEL[c.status] || c.status}</span>
         </div>
-        <div class="claim-meta">${k.label}${ev ? " · " + esc(ev) : ""} · ${ago(c.created_at)}</div>
+        <div class="claim-meta">${where ? `<span class="claim-who">${where}</span> · ` : ""}${k.label}${ev ? " · " + esc(ev) : ""} · ${ago(c.created_at)}</div>
         ${c.resolution_note ? `<div class="claim-meta" style="color:var(--accent);margin-top:2px;">Manager: ${esc(c.resolution_note)}</div>` : ""}
       </button>`;
     }).join("");
