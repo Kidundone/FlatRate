@@ -10676,7 +10676,11 @@ function computeJobScorecard(entries) {
     (Math.max(...rates) - Math.min(...rates)) > SCORECARD_RATE_EPSILON;
 
   const sortKey = rateVaries ? "perHour" : "perJob";
-  rows.sort((a, b) => b[sortKey] - a[sortKey] || b.earnings - a.earnings);
+  // Reliable rows (count >= SCORECARD_MIN_SAMPLE) always outrank low-sample-size
+  // rows, regardless of rate — otherwise a single lucky $105 job could list #1
+  // above the actual highest-volume "TOP" row, directly contradicting the
+  // headline text below (which already correctly filters to reliable rows only).
+  rows.sort((a, b) => (b.reliable - a.reliable) || (b[sortKey] - a[sortKey]) || (b.earnings - a.earnings));
 
   return { rows, rateVaries, sortKey };
 }
