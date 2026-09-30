@@ -4193,6 +4193,7 @@ async function refreshUI(entriesOverride){
   render8WeekChart(allEntries);
   renderComebackStats(allEntries);
   renderLostTimeCard();
+  renderRateWatch(allEntries);
 
   // stash last week calc for export (delta always set)
   window.__WEEK_STATE__ = { ws, we, week, flagged, delta };
@@ -6144,6 +6145,96 @@ function renderJobScorecard(entries) {
       <span class="jsSubtitle">${rateVaries ? "ranked by real $/hr" : "ranked by $/job"}</span>
     </div>
     ${headline}
+    <div class="jsRows">${rowsHtml}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RATE WATCH — silent book-time erosion detector
+// ═══════════════════════════════════════════════════════════════
+// Flag hours aren't standardized across shops or techs, so there's no
+// honest way to compare your book time against anyone else's — a
+// crowd-sourced "average" would just be noise. What *is* honest: comparing
+// you against your own history. If a job type you log often has quietly
+// started taking fewer flag hours than it used to at the same shop, that's
+// a real, checkable fact worth a conversation with your manager, entirely
+// from your own logged data — no other tech's numbers involved.
+
+const RATE_WATCH_WINDOW_DAYS = 30;   // "recent" window checked for a drop
+const RATE_WATCH_MIN_BASELINE = 4;   // need a real prior pattern to compare against
+const RATE_WATCH_MIN_RECENT = 2;     // need at least a couple recent jobs to trust it
+const RATE_WATCH_DROP_PCT = 0.15;    // 15%+ drop in avg hours counts as a flag
+
+function detectRateWatch(entries) {
+  const cutoffRecent = dateKey(new Date(Date.now() - RATE_WATCH_WINDOW_DAYS * 86400000));
+  const map = new Map();
+  for (const e of (entries || [])) {
+    const name = normalizeJobType(e.type || e.typeText || "");
+    if (!name) continue;
+    const hrs = Number(e.hours || 0);
+    if (!(hrs > 0)) continue;
+    const dk = e.dayKey || dayKeyFromISO(e.createdAt || "");
+    if (!dk) continue;
+    const cur = map.get(name) || { name, baseline: [], recent: [] };
+    (dk >= cutoffRecent ? cur.recent : cur.baseline).push(hrs);
+    map.set(name, cur);
+  }
+
+  const flags = [];
+  for (const { name, baseline, recent } of map.values()) {
+    if (baseline.length < RATE_WATCH_MIN_BASELINE || recent.length < RATE_WATCH_MIN_RECENT) continue;
+    const baseAvg = baseline.reduce((s, h) => s + h, 0) / baseline.length;
+    const recentAvg = recent.reduce((s, h) => s + h, 0) / recent.length;
+    if (baseAvg <= 0) continue;
+    const pctDrop = (baseAvg - recentAvg) / baseAvg;
+    if (pctDrop >= RATE_WATCH_DROP_PCT) {
+      flags.push({
+        name,
+        baseAvg: round1(baseAvg),
+        recentAvg: round1(recentAvg),
+        pctDrop: Math.round(pctDrop * 100),
+        baselineCount: baseline.length,
+        recentCount: recent.length,
+      });
+    }
+  }
+  flags.sort((a, b) => b.pctDrop - a.pctDrop);
+  return flags;
+}
+
+function renderRateWatch(entries) {
+  const el = document.getElementById("rateWatchCard");
+  if (!el) return;
+
+  if (proLocked()) {
+    return renderProLock(el, "Catch book time quietly shrinking",
+      "Compares each job type's flag hours against your own history — no other tech's data involved — so a shop that trims book time gets caught, not just guessed at.");
+  }
+
+  const empId = getEmpId();
+  if (!empId) { el.innerHTML = ""; return; }
+
+  const own = filterEntriesByEmp(normalizeEntries(Array.isArray(entries) ? entries : []), empId);
+  const flags = detectRateWatch(own);
+  if (!flags.length) { el.innerHTML = ""; return; }
+
+  const rowsHtml = flags.slice(0, 5).map(f => `
+    <div class="jsRow">
+      <div class="jsRowMain">
+        <div class="jsRowName">
+          ${escapeHtml(f.name)}
+          <span class="jsBadge jsBadge--warn">−${f.pctDrop}%</span>
+        </div>
+        <div class="jsRowSub">was ${f.baseAvg}h avg (${f.baselineCount} jobs) · now ${f.recentAvg}h avg (${f.recentCount} jobs, last ${RATE_WATCH_WINDOW_DAYS}d)</div>
+      </div>
+    </div>`).join("");
+
+  el.innerHTML = `
+    <div class="jsHeader">
+      <span class="jsTitle">⏱️ Rate Watch</span>
+      <span class="jsSubtitle">vs. your own history</span>
+    </div>
+    <div class="jsHeadline">Book time on ${flags.length === 1 ? "this job type" : "these job types"} has dropped — worth confirming with your manager that nothing changed.</div>
     <div class="jsRows">${rowsHtml}</div>
   `;
 }
