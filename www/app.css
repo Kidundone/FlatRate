@@ -3557,7 +3557,13 @@ body.compact .list    { gap: 1px; }
   align-items: center;
   transition: background-color 120ms var(--ease);
 }
-.moreSectionSummary:active {
+/* JS-managed (see initMoreSectionAnimations in boot.js) — kept instead of a
+   bare :active rule because :active is computed from touch coordinates and
+   was observed relocating onto a sibling summary when this row's siblings'
+   pointer-events toggle mid-touch for the open/close animation below.
+   :active is kept too, harmlessly, for mouse/trackpad press on desktop. */
+.moreSectionSummary:active,
+.moreSectionSummary.isPressed {
   background-color: color-mix(in srgb, var(--primary) 7%, transparent);
 }
 .moreSectionSummary::-webkit-details-marker { display: none; }

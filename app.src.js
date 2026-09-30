@@ -16094,6 +16094,26 @@ document.addEventListener("click", (e) => {
     // makes the panel ignore stray taps until the layout has settled.
     const panel = det.closest(".moreTabPanel");
 
+    // ── Pressed-state highlight, JS-managed instead of bare CSS :active ──
+    // The bare `:active` pseudo-class is computed by WebKit against
+    // whatever's currently hit-testable at the touch's (x, y) — and the
+    // very next lines toggle `pointer-events: none` on this row's siblings
+    // for the animation's duration. Changing pointer-events on the panel
+    // mid-touch gives WebKit a reason to re-resolve the active hit target,
+    // and it has been observed relocating the highlight onto a sibling
+    // summary (e.g. Notifications) instead of the one actually pressed
+    // (Pay Stub) — the accordion still opens the right thing (the click
+    // handler below is unaffected), but the visual highlight lands on the
+    // wrong row. `.isPressed` is added/removed on this exact element
+    // reference via pointerdown/up, so it can never drift to a sibling
+    // the way the coordinate-based native pseudo-class can.
+    const press = () => summary.classList.add("isPressed");
+    const unpress = () => summary.classList.remove("isPressed");
+    summary.addEventListener("pointerdown", press);
+    summary.addEventListener("pointerup", unpress);
+    summary.addEventListener("pointercancel", unpress);
+    summary.addEventListener("pointerleave", unpress);
+
     summary.addEventListener("click", (e) => {
       e.preventDefault();
       if (det._sectionAnim) det._sectionAnim.cancel();
