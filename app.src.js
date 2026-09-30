@@ -14293,6 +14293,7 @@ function initMoreTabs() {
 
 /* ── Bulk entry delete (History tab) ─────────────── */
 let _bulkSelectMode = false;
+let _histWeekBarShouldShow = false;
 
 async function renderBulkEntryList() {
   const container = document.getElementById("bulkEntryList");
@@ -14316,16 +14317,19 @@ async function renderBulkEntryList() {
   }
 
   // ── Week summary bar ───────────────────────────
-  const nowKey = new Date().toISOString().slice(0, 10);
-  const weekStart = (() => {
-    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-  })();
+  // Use the same pay-week definition as everywhere else in the app
+  // (startOfWeekLocal respects the configured Pay Week Starts day) instead of
+  // a hardcoded Sunday-start week computed via toISOString() — that's a UTC
+  // timestamp, so near midnight it could land on the wrong local day and
+  // this bar's "this week" would silently disagree with the Log/Stats pages.
+  const weekStart = dateKey(startOfWeekLocal(new Date()));
   const weekEntries = entries.filter(e => (e.dayKey || "") >= weekStart);
   const wkJobs = weekEntries.length;
   const wkHours = weekEntries.reduce((s, e) => s + (Number(e.hours) || 0), 0);
   const wkPay   = weekEntries.reduce((s, e) => s + (Number(e.earnings ?? e.dollars ?? 0) || 0), 0);
   const bar = document.getElementById("histWeekSummary");
-  if (bar && wkJobs > 0) {
+  _histWeekBarShouldShow = wkJobs > 0;
+  if (bar && _histWeekBarShouldShow) {
     bar.style.display = "flex";
     const jEl = document.getElementById("histWeekJobs");
     const hEl = document.getElementById("histWeekHours");
@@ -14603,6 +14607,14 @@ function initEntrySearch() {
         countEl.textContent = `${hits.length} of ${_HISTORY_ENTRIES.length} job${_HISTORY_ENTRIES.length === 1 ? "" : "s"}`;
       }
     }
+    // The "This week" bar always summarizes the FULL unfiltered list (it's
+    // meant as a standing stat, not a per-search total), so leaving it up
+    // during a search made it look like it was describing the filtered rows
+    // below it — e.g. searching "PDI" would list jobs from last week while
+    // the bar still read "This week: 2 jobs, $15.00" from before the search.
+    // Hide it whenever a query is active, same as the range nav elsewhere.
+    const weekBar = document.getElementById("histWeekSummary");
+    if (weekBar) weekBar.style.display = (!q && _histWeekBarShouldShow) ? "flex" : "none";
   };
 
   // Debounced like every other search-as-you-type box in the app (see
