@@ -669,12 +669,33 @@ async function entryPhotoForPdf(entry, maxDim = 1400, quality = 0.8) {
  * call site to handle -- the try/catch that used to be here only guarded
  * against a synchronous throw and did nothing for the async rejection,
  * which was actually surfacing as an unhandled promise rejection instead.
+ *
+ * Concurrency is capped rather than firing every request at once: a normal
+ * week's worth of jobs is fine either way, but switching the Stats page to
+ * "All Time" on an account with hundreds of logged jobs fired one signed-URL
+ * request per photo simultaneously and tripped Supabase's rate limit (429s,
+ * plus a batch of 400s) -- observed live during testing. getCachedPhotoUrl's
+ * own in-flight de-dupe only protects against the *same* path being requested
+ * twice; it does nothing for hundreds of genuinely different paths going out
+ * at once, which is what a big "All Time" or "This Year" view does.
  */
-function prewarmPhotoUrls(entries) {
-  for (const e of entries || []) {
-    const p = e?.photo_path || e?.photoPath;
-    if (p) getCachedPhotoUrl(p);
+const PREWARM_CONCURRENCY = 6;
+
+async function prewarmPhotoUrls(entries) {
+  const paths = (entries || [])
+    .map((e) => e?.photo_path || e?.photoPath)
+    .filter(Boolean);
+  if (!paths.length) return;
+
+  let i = 0;
+  async function worker() {
+    while (i < paths.length) {
+      await getCachedPhotoUrl(paths[i++]);
+    }
   }
+  await Promise.all(
+    Array.from({ length: Math.min(PREWARM_CONCURRENCY, paths.length) }, worker)
+  );
 }
 
 function closePhotoViewer(){
