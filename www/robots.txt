@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /auth-callback.html
 Disallow: /dashboard.html
+Disallow: /team.html
 
 Sitemap: https://app.nellylabs.dev/sitemap.xml
