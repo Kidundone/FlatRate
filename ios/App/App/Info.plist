@@ -53,5 +53,18 @@
 	<string>Choose a photo of your repair order or payroll stub to auto-fill job details.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save proof photos to your photo library.</string>
+	<!-- Private scheme for the Siri/Shortcuts quick-log intent (LogJobIntent.swift,
+	     handled in AppDelegate) — not a general-purpose deep link scheme. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.nellylabs.flatrate.quicklog</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>flatratebuddy</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

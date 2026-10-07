@@ -16033,6 +16033,41 @@ let _statsPageLoaded   = false;
 const SPA_TAB_ORDER = ["main", "stats", "more"];
 let _spaTransitToken = 0;
 
+// Siri/Shortcuts quick-log entry point (see ios/App/App/LogJobIntent.swift +
+// AppDelegate.swift). The native side can't just navigate the webview to a
+// URL with ?hours=/&ro= query params the way the PWA deep links below do —
+// this is a single-page app that keeps everything in memory, and the native
+// app loads its bundle from Capacitor's local scheme, not from
+// app.nellylabs.dev, so there's no live URL reload to begin with. Instead
+// native hands the values straight to this function via evaluateJavaScript.
+// Registered on window.__FR as early as possible (this file runs last in
+// the build, but this line itself runs at parse time, well before
+// DOMContentLoaded) since a cold app launch can deliver the URL before the
+// rest of boot has wired up the DOM — hence the retry loop below rather
+// than assuming #hours/#ref already exist.
+window.__FR = window.__FR || {};
+window.__FR.handleQuickLogDeepLink = function (payload, _attempt) {
+  _attempt = _attempt || 0;
+  const hoursEl = document.getElementById("hours");
+  const refEl = document.getElementById("ref");
+  const typeEl = document.getElementById("typeText");
+  if (!hoursEl || !refEl) {
+    if (_attempt < 20) {
+      setTimeout(() => window.__FR.handleQuickLogDeepLink(payload, _attempt + 1), 150);
+    }
+    return;
+  }
+  try { showSpaPage?.("main"); } catch {}
+  const hours = payload && payload.hours != null ? String(payload.hours) : "";
+  const ro = payload && payload.ro ? String(payload.ro) : "";
+  if (hours) { hoursEl.value = hours; hoursEl.dispatchEvent(new Event("input", { bubbles: true })); }
+  if (ro) { refEl.value = ro; refEl.dispatchEvent(new Event("input", { bubbles: true })); }
+  setTimeout(() => {
+    (typeEl || hoursEl).focus();
+    toast?.("Filled in from Siri — check it over and hit Save.");
+  }, 350);
+};
+
 function showSpaPage(name) {
   const main  = document.getElementById("spa-main");
   const more  = document.getElementById("spa-more");
@@ -17160,6 +17195,15 @@ async function runOnce() {
           }, 200);
         }
       }, 400);
+    }
+    // Quick-log deep link, web/PWA side: ?quicklog=1&hours=..&ro=.. — same
+    // destination as the native Siri/Shortcuts path (window.__FR.handleQuickLogDeepLink,
+    // defined above near showSpaPage), reached here instead of a native
+    // evaluateJavaScript call since a home-screen PWA shortcut or a desktop
+    // bookmark opens a plain URL rather than going through AppDelegate.
+    if (_dlParams.get("quicklog") === "1") {
+      history.replaceState({}, "", location.pathname);
+      window.__FR?.handleQuickLogDeepLink?.({ hours: _dlParams.get("hours"), ro: _dlParams.get("ro") });
     }
     // Payday notification deep-link: ?paystub=1 → show week summary, then open pay stub
     if (new URLSearchParams(location.search).get("paystub") === "1") {
