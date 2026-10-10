@@ -57,10 +57,17 @@ jobHours: Object mapping a job name from the "jobs" array (EXACT same string) to
   - Many prep checklists print NO hours at all (just checkboxes) — in that case return {} (empty object), that's expected and fine.
   - Values are decimal hours (e.g. "30 MIN"→0.5, "1 HR 30 MIN"→1.5). Ignore dollar amounts — only hour/time values.
 
+piiBoxes: Bounding boxes for the CUSTOMER's own personal information visible anywhere on the document — their name, mailing address, or phone/cell/home number. This is privacy-critical: a tech's app stores a photo of this document, and the customer's identifying details must never end up in that stored copy.
+  - Look for a "CUSTOMER", "NAME", "ADDRESS", "PHONE", "CELL", "HOME #", "SOLD TO", or "OWNER" label, or any block of handwritten/printed contact info in a customer-information section.
+  - Do NOT box: the dealership's own letterhead name/address/logo/phone, the vehicle's VIN/make/model/year, the RO or stock number, or any technician/employee/advisor name — those are not customer PII.
+  - Return one box per distinct line or field of customer info as [ymin, xmin, ymax, xmax], normalized 0-1000 (0 = top/left edge of the full image, 1000 = bottom/right edge — the standard object-detection convention), drawn tightly around the visible text. If the name and address sit together in one compact block, one box covering the whole block is fine.
+  - When in doubt about whether something is customer-identifying, include it — a slightly larger box that blacks out a little extra margin is harmless; a missed customer name or phone number is not.
+  - Return [] if no customer personal information is visible anywhere on the document.
+
 IGNORE: Handwritten 5-digit numbers in colored marker (tech reach numbers, not RO/VIN/STK).
 
 Return ONLY this JSON, no markdown, no extra text:
-{"ro": "492043", "vin": "5J8YE1H80TL041284", "stk": "A7127", "jobs": ["PDI", "Safety check", "Remove plastics/wash wax"], "jobHours": {"PDI": 1.5}}`;
+{"ro": "492043", "vin": "5J8YE1H80TL041284", "stk": "A7127", "jobs": ["PDI", "Safety check", "Remove plastics/wash wax"], "jobHours": {"PDI": 1.5}, "piiBoxes": [[142, 60, 210, 540]]}`;
 
     const geminiBody = JSON.stringify({
       contents: [
@@ -159,7 +166,7 @@ Return ONLY this JSON, no markdown, no extra text:
     const textPart = parts.find((p: any) => p.text && !p.thought) || parts[0];
     const raw = textPart?.text?.trim() || "{}";
 
-    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null; jobs?: string[]; jobHours?: Record<string, unknown> } = {};
+    let parsed: { ro?: string | null; vin?: string | null; stk?: string | null; jobs?: string[]; jobHours?: Record<string, unknown>; piiBoxes?: unknown } = {};
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
@@ -183,6 +190,25 @@ Return ONLY this JSON, no markdown, no extra text:
       }
     }
 
+    // Customer-PII redaction boxes: keep only well-formed [ymin,xmin,ymax,xmax]
+    // boxes with all four values finite numbers on the model's 0-1000
+    // normalized scale, and a non-degenerate (positive-area) rectangle.
+    // Capped at 20 — a real document never has anywhere near that many
+    // separate customer-info regions, so more than that is the model
+    // misreading the instruction, not real content worth keeping.
+    const piiBoxes: number[][] = [];
+    if (Array.isArray(parsed.piiBoxes)) {
+      for (const box of parsed.piiBoxes) {
+        if (piiBoxes.length >= 20) break;
+        if (!Array.isArray(box) || box.length !== 4) continue;
+        const nums = box.map(Number);
+        if (!nums.every((n) => Number.isFinite(n) && n >= 0 && n <= 1000)) continue;
+        const [ymin, xmin, ymax, xmax] = nums;
+        if (ymax <= ymin || xmax <= xmin) continue;
+        piiBoxes.push(nums);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ro: parsed.ro || null,
@@ -190,6 +216,7 @@ Return ONLY this JSON, no markdown, no extra text:
         stk: parsed.stk || null,
         jobs,
         jobHours,
+        piiBoxes,
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );

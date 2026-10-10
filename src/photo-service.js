@@ -72,6 +72,68 @@ async function downscaleImage(fileOrBlob, maxDim = 1600, quality = 0.8) {
   return blob;
 }
 
+/**
+ * Redact customer PII (name/address/phone) from a repair-order photo before
+ * it is ever uploaded or saved. `boxes` are normalized [ymin, xmin, ymax,
+ * xmax] rectangles on a 0-1000 scale — scan-ro's Gemini pass returns them in
+ * that convention regardless of what resolution the image was downscaled to
+ * for OCR, so they map correctly onto `fileOrBlob` here (the full-resolution
+ * original) as long as its aspect ratio matches, which it always does since
+ * nothing crops between capture and this call.
+ *
+ * Fills a SOLID opaque rectangle rather than a blur: a blur on a phone photo
+ * is frequently reversible (deconvolution, or the fact the original camera
+ * resolution is often sharp enough that the "blurred" text is still mostly
+ * legible underneath a mild blur) — a privacy feature that only partially
+ * works isn't one. A solid fill is the only version of this that's actually
+ * irreversible, so that's the whole point of doing this client-side at all.
+ *
+ * Boxes are padded slightly: OCR boxes are drawn tight around the text
+ * itself, and a tiny margin covers ascenders/descenders or a slightly
+ * rotated line that would otherwise peek out past a zero-margin box.
+ *
+ * Returns the original fileOrBlob unchanged if boxes is empty/invalid —
+ * callers decide separately whether "no boxes" means "nothing to redact" or
+ * "the scan never told us," see getPhotoFileForUpload().
+ */
+const PII_REDACTION_PAD_FRAC = 0.015; // ~1.5% of the shorter image dimension, per side
+
+async function redactPhotoRegions(fileOrBlob, boxes) {
+  if (!Array.isArray(boxes) || !boxes.length) return fileOrBlob;
+
+  const bitmap = await createImageBitmap(fileOrBlob);
+  const { width, height } = bitmap;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  const pad = Math.round(Math.min(width, height) * PII_REDACTION_PAD_FRAC);
+  ctx.fillStyle = "#000000";
+
+  let applied = 0;
+  for (const box of boxes) {
+    if (!Array.isArray(box) || box.length !== 4) continue;
+    const nums = box.map(Number);
+    if (!nums.every(Number.isFinite)) continue;
+    const [ymin, xmin, ymax, xmax] = nums;
+    const x = Math.max(0, Math.round((xmin / 1000) * width) - pad);
+    const y = Math.max(0, Math.round((ymin / 1000) * height) - pad);
+    const x2 = Math.min(width, Math.round((xmax / 1000) * width) + pad);
+    const y2 = Math.min(height, Math.round((ymax / 1000) * height) + pad);
+    if (x2 <= x || y2 <= y) continue;
+    ctx.fillRect(x, y, x2 - x, y2 - y);
+    applied++;
+  }
+
+  if (!applied) return fileOrBlob;
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  if (!blob) throw new Error("Redaction render failed");
+  return new File([blob], fileOrBlob.name || "proof.jpg", { type: "image/jpeg" });
+}
+
 async function uploadProofPhoto({ sb, empId, logId, file, roNumber = null }) {
   const uid = await requireUserId();
   if (!uid) throw new Error("Sign in required");
@@ -101,6 +163,79 @@ async function uploadProofPhoto({ sb, empId, logId, file, roNumber = null }) {
 
 // --- Photo selection (camera / library / files) ---
 let SELECTED_PHOTO_FILE = null;
+
+// --- Save-time privacy gate ---------------------------------------------
+// scanPhotoAndPrefillForm() kicks off the OCR + redaction pass the MOMENT a
+// photo is picked, not when Save is tapped — by the time a tech has filled
+// in hours/notes and hits Save, that pass has almost always already
+// finished. This tracks it so saveEntry() can await it instead of racing
+// it: without this gate, tapping Save fast enough could upload the raw,
+// still-unredacted original before redaction ever ran.
+let _redactionGate = null; // Promise<{ ok: boolean }> for the CURRENTLY selected file
+const REDACTION_GATE_TIMEOUT_MS = 15000;
+
+function _armRedactionGate(promise) {
+  // A newer photo pick's gate simply replaces this — if a scan for an OLDER
+  // photo resolves late, nothing still waiting on it cares anymore because
+  // getSelectedPhotoFile() will have moved on too.
+  _redactionGate = promise;
+}
+
+// Swaps SELECTED_PHOTO_FILE for its redacted replacement without touching
+// the "Selected: …" UI label — the tech already saw that label render for
+// their original pick; re-showing it with the redacted copy's (slightly
+// different) byte size would just look like a second, separate pick.
+function _swapSelectedPhotoFileSilently(file) {
+  SELECTED_PHOTO_FILE = file;
+  window.SELECTED_PHOTO_FILE = file;
+}
+
+/**
+ * What saveEntry() should actually upload. Resolves to:
+ *   - null                      → no photo was selected; save with no photo.
+ *   - { file, skip: false }     → safe to upload (redacted, or the scan
+ *                                 confirmed no customer PII was present).
+ *   - { file: null, skip: true } → a photo WAS picked but its privacy scan
+ *                                  never confirmed success (failed, or
+ *                                  didn't finish in time). The raw original
+ *                                  is never returned here — callers must
+ *                                  save the entry without a photo and tell
+ *                                  the tech why, not fall back to uploading
+ *                                  it unscanned.
+ *
+ * This is the single chokepoint the save flow reads from instead of calling
+ * getSelectedPhotoFile() directly, so there's no path — today or added
+ * later — that can hand an un-redacted, customer-PII-bearing photo to
+ * uploadProofPhoto().
+ */
+async function getPhotoFileForUpload() {
+  const raw = getSelectedPhotoFile();
+  if (!raw) return null;
+
+  if (!_redactionGate) {
+    // Every picker change handler starts a scan — this shouldn't happen,
+    // but fail safe rather than assume a gate exists.
+    return { file: null, skip: true };
+  }
+
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ ok: false, timedOut: true }), REDACTION_GATE_TIMEOUT_MS)
+  );
+  let result;
+  try {
+    result = await Promise.race([_redactionGate, timeout]);
+  } catch {
+    result = { ok: false };
+  }
+
+  if (result && result.ok) {
+    // scanPhotoAndPrefillForm already swapped SELECTED_PHOTO_FILE for the
+    // redacted version on success — re-read it now rather than trusting the
+    // `raw` reference captured above.
+    return { file: getSelectedPhotoFile(), skip: false };
+  }
+  return { file: null, skip: true };
+}
 
 function setSelectedPhotoFile(file, label = "") {
   SELECTED_PHOTO_FILE = file || null;
@@ -145,6 +280,7 @@ function clearPickedPhoto() {
   if (pick) pick.value = "";
   if (file) file.value = "";
   setSelectedPhotoFile(null);
+  _redactionGate = null;
   setPhotoUploadTarget("");
   const panel = document.getElementById("photoPanel");
   if (panel) panel.open = false;
@@ -920,6 +1056,12 @@ async function _hoursForJob(jobName, jobHours) {
 async function scanPhotoAndPrefillForm(file) {
   if (!file) return;
 
+  // Arm the save-time privacy gate (see getPhotoFileForUpload) for THIS
+  // file before doing anything else — settled true/false below, whichever
+  // way this scan resolves, so Save never races an unsettled gate.
+  let _settleGate;
+  _armRedactionGate(new Promise((resolve) => { _settleGate = resolve; }));
+
   const scanStatus   = document.getElementById("photoScanStatus");
   const altChips     = document.getElementById("scanJobAlternatives");
   const refEl        = document.getElementById("ref");
@@ -1041,7 +1183,23 @@ async function scanPhotoAndPrefillForm(file) {
     const mediaType = dataUrl.match(/data:([^;]+)/)?.[1] || "image/jpeg";
     const result   = await _callScanRo(base64, mediaType);
 
-    const { ro, vin, stk, jobs, jobHours } = result || {};
+    const { ro, vin, stk, jobs, jobHours, piiBoxes } = result || {};
+
+    // Redact any detected customer PII BEFORE anything else (prefill logic,
+    // the save flow) can get at this file. Settling the gate happens right
+    // after, regardless of whether any boxes were found — "found nothing to
+    // redact" and "redacted successfully" both mean the scan completed.
+    try {
+      if (Array.isArray(piiBoxes) && piiBoxes.length) {
+        const redacted = await redactPhotoRegions(file, piiBoxes);
+        _swapSelectedPhotoFileSilently(redacted);
+      }
+      _settleGate({ ok: true });
+    } catch (redactErr) {
+      console.warn("[PII redaction]", redactErr?.message || redactErr);
+      _settleGate({ ok: false });
+    }
+
     const filled = [];
 
     // Fill RO/Stock — prefer RO when both exist (Repair Order form)
@@ -1118,6 +1276,7 @@ async function scanPhotoAndPrefillForm(file) {
     setPhotoSummaryState("Selected");
 
   } catch (e) {
+    _settleGate({ ok: false });
     setPhotoSummaryState("Selected");
     hideAlts();
     const msg = e?.message || "";

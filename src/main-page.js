@@ -1789,7 +1789,16 @@ async function saveEntry(entry, options = {}) {
   const preserveType = !!options.preserveType;
   const preservedType = String(options.preservedType || "").trim();
   const payload = normalizeEntryForApi(entry);
-  const photoFile = getSelectedPhotoFile();
+  // getPhotoFileForUpload() is the privacy gate (see photo-service.js): it
+  // waits for the picked photo's customer-PII scan/redaction to finish and
+  // only ever hands back a file once that's confirmed — never the raw
+  // original. If the scan failed or didn't finish, it returns skip:true and
+  // we save the entry without a photo rather than upload one unscanned.
+  const photoGate = await getPhotoFileForUpload();
+  const photoFile = photoGate?.file || null;
+  if (photoGate?.skip) {
+    toast("Photo skipped — the privacy scan of the repair order didn't finish, so nothing unscanned gets saved. Entry saved without it.");
+  }
   const empId = getEmpId();
   const client = empId ? sb() : null;
   const uid = client ? await requireUserId(client) : null;
